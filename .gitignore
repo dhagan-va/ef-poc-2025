@@ -1,0 +1,27 @@
+# Ignore .NET build outputs within this folder only
+./src/**/bin/
+./src/**/obj/
+./tests/**/bin/
+./tests/**/obj/
+
+# User-specific files (VS Code, Rider, etc.)
+./.vs/
+./.vscode/
+./.idea/
+
+# Test result artifacts
+./tests/**/TestResults/
+./TestResults/
+
+
+# Logs and temporary files
+./**/*.log
+./**/*.tmp
+./**/~$*
+
+# OS-specific
+./**/.DS_Store
+./**/Thumbs.db
+
+# Optional: Ignore Docker volume data if you mount a local folder
+./**/mssql-data/
