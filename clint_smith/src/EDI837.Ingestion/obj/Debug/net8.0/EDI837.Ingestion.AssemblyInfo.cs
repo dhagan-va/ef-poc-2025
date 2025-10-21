@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EDI837.Ingestion")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3794d9606dfe4e2bb022d3d208b6fc3a821cc6f3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+43c8e4458bcbaf6e6f3f08381bdda551f579ca2a")]
 [assembly: System.Reflection.AssemblyProductAttribute("EDI837.Ingestion")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EDI837.Ingestion")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
