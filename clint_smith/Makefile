@@ -4,7 +4,7 @@ ifneq (,$(wildcard .env))
 	export $(shell sed 's/=.*//' .env)
 endif
 
-.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help
+.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format
 
 run-sql:
 	@echo "🚀 Starting SQL Server container ($(SQL_CONTAINER))..."
@@ -41,6 +41,9 @@ status:
 test:
 	dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput=./TestResults/
 
+format:
+	dotnet format --include ./src/EDI837.Ingestion --include ./tests/EDI837.Ingestion.Tests
+
 help:
 	@echo ""
 	@echo "Available commands:"
@@ -52,3 +55,4 @@ help:
 	@echo "  make logs-sql    -> View logs"
 	@echo "  make status      -> Show container status"
 	@echo "  make test        -> Run tests"
+	@echo "  make format	  -> Format the code"
