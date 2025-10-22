@@ -1,0 +1,13 @@
+root = false        # This inherits from any parent .editorconfig
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Optional: extra formatting preferences
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+csharp_indent_block_contents = true
+csharp_prefer_braces = true:suggestion
