@@ -2,10 +2,40 @@
 using EdiFabric.Framework.Readers;
 using EdiFabric.Core.Model.Edi;
 using DotNetEnv;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace EDI837.Ingestion
 {
+
+
+   public class HIPAA_5010_837P_Context : DbContext
+    {
+        public HIPAA_5010_837P_Context()
+        {
+        }
+
+        public HIPAA_5010_837P_Context(DbContextOptions<HIPAA_5010_837P_Context> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<TS837P> TS837P { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                Env.Load("../../.env");
+                var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+                optionsBuilder
+                    .UseLazyLoadingProxies()
+                    .UseSqlServer(connString);
+            }
+        }
+    }
+
+        
     internal class Program
     {
         static void Main()
@@ -58,7 +88,9 @@ namespace EDI837.Ingestion
 
             List<IEdiItem> ediItems;
             using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
+            {
                 ediItems = [.. ediReader.ReadToEnd()];
+            }
 
             var claims = ediItems.OfType<TS837P>();
 
@@ -72,7 +104,9 @@ namespace EDI837.Ingestion
 
                     Console.WriteLine($"Claim {claim.ST?.TransactionSetControlNumber_02 ?? "(unknown)"} has {errors.Count()} errors:");
                     foreach (var err in errors)
+                    {
                         Console.WriteLine($"  {err}");
+                    }
                 }
                 else
                 {
@@ -92,10 +126,25 @@ namespace EDI837.Ingestion
         /// <param name="claims">A list of 837P claims</param>
         static void SaveClaims(List<TS837P> claims)
         {
-            return;
+            // Configure DbContext options
+            var optionsBuilder = new DbContextOptionsBuilder<HIPAA_5010_837P_Context>();
+            Env.Load("../../.env");
+            var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+            optionsBuilder.UseSqlServer(connString);
+            optionsBuilder.UseLazyLoadingProxies();
+
+            using var db = new HIPAA_5010_837P_Context(optionsBuilder.Options);
+            try
+            {
+                db.TS837P.AddRange(claims);
+                db.SaveChanges();
+                Console.WriteLine($"{claims.Count} claims saved to database.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving claims: {ex.Message}");
+            }
         }
     }
-
-
 }
 
