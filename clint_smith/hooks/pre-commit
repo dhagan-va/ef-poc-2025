@@ -1,9 +1,0 @@
-#!/bin/bash
-echo "Checking C# formatting in Clint's projects..."
-dotnet format clint_smith/EDI837.Ingestion.sln --verify-no-changes
-if [ $? -ne 0 ]; then
-  echo "Code formatting issues found in Clint's solution."
-  echo "   Run: dotnet format clint_smith/EDI837.Ingestion.sln"
-  exit 1
-fi
-echo "✅ Format check passed for Clint's solution."

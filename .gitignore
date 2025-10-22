@@ -1,27 +1,63 @@
-# Ignore .NET build outputs within this folder only
-./src/**/bin/
-./src/**/obj/
-./tests/**/bin/
-./tests/**/obj/
+# Ignore build output
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+[Tt]emp/
 
-# User-specific files (VS Code, Rider, etc.)
-./.vs/
-./.vscode/
-./.idea/
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.idea/
+*.swp
+*.DS_Store
 
-# Test result artifacts
-./tests/**/TestResults/
-./TestResults/
+# VSCode project artifacts
+.vscode/
+.vs/
 
+# Environment and config
+.env
+.env.*
+*.local
+*.secret
 
-# Logs and temporary files
-./**/*.log
-./**/*.tmp
-./**/~$*
+# Test results
+TestResult*/
+*.trx
 
-# OS-specific
-./**/.DS_Store
-./**/Thumbs.db
+# NuGet artifacts
+*.nupkg
+*.snupkg
+*.nuspec
+packages/
+*.nuget.props
+*.nuget.targets
+project.assets.json
+project.nuget.cache
 
-# Optional: Ignore Docker volume data if you mount a local folder
-./**/mssql-data/
+# Dotnet tools
+*.dll
+*.exe
+*.cache
+*.pdb
+*.mdb
+
+# Logs
+*.log
+*.svclog
+
+# Coverage / analysis tools
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
