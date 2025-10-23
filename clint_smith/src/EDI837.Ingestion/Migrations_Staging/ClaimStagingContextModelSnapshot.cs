@@ -4,19 +4,16 @@ using EDI837.Ingestion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace EDI837.Ingestion.Migrations.ClaimStaging
+namespace EDI837.Ingestion.Migrations_Staging
 {
     [DbContext(typeof(ClaimStagingContext))]
-    [Migration("20251023180725_RemoveIdRequired")]
-    partial class RemoveIdRequired
+    partial class ClaimStagingContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,22 +34,20 @@ namespace EDI837.Ingestion.Migrations.ClaimStaging
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PatientControlNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<string>("ProviderNPI")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("TransactionControlNumber")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderNPI", "PatientControlNumber")
+                    b.HasIndex("ProviderNPI", "TransactionControlNumber")
                         .IsUnique()
-                        .HasFilter("[ProviderNPI] IS NOT NULL AND [PatientControlNumber] IS NOT NULL");
+                        .HasFilter("[ProviderNPI] IS NOT NULL AND [TransactionControlNumber] IS NOT NULL");
 
                     b.ToTable("ClaimStagings");
                 });
