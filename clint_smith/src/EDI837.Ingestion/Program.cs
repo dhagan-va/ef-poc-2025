@@ -15,11 +15,6 @@ namespace EDI837.Ingestion
         {
         }
 
-        public HIPAA_5010_837P_Context(DbContextOptions<HIPAA_5010_837P_Context> options)
-            : base(options)
-        {
-        }
-
         public DbSet<TS837P> TS837P { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -126,14 +121,8 @@ namespace EDI837.Ingestion
         /// <param name="claims">A list of 837P claims</param>
         static void SaveClaims(List<TS837P> claims)
         {
-            // Configure DbContext options
-            var optionsBuilder = new DbContextOptionsBuilder<HIPAA_5010_837P_Context>();
-            Env.Load("../../.env");
-            var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
-            optionsBuilder.UseSqlServer(connString);
-            optionsBuilder.UseLazyLoadingProxies();
 
-            using var db = new HIPAA_5010_837P_Context(optionsBuilder.Options);
+            using var db = new HIPAA_5010_837P_Context();
             try
             {
                 db.TS837P.AddRange(claims);
