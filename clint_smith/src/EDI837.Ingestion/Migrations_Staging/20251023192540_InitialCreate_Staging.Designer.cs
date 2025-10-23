@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace EDI837.Ingestion.Migrations.ClaimStaging
+namespace EDI837.Ingestion.Migrations_Staging
 {
     [DbContext(typeof(ClaimStagingContext))]
-    [Migration("20251023172732_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251023192540_InitialCreate_Staging")]
+    partial class InitialCreate_Staging
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -37,22 +37,20 @@ namespace EDI837.Ingestion.Migrations.ClaimStaging
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PatientControlNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<string>("ProviderNPI")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("TransactionControlNumber")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderNPI", "PatientControlNumber")
+                    b.HasIndex("ProviderNPI", "TransactionControlNumber")
                         .IsUnique()
-                        .HasFilter("[ProviderNPI] IS NOT NULL AND [PatientControlNumber] IS NOT NULL");
+                        .HasFilter("[ProviderNPI] IS NOT NULL AND [TransactionControlNumber] IS NOT NULL");
 
                     b.ToTable("ClaimStagings");
                 });

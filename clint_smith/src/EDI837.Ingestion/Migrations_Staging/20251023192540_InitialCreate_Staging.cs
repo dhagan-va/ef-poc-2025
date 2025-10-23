@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace EDI837.Ingestion.Migrations.ClaimStaging
+namespace EDI837.Ingestion.Migrations_Staging
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreate_Staging : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,10 +17,10 @@ namespace EDI837.Ingestion.Migrations.ClaimStaging
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProviderNPI = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PatientControlNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ReceivedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ClaimXml = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    ProviderNPI = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    TransactionControlNumber = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    ClaimXml = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ReceivedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -28,11 +28,11 @@ namespace EDI837.Ingestion.Migrations.ClaimStaging
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ClaimStagings_ProviderNPI_PatientControlNumber",
+                name: "IX_ClaimStagings_ProviderNPI_TransactionControlNumber",
                 table: "ClaimStagings",
-                columns: new[] { "ProviderNPI", "PatientControlNumber" },
+                columns: new[] { "ProviderNPI", "TransactionControlNumber" },
                 unique: true,
-                filter: "[ProviderNPI] IS NOT NULL AND [PatientControlNumber] IS NOT NULL");
+                filter: "[ProviderNPI] IS NOT NULL AND [TransactionControlNumber] IS NOT NULL");
         }
 
         /// <inheritdoc />
