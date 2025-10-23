@@ -11,10 +11,6 @@ namespace EDI837.Ingestion
 
    public class HIPAA_5010_837P_Context : DbContext
     {
-        public HIPAA_5010_837P_Context()
-        {
-        }
-
         public DbSet<TS837P> TS837P { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
