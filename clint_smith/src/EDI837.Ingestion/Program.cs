@@ -21,7 +21,7 @@ namespace EDI837.Ingestion
             if (!optionsBuilder.IsConfigured)
             {
                 Env.Load("../../.env");
-                var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+                var connString = Environment.GetEnvironmentVariable("STAGING_CONN_STRING");
                 optionsBuilder.UseSqlServer(connString);
             }
         }
@@ -29,9 +29,9 @@ namespace EDI837.Ingestion
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ClaimStaging>()
-                .HasIndex(c => new { c.ProviderNPI, c.PatientControlNumber })
+                .HasIndex(c => new { c.ProviderNPI, c.TransactionControlNumber })
                 .IsUnique()
-                .HasFilter("[ProviderNPI] IS NOT NULL AND [PatientControlNumber] IS NOT NULL");
+                .HasFilter("[ProviderNPI] IS NOT NULL AND [TransactionControlNumber] IS NOT NULL");
         }
     }
 
@@ -156,25 +156,20 @@ namespace EDI837.Ingestion
                     .Select(a => a.AllNM1?.Loop2010AA?.NM1_BillingProviderName?.ResponseContactIdentifier_09)
                     .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
 
-                var patientControlNumber = claim.Loop2000A?
-                    .SelectMany(a => a.Loop2000B ?? [])
-                    .SelectMany(b => b.Loop2300 ?? [])
-                    .Select(l2300 => l2300.CLM_ClaimInformation?.PatientControlNumber_01)
-                    .FirstOrDefault(clm => !string.IsNullOrWhiteSpace(clm));
-
+                var transactionControlNumber = claim.ST?.TransactionSetControlNumber_02;
 
                 // validate not null
-                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(patientControlNumber))
+                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber))
                 {
                     Console.WriteLine("Skipping claim with missing identifiers.");
-                    Console.WriteLine($"NPI: {providerNpi}, CLM01: {patientControlNumber}");
+                    Console.WriteLine($"NPI: {providerNpi}, ST02: {transactionControlNumber}");
                     continue;
                 }
                 
                 var stagingRecord = new ClaimStaging
                 {
                     ProviderNPI = providerNpi,
-                    PatientControlNumber = patientControlNumber,
+                    TransactionControlNumber = transactionControlNumber,
                     ReceivedAt = DateTime.UtcNow,
                     ClaimXml = ""
                 };
@@ -188,7 +183,7 @@ namespace EDI837.Ingestion
                 }
                 catch (DbUpdateException dbEx)
                 {
-                    Console.WriteLine($"[DB Error] Failed to insert claim (NPI={providerNpi}, CLM01={patientControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}");
+                    Console.WriteLine($"[DB Error] Failed to insert claim (NPI={providerNpi}, ST02={transactionControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}");
                     stagingDb.Entry(stagingRecord).State = EntityState.Detached;
                     continue;
                 }
@@ -202,7 +197,7 @@ namespace EDI837.Ingestion
                 ediDb.TS837P.Add(claim);
                 ediDb.SaveChanges();
 
-                Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, CLM01={patientControlNumber}");
+                Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, ST02={transactionControlNumber}");
             }
             
 

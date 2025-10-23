@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace EDI837.Ingestion.Migrations
+namespace EDI837.Ingestion.Migrations_Main
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreate_Main : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
