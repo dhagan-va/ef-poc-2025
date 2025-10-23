@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EDI837.Ingestion.Migrations
 {
     [DbContext(typeof(HIPAA_5010_837P_Context))]
-    [Migration("20251022233102_InitialCreate")]
+    [Migration("20251023172543_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

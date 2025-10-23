@@ -3,11 +3,34 @@ using EdiFabric.Framework.Readers;
 using EdiFabric.Core.Model.Edi;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
+using System.Xml.Serialization;
+using System.Xml.Linq;
 
 
 namespace EDI837.Ingestion
 {
+    public class ClaimStagingContext : DbContext
+    {
+        public DbSet<ClaimStaging> ClaimStagings { get; set; }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                Env.Load("../../.env");
+                var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+                optionsBuilder.UseSqlServer(connString);
+            }
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ClaimStaging>()
+                .HasIndex(c => new { c.ProviderNPI, c.PatientControlNumber })
+                .IsUnique()
+                .HasFilter("[ProviderNPI] IS NOT NULL AND [PatientControlNumber] IS NOT NULL");
+        }
+    }
 
    public class HIPAA_5010_837P_Context : DbContext
     {
@@ -117,19 +140,88 @@ namespace EDI837.Ingestion
         /// <param name="claims">A list of 837P claims</param>
         static void SaveClaims(List<TS837P> claims)
         {
+            using var dbMain = new HIPAA_5010_837P_Context();
+            using var dbStaging = new ClaimStagingContext();
 
-            using var db = new HIPAA_5010_837P_Context();
-            try
+            // foreach claim
+            foreach (var claim in claims)
             {
-                db.TS837P.AddRange(claims);
-                db.SaveChanges();
-                Console.WriteLine($"{claims.Count} claims saved to database.");
+                var providerNpi = claim.Loop2000A?
+                    .Select(a => a.AllNM1?.Loop2010AA?.NM1_BillingProviderName?.ResponseContactIdentifier_09)
+                    .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
+
+                var patientControlNumber = claim.Loop2000A?
+                    .SelectMany(a => a.Loop2000B ?? new List<Loop_2000B_837P>())
+                    .SelectMany(b => b.Loop2300 ?? new List<Loop_2300_837P>())
+                    .Select(l2300 => l2300.CLM_ClaimInformation?.PatientControlNumber_01)
+                    .FirstOrDefault(clm => !string.IsNullOrWhiteSpace(clm));
+
+
+                // validate not null
+                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(patientControlNumber))
+                {
+                    Console.WriteLine("Skipping claim with missing identifiers.");
+                    Console.WriteLine($"NPI: {providerNpi}, CLM01: {patientControlNumber}");
+                    continue;
+                }
+                
+                var stagingRecord = new ClaimStaging
+                {
+                    ProviderNPI = providerNpi,
+                    PatientControlNumber = patientControlNumber,
+                    ReceivedAt = DateTime.UtcNow,
+                    ClaimXml = ""
+                };
+
+                dbStaging.ClaimStagings.Add(stagingRecord);
+
+                // Attempt saving claim in staging DB
+                try
+                {
+                    dbStaging.SaveChanges();
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    Console.WriteLine($"[DB Error] Failed to insert claim (NPI={providerNpi}, CLM01={patientControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}");
+                    dbStaging.Entry(stagingRecord).State = EntityState.Detached;
+                    continue;
+                }
+
+                // Only serialize and insert full claim if DB insert succeeded
+                var xml = SerializeToXml(claim);
+                stagingRecord.ClaimXml = xml.ToString();
+                dbStaging.SaveChanges();
+
+                // Add to main DB now that we know its not a duplicate
+                dbMain.TS837P.Add(claim);
+                dbMain.SaveChanges();
+
+                Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, CLM01={patientControlNumber}");
             }
-            catch (Exception ex)
+            
+
+        }
+
+        /// <summary>
+        /// XML Serializer
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="instance"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        static string SerializeToXml<T>(T instance)
+        {
+            if (instance == null)
             {
-                Console.WriteLine($"Error saving claims: {ex.Message}");
+                throw new ArgumentNullException(nameof(instance));
             }
+
+            var serializer = new XmlSerializer(instance.GetType());
+            using var ms = new MemoryStream();
+            serializer.Serialize(ms, instance);
+            ms.Position = 0;
+            using var reader = new StreamReader(ms);
+            return reader.ReadToEnd();
         }
     }
 }
-
