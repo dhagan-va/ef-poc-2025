@@ -4,11 +4,14 @@ using EdiFabric.Core.Model.Edi;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Serialization;
-using System.Xml.Linq;
 
 
 namespace EDI837.Ingestion
 {
+    /// <summary>
+    /// ClaimStagingContext creates a table for pre-staging claims,
+    /// allowing XML Blob storage and easy duplication prevention.
+    /// </summary>
     public class ClaimStagingContext : DbContext
     {
         public DbSet<ClaimStaging> ClaimStagings { get; set; }
@@ -32,7 +35,10 @@ namespace EDI837.Ingestion
         }
     }
 
-   public class HIPAA_5010_837P_Context : DbContext
+    /// <summary>
+    /// The Main X12 Hierarchy DB Context
+    /// </summary>
+    public class HIPAA_5010_837P_Context : DbContext
     {
         public DbSet<TS837P> TS837P { get; set; }
 
@@ -140,8 +146,8 @@ namespace EDI837.Ingestion
         /// <param name="claims">A list of 837P claims</param>
         static void SaveClaims(List<TS837P> claims)
         {
-            using var dbMain = new HIPAA_5010_837P_Context();
-            using var dbStaging = new ClaimStagingContext();
+            using var ediDb = new HIPAA_5010_837P_Context();
+            using var stagingDb = new ClaimStagingContext();
 
             // foreach claim
             foreach (var claim in claims)
@@ -151,8 +157,8 @@ namespace EDI837.Ingestion
                     .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
 
                 var patientControlNumber = claim.Loop2000A?
-                    .SelectMany(a => a.Loop2000B ?? new List<Loop_2000B_837P>())
-                    .SelectMany(b => b.Loop2300 ?? new List<Loop_2300_837P>())
+                    .SelectMany(a => a.Loop2000B ?? [])
+                    .SelectMany(b => b.Loop2300 ?? [])
                     .Select(l2300 => l2300.CLM_ClaimInformation?.PatientControlNumber_01)
                     .FirstOrDefault(clm => !string.IsNullOrWhiteSpace(clm));
 
@@ -173,28 +179,28 @@ namespace EDI837.Ingestion
                     ClaimXml = ""
                 };
 
-                dbStaging.ClaimStagings.Add(stagingRecord);
+                stagingDb.ClaimStagings.Add(stagingRecord);
 
                 // Attempt saving claim in staging DB
                 try
                 {
-                    dbStaging.SaveChanges();
+                    stagingDb.SaveChanges();
                 }
                 catch (DbUpdateException dbEx)
                 {
                     Console.WriteLine($"[DB Error] Failed to insert claim (NPI={providerNpi}, CLM01={patientControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}");
-                    dbStaging.Entry(stagingRecord).State = EntityState.Detached;
+                    stagingDb.Entry(stagingRecord).State = EntityState.Detached;
                     continue;
                 }
 
                 // Only serialize and insert full claim if DB insert succeeded
                 var xml = SerializeToXml(claim);
                 stagingRecord.ClaimXml = xml.ToString();
-                dbStaging.SaveChanges();
+                stagingDb.SaveChanges();
 
                 // Add to main DB now that we know its not a duplicate
-                dbMain.TS837P.Add(claim);
-                dbMain.SaveChanges();
+                ediDb.TS837P.Add(claim);
+                ediDb.SaveChanges();
 
                 Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, CLM01={patientControlNumber}");
             }
