@@ -8,15 +8,22 @@ namespace EDI837.Ingestion.Services
     public static class ClaimSaver
     {
         /// <summary>
-        /// Saves a list of claims to the Database
+        /// Saves a list of 837P transactions to the database.
         /// </summary>
-        /// <param name="transactions">A list of 837P claims</param>
+        /// <remarks>
+        /// This method first writes key identifying details to the 
+        /// <see cref="ClaimStagingContext"/> to prevent duplicate 
+        /// transactions from being inserted. 
+        /// Unique transactions are then serialized as XML blobs and 
+        /// inserted into the X12 hierarchy tables.
+        /// </remarks>
+        /// <param name="transactions">A list of 837P transactions to be saved.</param>
+        /// <returns>The number of unique transactions successfully saved.</returns>
         public static void SaveTransactions(List<TS837P> transactions)
         {
             using var ediDb = new HIPAA_5010_837P_Context();
             using var stagingDb = new ClaimStagingContext();
 
-            // foreach claim
             foreach (var transaction in transactions)
             {
                 var providerNpi = transaction.Loop2000A?
@@ -25,7 +32,6 @@ namespace EDI837.Ingestion.Services
 
                 var transactionControlNumber = transaction.ST?.TransactionSetControlNumber_02;
 
-                // validate not null
                 if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber))
                 {
                     Console.WriteLine("Skipping claim with missing identifiers.");
