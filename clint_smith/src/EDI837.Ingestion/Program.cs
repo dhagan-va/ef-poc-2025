@@ -1,9 +1,7 @@
 ﻿using EdiFabric.Templates.Hipaa5010;
-using EdiFabric.Framework.Readers;
-using EdiFabric.Core.Model.Edi;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using System.Xml.Serialization;
+using EDI837.Ingestion.Services;
 
 
 namespace EDI837.Ingestion
@@ -63,166 +61,16 @@ namespace EDI837.Ingestion
             Console.WriteLine("Starting Ingestion Process...");
 
             // Attempt to set EDI token from .env file
-            if (!SetEdiTokenKey())
+            if (!EnvSetup.SetEdiTokenKey())
             {
                 Console.WriteLine("Failed to set token.");
                 return;
             }
 
             var file_path = "../../samples/837-sample-file.edi";
-            var claims = ParseEdiFile(file_path);
-            SaveClaims(claims);
+            var claims = EdiParser.ParseEdiFile(file_path);
+            ClaimSaver.SaveTransactions(claims);
             Console.WriteLine("Finished ingestion process.");
-        }
-
-        /// <summary>
-        /// Attempts to se the EDI Token key
-        /// </summary>
-        /// <returns>True if successful, False otherwise</returns>
-        static bool SetEdiTokenKey()
-        {
-            // Load environment variables from .env file
-            Env.Load("../../.env");
-
-            var ediKey = Environment.GetEnvironmentVariable("EDI_TOKEN");
-
-            if (string.IsNullOrWhiteSpace(ediKey))
-            {
-                Console.WriteLine("Missing EDI_TOKEN in .env file!");
-                return false;
-            }
-
-            EdiFabric.SerialKey.Set(ediKey);
-            return true;
-        }
-
-        /// <summary>
-        /// Parses the given EDI file and extracts all valid 837P claims.
-        /// Invalid claims are logged and skipped.
-        /// </summary>
-        /// <param name="path">Path to the .txt EDI file.</param>
-        /// <returns>List of valid 837P claims.</returns>
-        static List<TS837P> ParseEdiFile(string path)
-        {
-            var ediStream = File.OpenRead(path);
-
-            List<IEdiItem> ediItems;
-            using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
-            {
-                ediItems = [.. ediReader.ReadToEnd()];
-            }
-
-            var claims = ediItems.OfType<TS837P>();
-
-            var validClaims = new List<TS837P>();
-
-            foreach (var claim in claims)
-            {
-                if (claim.HasErrors)
-                {
-                    var errors = claim.ErrorContext.Flatten();
-
-                    Console.WriteLine($"Claim {claim.ST?.TransactionSetControlNumber_02 ?? "(unknown)"} has {errors.Count()} errors:");
-                    foreach (var err in errors)
-                    {
-                        Console.WriteLine($"  {err}");
-                    }
-                }
-                else
-                {
-                    validClaims.Add(claim);
-                }
-            }
-
-            Console.WriteLine($"Parsed {validClaims.Count} valid claims successfully.");
-
-            return validClaims;
-
-        }
-
-        /// <summary>
-        /// Saves a list of claims to the Database
-        /// </summary>
-        /// <param name="claims">A list of 837P claims</param>
-        static void SaveClaims(List<TS837P> claims)
-        {
-            using var ediDb = new HIPAA_5010_837P_Context();
-            using var stagingDb = new ClaimStagingContext();
-
-            // foreach claim
-            foreach (var claim in claims)
-            {
-                var providerNpi = claim.Loop2000A?
-                    .Select(a => a.AllNM1?.Loop2010AA?.NM1_BillingProviderName?.ResponseContactIdentifier_09)
-                    .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
-
-                var transactionControlNumber = claim.ST?.TransactionSetControlNumber_02;
-
-                // validate not null
-                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber))
-                {
-                    Console.WriteLine("Skipping claim with missing identifiers.");
-                    Console.WriteLine($"NPI: {providerNpi}, ST02: {transactionControlNumber}");
-                    continue;
-                }
-                
-                var stagingRecord = new ClaimStaging
-                {
-                    ProviderNPI = providerNpi,
-                    TransactionControlNumber = transactionControlNumber,
-                    ReceivedAt = DateTime.UtcNow,
-                    ClaimXml = ""
-                };
-
-                stagingDb.ClaimStagings.Add(stagingRecord);
-
-                // Attempt saving claim in staging DB
-                try
-                {
-                    stagingDb.SaveChanges();
-                }
-                catch (DbUpdateException dbEx)
-                {
-                    Console.WriteLine($"[DB Error] Failed to insert claim (NPI={providerNpi}, ST02={transactionControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}");
-                    stagingDb.Entry(stagingRecord).State = EntityState.Detached;
-                    continue;
-                }
-
-                // Only serialize and insert full claim if DB insert succeeded
-                var xml = SerializeToXml(claim);
-                stagingRecord.ClaimXml = xml.ToString();
-                stagingDb.SaveChanges();
-
-                // Add to main DB now that we know its not a duplicate
-                ediDb.TS837P.Add(claim);
-                ediDb.SaveChanges();
-
-                Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, ST02={transactionControlNumber}");
-            }
-            
-
-        }
-
-        /// <summary>
-        /// XML Serializer
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        static string SerializeToXml<T>(T instance)
-        {
-            if (instance == null)
-            {
-                throw new ArgumentNullException(nameof(instance));
-            }
-
-            var serializer = new XmlSerializer(instance.GetType());
-            using var ms = new MemoryStream();
-            serializer.Serialize(ms, instance);
-            ms.Position = 0;
-            using var reader = new StreamReader(ms);
-            return reader.ReadToEnd();
         }
     }
 }
