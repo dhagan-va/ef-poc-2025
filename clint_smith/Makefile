@@ -51,16 +51,13 @@ coverage:
 		echo "No coverage.cobertura.xml file found."; \
 		exit 1; \
 	fi; \
-	echo "📄 Using coverage report: $$report_file"; \
+	echo "Using coverage report: $$report_file"; \
 	reportgenerator \
 		-reports:"$$report_file" \
 		-targetdir:"./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport" \
 		-reporttypes:Html; \
 	open ./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html; \
 	echo "Coverage report generated: ./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html"
-
-
-
 
 format:
 	dotnet format --include ./src/EDI837.Ingestion --include ./tests/EDI837.Ingestion.Tests
