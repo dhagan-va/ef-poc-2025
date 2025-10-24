@@ -11,7 +11,7 @@ namespace EDI837.Ingestion.Services
         /// Invalid claims are logged and skipped.
         /// </summary>
         /// <param name="path">Path to the .txt EDI file.</param>
-        /// <returns>List of valid 837P claims.</returns>
+        /// <returns>List of valid 837P transactions.</returns>
         public static List<TS837P> ParseEdiFile(string path)
         {
             var ediStream = File.OpenRead(path);
@@ -24,7 +24,7 @@ namespace EDI837.Ingestion.Services
 
             var transactions = ediItems.OfType<TS837P>();
 
-            var validClaims = new List<TS837P>();
+            var validTransactions = new List<TS837P>();
 
             foreach (var transaction in transactions)
             {
@@ -42,13 +42,13 @@ namespace EDI837.Ingestion.Services
                 }
                 else
                 {
-                    validClaims.Add(transaction);
+                    validTransactions.Add(transaction);
                 }
             }
 
-            Console.WriteLine($"Parsed {validClaims.Count} valid claims successfully.");
+            Console.WriteLine($"Parsed {validTransactions.Count} valid claims successfully.");
 
-            return validClaims;
+            return validTransactions;
 
         }
     }
