@@ -4,10 +4,10 @@ ifneq (,$(wildcard .env))
 	export $(shell sed 's/=.*//' .env)
 endif
 
-.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format
+.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage
 
 run-sql:
-	@echo "🚀 Starting SQL Server container ($(SQL_CONTAINER))..."
+	@echo "Starting SQL Server container ($(SQL_CONTAINER))..."
 	docker run --name $(SQL_CONTAINER) \
 		-e ACCEPT_EULA=Y \
 		-e SA_PASSWORD=$(SQL_PASSWORD) \
@@ -16,7 +16,7 @@ run-sql:
 		$(SQL_IMAGE)
 
 start-sql:
-	@echo "▶Starting existing SQL Server container..."
+	@echo "Starting existing SQL Server container..."
 	docker start $(SQL_CONTAINER)
 
 stop-sql:
@@ -40,7 +40,6 @@ status:
 
 test:
 	dotnet test tests/EDI837.Ingestion.Tests
-
 
 coverage:
 	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal
@@ -74,3 +73,4 @@ help:
 	@echo "  make status      -> Show container status"
 	@echo "  make test        -> Run tests"
 	@echo "  make format	  -> Format the code"
+	@echo "  make coverage    -> Run tests with coverage"
