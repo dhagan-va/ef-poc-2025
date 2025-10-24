@@ -22,6 +22,7 @@ obj/
 # Environment and config
 .env
 .env.*
+!.env.sample
 *.local
 *.secret
 

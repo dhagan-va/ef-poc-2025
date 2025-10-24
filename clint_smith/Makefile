@@ -39,7 +39,28 @@ status:
 	docker ps -a | grep $(SQL_CONTAINER) || echo "No container named $(SQL_CONTAINER) found."
 
 test:
-	dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput=./TestResults/
+	dotnet test tests/EDI837.Ingestion.Tests
+
+
+coverage:
+	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal
+
+	# Find the most recent coverage.cobertura.xml file (sorted by modification time)
+	report_file=$$(find ./tests/EDI837.Ingestion.Tests/TestResults -name "coverage.cobertura.xml" -type f -print0 | xargs -0 ls -t | head -n 1); \
+	if [ -z "$$report_file" ]; then \
+		echo "No coverage.cobertura.xml file found."; \
+		exit 1; \
+	fi; \
+	echo "📄 Using coverage report: $$report_file"; \
+	reportgenerator \
+		-reports:"$$report_file" \
+		-targetdir:"./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport" \
+		-reporttypes:Html; \
+	open ./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html; \
+	echo "Coverage report generated: ./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html"
+
+
+
 
 format:
 	dotnet format --include ./src/EDI837.Ingestion --include ./tests/EDI837.Ingestion.Tests

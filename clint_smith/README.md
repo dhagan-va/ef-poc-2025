@@ -8,8 +8,9 @@ This repository contains code and documentation for the VA EDI 837P ingestion pr
 
 All project documentation is located in the [docs](./docs) folder:
 
-- [Install Notes](./docs/install-notes.md) — setup instructions and environment configuration
+- [Install Notes](./docs/install-notes.md) — setup instructions for packages, etc.
 - [Migrations Guide](./docs/migrations.md) — EF Core migrations and database management workflow
+- [Env Setup Guide](./docs/env-setup.md) — setup instructions for environment variables
 
 ---
 
