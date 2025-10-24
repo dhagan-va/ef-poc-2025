@@ -26,12 +26,13 @@ namespace EDI837.Ingestion.Services
 
             foreach (var transaction in transactions)
             {
+                // Extract attributes used for detecting uniqueness
                 var providerNpi = transaction.Loop2000A?
                     .Select(a => a.AllNM1?.Loop2010AA?.NM1_BillingProviderName?.ResponseContactIdentifier_09)
                     .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
-
                 var transactionControlNumber = transaction.ST?.TransactionSetControlNumber_02;
 
+                // Validate for non-null
                 if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber))
                 {
                     Console.WriteLine("Skipping claim with missing identifiers.");
@@ -39,6 +40,8 @@ namespace EDI837.Ingestion.Services
                     continue;
                 }
 
+                // Add to Staging (ClaimStaging is a little bit of a misnomer)
+                // TODO Rename ClaimStaging to TransactionStaging (involves new migrations and renaming DB also)
                 var stagingRecord = new ClaimStaging
                 {
                     ProviderNPI = providerNpi,
@@ -49,7 +52,6 @@ namespace EDI837.Ingestion.Services
 
                 stagingDb.ClaimStagings.Add(stagingRecord);
 
-                // Attempt saving claim in staging DB
                 try
                 {
                     stagingDb.SaveChanges();
@@ -61,12 +63,12 @@ namespace EDI837.Ingestion.Services
                     continue;
                 }
 
-                // Only serialize and insert full claim if DB insert succeeded
+                // Only serialize and save XML if DB insert succeeded
                 var xml = SerializeToXml(transaction);
                 stagingRecord.ClaimXml = xml.ToString();
                 stagingDb.SaveChanges();
 
-                // Add to main DB now that we know its not a duplicate
+                // Add to X12 Hierarchy Tables now that we know its not a duplicate
                 ediDb.TS837P.Add(transaction);
                 ediDb.SaveChanges();
 
