@@ -46,6 +46,7 @@ dotnet add package DotNetEnv
 dotnet add package xunit
 dotnet add package xunit.runner.console
 dotnet add package coverlet.collector
+dotnet tool install --global dotnet-reportgenerator-globaltool
 ```
 
 
