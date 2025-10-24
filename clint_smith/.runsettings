@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Used for coberture coverage generation-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+
+          <!-- Only include your project folder -->
+          <IncludeDirectories>src/**</IncludeDirectories>
+
+          <ExcludeByFile>**/Migrations*/**/*</ExcludeByFile>
+          <ExcludeByFile>**/*.Designer.cs</ExcludeByFile>
+          <Exclude>[EDI837.Ingestion.Migrations_*]*</Exclude>
+          <Exclude>[EDI837.Ingestion.Migrations]*</Exclude>
+          <Exclude>[EDI837.Ingestion.Tests]*</Exclude>
+
+          <ExcludeByFile>**/*.Designer.cs</ExcludeByFile>
+
+          <Exclude>[EDI837.Ingestion.Tests]*</Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+          <ExcludeByAttribute>CompilerGeneratedAttribute</ExcludeByAttribute>
+
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

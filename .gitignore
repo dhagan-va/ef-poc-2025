@@ -1,0 +1,64 @@
+# Ignore build output
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+[Tt]emp/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+
+# VSCode project artifacts
+.vscode/
+.vs/
+
+# Environment and config
+.env
+.env.*
+!.env.sample
+*.local
+*.secret
+
+# Test results
+TestResult*/
+*.trx
+
+# NuGet artifacts
+*.nupkg
+*.snupkg
+*.nuspec
+packages/
+*.nuget.props
+*.nuget.targets
+project.assets.json
+project.nuget.cache
+
+# Dotnet tools
+*.dll
+*.exe
+*.cache
+*.pdb
+*.mdb
+
+# Logs
+*.log
+*.svclog
+
+# Coverage / analysis tools
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
