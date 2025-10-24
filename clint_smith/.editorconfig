@@ -1,4 +1,5 @@
-root = false        # This inherits from any parent .editorconfig
+# The config file for "dotnet format"
+root = false
 [*.cs]
 indent_style = space
 indent_size = 4
