@@ -4,7 +4,7 @@ ifneq (,$(wildcard .env))
 	export $(shell sed 's/=.*//' .env)
 endif
 
-.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage
+.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage moto populate-s3
 
 run-sql:
 	@echo "Starting SQL Server container ($(SQL_CONTAINER))..."
@@ -61,6 +61,19 @@ coverage:
 format:
 	dotnet format --include ./src/EDI837.Ingestion --include ./tests/EDI837.Ingestion.Tests
 
+moto:
+	@echo "Starting Moto mock server (S3 included) on port 5000..."
+	@moto_server -p 5000
+
+# Upload sample EDI file to Moto S3 mock
+populate-s3:
+	@echo "Creating bucket (if needed) and uploading sample EDI file..."
+	@echo "Run from EDI837.Ingestion folder due to relative path."
+	@aws --endpoint-url=http://localhost:5000 s3 mb s3://edi-bucket 2>/dev/null || true
+	@aws --endpoint-url=http://localhost:5000 s3 cp ../../samples/837-sample-file.edi s3://edi-bucket/incoming/837-sample-file.edi
+	@echo "Uploaded clint_smith/samples/837-sample-file.edi to edi-bucket/incoming/"
+
+
 help:
 	@echo ""
 	@echo "Available commands:"
@@ -74,3 +87,6 @@ help:
 	@echo "  make test        -> Run tests"
 	@echo "  make format	  -> Format the code"
 	@echo "  make coverage    -> Run tests with coverage"
+	@echo "  make moto        -> Run moto server"
+	@echo "  make populate-s3 -> Run moto server"
+
