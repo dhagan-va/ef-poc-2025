@@ -2,6 +2,8 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using EDI837.Ingestion.Services;
+using EDI837.Ingestion.Gateways;
+using Microsoft.Data.SqlClient;
 
 
 namespace EDI837.Ingestion
@@ -44,8 +46,8 @@ namespace EDI837.Ingestion
         {
             if (!optionsBuilder.IsConfigured)
             {
-                Env.Load("../../.env");
-                var connString = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+                string sqlConnString = EnvSetup.Get("SQL_CONN_STRING") ?? "";
+                var connString = Environment.GetEnvironmentVariable(sqlConnString);
                 optionsBuilder
                     .UseLazyLoadingProxies()
                     .UseSqlServer(connString);
@@ -56,7 +58,7 @@ namespace EDI837.Ingestion
         
     internal class Program
     {
-        static void Main()
+        static async Task Main()
         {
             Console.WriteLine("Starting Ingestion Process...");
 
@@ -65,6 +67,18 @@ namespace EDI837.Ingestion
             {
                 Console.WriteLine("Failed to set token.");
                 return;
+            }
+
+            string s3Url = EnvSetup.Get("S3_SERVICE_URL") ?? "http://localhost:5000";
+            var bucketName = EnvSetup.Get("S3_BUCKET") ?? "edi-bucket";
+            var s3Gateway = new S3Gateway(s3Url, bucketName);
+
+            // TODO update to read file and inject text into parser
+            // TODO or maybe just put the s3 gateway into the parser to read the file there?
+            var files = await s3Gateway.ListFilesAsync("incoming/");
+            foreach (var file in files)
+            {
+                Console.WriteLine(file.Key);
             }
 
             var file_path = "../../samples/837-sample-file.edi";

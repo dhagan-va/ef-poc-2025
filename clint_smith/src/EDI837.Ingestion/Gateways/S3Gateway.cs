@@ -1,0 +1,89 @@
+using Amazon.S3;
+using Amazon.S3.Model;
+
+namespace EDI837.Ingestion.Gateways
+{
+    public class S3Gateway
+    {
+        private readonly AmazonS3Client _s3Client;
+        private readonly string _bucketName = "edi-bucket";
+
+        public S3Gateway(string serviceURL, string bucketName)
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = serviceURL,
+                ForcePathStyle = true
+            };
+
+            _s3Client = new AmazonS3Client("test", "test", config);
+
+            try
+            {
+                _s3Client.PutBucketAsync(new PutBucketRequest
+                {
+                    BucketName = bucketName
+                }).Wait();
+            }
+            catch (AmazonS3Exception ex) when (ex.ErrorCode == "BucketAlreadyOwnedByYou")
+            {
+                // ignore if it already exists
+            }
+        }
+
+        public async Task<List<S3Object>> ListFilesAsync(string prefix = "")
+        {
+            if (_s3Client == null)
+            {
+                Console.WriteLine("Error: S3 client not initialized.");
+                return [];
+            }
+
+            if (string.IsNullOrEmpty(_bucketName))
+            {
+                Console.WriteLine("Error: Bucket name is missing.");
+                return [];
+            }
+
+            try
+            {
+                var response = await _s3Client.ListObjectsV2Async(new ListObjectsV2Request
+                {
+                    BucketName = _bucketName,
+                    Prefix = prefix
+                });
+
+                return response.S3Objects ?? [];
+            }
+            catch (AmazonS3Exception ex)
+            {
+                Console.WriteLine($"S3 error listing objects: {ex.ErrorCode} - {ex.Message}");
+                return [];
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unexpected error listing objects: {ex.Message}");
+                return [];
+            }
+        }
+
+
+        public async Task<string> GetFileContentAsync(string key)
+        {
+            var response = await _s3Client.GetObjectAsync(_bucketName, key);
+            using var reader = new StreamReader(response.ResponseStream);
+            return await reader.ReadToEndAsync();
+        }
+
+        public async Task UploadFileAsync(string key, string content)
+        {
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+            await _s3Client.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key,
+                InputStream = stream
+            });
+        }
+    }
+}

@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" Version="4.0.1.2" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.7.14" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="EdiFabric" Version="10.7.5" />
     <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />

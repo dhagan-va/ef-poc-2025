@@ -64,3 +64,14 @@ docker run -e "ACCEPT_EULA=Y" \
 
 docker start sql2022
 ```
+
+# Install Moto
+```
+pip install moto\[server\]
+```
+
+# Install AWS Packages
+```
+ dotnet add package AWSSDK.Core
+ dotnet add package AWSSDK.S3
+ ```
