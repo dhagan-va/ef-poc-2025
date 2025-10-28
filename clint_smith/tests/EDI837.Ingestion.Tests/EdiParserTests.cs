@@ -13,8 +13,7 @@ public class EdiParserTests
     public void TestParseEdiFileSuccess()
     {
         var file_path = "../../../samples/837-sample-file-success.edi";
-
-        var transactions = EdiParser.ParseEdiFile(file_path);
+        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
 
         Assert.NotNull(transactions);
         Assert.NotEmpty(transactions);
@@ -26,7 +25,7 @@ public class EdiParserTests
     {
         var file_path = "../../../samples/837-sample-file-fail-no-iea.edi";
 
-        var transactions = EdiParser.ParseEdiFile(file_path);
+        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
 
         Assert.NotNull(transactions);
         Assert.NotEmpty(transactions);
@@ -38,7 +37,7 @@ public class EdiParserTests
     {
         var file_path = "../../../samples/837-sample-file-empty.edi";
 
-        var transactions = EdiParser.ParseEdiFile(file_path);
+        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
 
         Assert.Empty(transactions);
     }

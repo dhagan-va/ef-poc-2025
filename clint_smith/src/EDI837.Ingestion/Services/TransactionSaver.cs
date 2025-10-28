@@ -5,8 +5,15 @@ using System.Xml.Serialization;
 
 namespace EDI837.Ingestion.Services
 {
-    public static class ClaimSaver
+
+
+
+    
+    public class TransactionSaver
     {
+        private readonly AppSettings _settings;
+        public TransactionSaver(AppSettings settings) => _settings = settings;
+
         /// <summary>
         /// Saves a list of 837P transactions to the database.
         /// </summary>
@@ -19,10 +26,10 @@ namespace EDI837.Ingestion.Services
         /// </remarks>
         /// <param name="transactions">A list of 837P transactions to be saved.</param>
         /// <returns>The number of unique transactions successfully saved.</returns>
-        public static void SaveTransactions(List<TS837P> transactions)
+        public async Task SaveTransactionsAsync(List<TS837P> transactions)
         {
-            using var ediDb = new HIPAA_5010_837P_Context();
-            using var stagingDb = new ClaimStagingContext();
+            await using var ediDb = new HIPAA_5010_837P_Context(_settings);
+            await using var stagingDb = new ClaimStagingContext(_settings);
 
             foreach (var transaction in transactions)
             {
@@ -50,11 +57,11 @@ namespace EDI837.Ingestion.Services
                     ClaimXml = ""
                 };
 
-                stagingDb.ClaimStagings.Add(stagingRecord);
+                await stagingDb.ClaimStagings.AddAsync(stagingRecord);
 
                 try
                 {
-                    stagingDb.SaveChanges();
+                    await stagingDb.SaveChangesAsync();
                 }
                 catch (DbUpdateException dbEx)
                 {
@@ -66,11 +73,11 @@ namespace EDI837.Ingestion.Services
                 // Only serialize and save XML if DB insert succeeded
                 var xml = SerializeToXml(transaction);
                 stagingRecord.ClaimXml = xml.ToString();
-                stagingDb.SaveChanges();
+                await stagingDb.SaveChangesAsync();
 
                 // Add to X12 Hierarchy Tables now that we know its not a duplicate
-                ediDb.TS837P.Add(transaction);
-                ediDb.SaveChanges();
+                await ediDb.TS837P.AddAsync(transaction);
+                await ediDb.SaveChangesAsync();
 
                 Console.WriteLine($"Successfully ingested claim: NPI={providerNpi}, ST02={transactionControlNumber}");
             }

@@ -75,3 +75,9 @@ pip install moto\[server\]
  dotnet add package AWSSDK.Core
  dotnet add package AWSSDK.S3
  ```
+
+ # Linters
+ ```
+dotnet add package Microsoft.CodeAnalysis.CSharp.CodeStyle
+dotnet add package StyleCop.Analyzers
+```

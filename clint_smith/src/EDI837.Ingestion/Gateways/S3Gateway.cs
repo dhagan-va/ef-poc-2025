@@ -75,6 +75,12 @@ namespace EDI837.Ingestion.Gateways
             return await reader.ReadToEndAsync();
         }
 
+        public async Task<Stream> GetFileStreamAsync(string key)
+        {
+            var response = await _s3Client.GetObjectAsync(_bucketName, key);
+            return response.ResponseStream;
+        }
+
         public async Task UploadFileAsync(string key, string content)
         {
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
@@ -84,6 +90,28 @@ namespace EDI837.Ingestion.Gateways
                 Key = key,
                 InputStream = stream
             });
+        }
+
+        public async Task DeleteFileAsync(string key)
+        {
+            try
+            {
+                await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = key
+                });
+
+                Console.WriteLine($"Deleted file '{key}' from bucket '{_bucketName}'.");
+            }
+            catch (AmazonS3Exception ex)
+            {
+                Console.WriteLine($"S3 error deleting '{key}': {ex.ErrorCode} - {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unexpected error deleting '{key}': {ex.Message}");
+            }
         }
     }
 }

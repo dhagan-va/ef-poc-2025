@@ -1,4 +1,6 @@
 using DotNetEnv;
+using System.Reflection;
+
 
 
 namespace EDI837.Ingestion.Services
@@ -12,7 +14,21 @@ namespace EDI837.Ingestion.Services
         {
             if (!loaded)
             {
-                Env.Load("../../.env");
+                // Find directory where the compiled assembly lives
+                var basePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+
+                // Walk upward until we find the .env file
+                var envPath = Path.Combine(basePath, "../../.env");
+
+                if (!File.Exists(envPath))
+                {
+                    Console.WriteLine($".env not found at {Path.GetFullPath(envPath)}");
+                }
+                else
+                {
+                    Env.Load(envPath);
+                    Console.WriteLine($"Loaded .env from {Path.GetFullPath(envPath)}");
+                }
                 loaded = true;
             }
         }

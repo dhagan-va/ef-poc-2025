@@ -4,7 +4,8 @@ ifneq (,$(wildcard .env))
 	export $(shell sed 's/=.*//' .env)
 endif
 
-.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage moto populate-s3
+.PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage \
+ moto populate-s3 reset-db run-ingest-local run-ingest-s3
 
 run-sql:
 	@echo "Starting SQL Server container ($(SQL_CONTAINER))..."
@@ -59,34 +60,60 @@ coverage:
 	echo "Coverage report generated: ./tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html"
 
 format:
-	dotnet format --include ./src/EDI837.Ingestion --include ./tests/EDI837.Ingestion.Tests
+	dotnet format \
+	--include ./src/EDI837.Ingestion \
+	--include ./tests/EDI837.Ingestion.Tests \
+	--fix-whitespace \
+	--fix-style \
+	--fix-analyzers \
+	--verbosity detailed
+
 
 moto:
 	@echo "Starting Moto mock server (S3 included) on port 5000..."
 	@moto_server -p 5000
 
 # Upload sample EDI file to Moto S3 mock
+SAMPLE_PATH ?= samples/837-sample-file.edi
 populate-s3:
 	@echo "Creating bucket (if needed) and uploading sample EDI file..."
-	@echo "Run from EDI837.Ingestion folder due to relative path."
 	@aws --endpoint-url=http://localhost:5000 s3 mb s3://edi-bucket 2>/dev/null || true
-	@aws --endpoint-url=http://localhost:5000 s3 cp ../../samples/837-sample-file.edi s3://edi-bucket/incoming/837-sample-file.edi
-	@echo "Uploaded clint_smith/samples/837-sample-file.edi to edi-bucket/incoming/"
+	@aws --endpoint-url=http://localhost:5000 s3 cp $(SAMPLE_PATH) s3://edi-bucket/incoming/$(notdir $(SAMPLE_PATH))
+	@echo "Uploaded $(SAMPLE_PATH) to edi-bucket/incoming/"
 
+reset-db:
+	@echo "Dropping and recreating both EDI and Claim Staging databases..."
+	dotnet ef database drop -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c HIPAA_5010_837P_Context --force --no-build
+	dotnet ef database drop -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c ClaimStagingContext --force --no-build
+	dotnet ef database update -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c HIPAA_5010_837P_Context --no-build
+	dotnet ef database update -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c ClaimStagingContext --no-build
+	@echo "Databases recreated successfully."
+
+run-ingest-local:
+	@echo "Running Ingestion project synchronoushly with local sample file."
+	cd src/EDI837.Ingestion && dotnet run -- local
+
+run-ingest-s3:
+	@echo "Running Ingestion project synchronoushly with local sample file."
+	cd src/EDI837.Ingestion && dotnet run -- s3
 
 help:
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make run-sql     -> Create & start new SQL Server container"
-	@echo "  make start-sql   -> Start existing container"
-	@echo "  make stop-sql    -> Stop container"
-	@echo "  make rm-sql      -> Remove container completely"
-	@echo "  make shell-sql   -> Open SQL shell inside container"
-	@echo "  make logs-sql    -> View logs"
-	@echo "  make status      -> Show container status"
-	@echo "  make test        -> Run tests"
-	@echo "  make format	  -> Format the code"
-	@echo "  make coverage    -> Run tests with coverage"
-	@echo "  make moto        -> Run moto server"
-	@echo "  make populate-s3 -> Run moto server"
+	@echo "  make run-sql     			-> Create & start new SQL Server container"
+	@echo "  make start-sql   			-> Start existing container"
+	@echo "  make stop-sql    			-> Stop container"
+	@echo "  make rm-sql      			-> Remove container completely"
+	@echo "  make shell-sql   			-> Open SQL shell inside container"
+	@echo "  make logs-sql    			-> View logs"
+	@echo "  make status      			-> Show container status"
+	@echo "  make test        			-> Run tests"
+	@echo "  make format	  			-> Format the code"
+	@echo "  make coverage    			-> Run tests with coverage"
+	@echo "  make moto        			-> Run moto server"
+	@echo "  make populate-s3 			-> Add files in sample directory to s3"
+	@echo "  make reset-db    			-> Drop local DBs and recreate"
+	@echo "  make run-ingest-local    	-> Run ingestion synchronously with a local sample file"
+	@echo "  make run-ingest-s3    		-> Run ingestion asynchronously; polling s3 bucket for incoming edi files"
+
 

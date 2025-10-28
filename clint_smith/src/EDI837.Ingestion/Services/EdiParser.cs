@@ -1,20 +1,34 @@
 using EdiFabric.Framework.Readers;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Templates.Hipaa5010;
+using EDI837.Ingestion.Gateways;
+using Microsoft.VisualBasic;
+using Microsoft.IdentityModel.Tokens;
 
 namespace EDI837.Ingestion.Services
 {
-    public static class EdiParser
+    public class EdiParser
     {
+
         /// <summary>
-        /// Parses the given EDI file and extracts all valid 837P claims.
+        /// Parse the Edi file from a given local path
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static List<TS837P> ParseEdiFileFromPath(string path)
+        {
+            using var ediStream = File.OpenRead(path);
+            return ParseEdiStream(ediStream);
+        }
+
+        /// <summary>
+        /// Synchronously parses the given EDI file and extracts all valid 837P claims.
         /// Invalid claims are logged and skipped.
         /// </summary>
-        /// <param name="path">Path to the .txt EDI file.</param>
+        /// <param name="ediStream">A Stream object</param>
         /// <returns>List of valid 837P transactions.</returns>
-        public static List<TS837P> ParseEdiFile(string path)
+        public static List<TS837P> ParseEdiStream(Stream ediStream)
         {
-            var ediStream = File.OpenRead(path);
 
             List<IEdiItem> ediItems;
             using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
@@ -50,6 +64,58 @@ namespace EDI837.Ingestion.Services
 
             return validTransactions;
 
+        }
+
+        public async Task RunAsync(S3Gateway s3Gateway, TransactionSaver transactionSaver, CancellationToken cancellationToken)
+        {
+            if (s3Gateway == null)
+            {
+                Console.WriteLine("S3Gateway not initialized. Exiting poller.");
+                return;
+            }
+        
+            Console.WriteLine("Starting EDI poller... Press Ctrl-C to stop.");
+
+            // poll forever until Ctrl-C (cancellation) is requested
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var files = await s3Gateway.ListFilesAsync("incoming/");
+
+                    if (files.Count > 0)
+                    {
+                        Console.WriteLine($"Found {files.Count} file(s):");
+                        foreach (var file in files)
+                        {
+                            Console.WriteLine($"  {file.Key}");
+
+                            // Example placeholder for your real processing
+                            var stream = await s3Gateway.GetFileStreamAsync(file.Key);
+                            var claims = ParseEdiStream(stream);
+                            await transactionSaver.SaveTransactionsAsync(claims);
+
+                            // For now just delete the file but I'm sure we'd want
+                            // to verify that the claims were saved correctly in
+                            // a real-world scenario
+                            await s3Gateway.DeleteFileAsync(file.Key);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No new files found.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error while polling S3: {ex.Message}");
+                }
+
+                // Wait 10 seconds before next poll
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+
+            Console.WriteLine("EDI poller stopped.");
         }
     }
 }
