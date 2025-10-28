@@ -1,0 +1,58 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly on Mondays
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp' ]
+        dotnet-version: [ '8.x' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET ${{ matrix.dotnet-version }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+        dotnet-quality: ga
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        
+    - name: Restore and Build
+      run: |
+        # Find solution files or create one if needed
+        if find . -name "*.sln" -type f | head -1 | grep -q .; then
+          SOLUTION_FILE=$(find . -name "*.sln" -type f | head -1)
+          echo "Using existing solution: $SOLUTION_FILE"
+          dotnet restore "$SOLUTION_FILE"
+          dotnet build "$SOLUTION_FILE" --configuration Release --no-restore
+        else
+          echo "No solution file found, building individual projects"
+          dotnet restore
+          dotnet build --configuration Release --no-restore
+        fi
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
