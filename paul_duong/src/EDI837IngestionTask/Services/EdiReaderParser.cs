@@ -11,10 +11,11 @@ namespace EDI837IngestionTask.Services
         /// </summary>
         public static List<TS837P> ReadAndParse(string filePath)
         {
-            var ediStream = File.OpenRead(filePath);
-            List<IEdiItem> ediItems;
-            using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
-                ediItems = ediReader.ReadToEnd().ToList();
+            using var ediStream = File.OpenRead(filePath);
+
+            using var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa");
+            
+            var ediItems = ediReader.ReadToEnd().ToList();
 
             var transactions = ediItems.OfType<TS837P>();
             var transactionsList = new List<TS837P>();
