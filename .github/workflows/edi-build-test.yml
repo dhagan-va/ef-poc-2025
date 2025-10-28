@@ -2,7 +2,7 @@ name: EDI 837 Build and Test
 
 on:
   push:
-    branches: [ main, develop, feature/* ]
+    branches: [ main, develop, feature/*, clint-s-837-injest-djh ]
     paths:
       - 'clint_smith/**'
       - '.github/workflows/**'
