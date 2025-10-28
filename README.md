@@ -1,9 +1,5 @@
 # EDI 837 Ingestion Task
 
-## Status
-[![build-tas-837-servicee](https://github.com/department-of-veterans-affairs/mccf-tas-service-837/actions/workflows/build-tas-837-service.yml/badge.svg?branch=develop)](https://github.com/department-of-veterans-affairs/mccf-tas-service-837/actions/workflows/build-tas-837-service.yml)
-[![CodeQL](https://github.com/department-of-veterans-affairs/mccf-tas-service-837/actions/workflows/codeql-analysis.yml/badge.svg?branch=develop)](https://github.com/department-of-veterans-affairs/mccf-tas-service-837/actions/workflows/codeql-analysis.yml)
-
 ## Objective
 
 Create .NET C# application using EdiFabric to ingest sample 837 EDI file, store to SQL Server Express, with unit tests.
@@ -17,11 +13,11 @@ Create .NET C# application using EdiFabric to ingest sample 837 EDI file, store 
 - Create .NET 8 console/web application
 - Add EdiFabric NuGet packages
 - Configure SQL Server Express connection
-- Use Entity Framework Core
+- Use Entity Framework Core (If you do it correctly it will generate the whole DB structure for you when you migrate)
 
 #### 2. Implementation
 
-- Ingest sample 837 EDI file using EdiFabric
+- Ingest sample 837 EDI file using EdiFabric (or pick a different transaction if you wish)
 - Parse EDI segments (ISA, GS, ST, BHT, etc.)
 - Map to database entities
 - Store parsed data in SQL Server Express
@@ -30,7 +26,7 @@ Create .NET C# application using EdiFabric to ingest sample 837 EDI file, store 
 #### 3. Folder Structure
 
 ```
-firstname-lastname_firstetter/
+firstname-lastname_firstletter/
 ├── src/
 ├── tests/
 ├── docs/
@@ -50,6 +46,10 @@ firstname-lastname_firstetter/
 - Use moto.py for S3 mock testing
 - Read EDI files from S3 bucket
 - Process files asynchronously
+
+### Phase 3: SNIP Validation
+ - Add SNIP Validation Level
+ - https://support.edifabric.com/hc/en-us/articles/360000361352-How-to-validate-HIPAA-SNIP-levels
 
 ## Submission
 
@@ -80,3 +80,6 @@ firstname-lastname_firstetter/
 - ✅ Code is properly documented
 - ✅ Peer review completed and approved
 
+## Extra Points For
+- Dependency Injection
+- Loading properties from envars
