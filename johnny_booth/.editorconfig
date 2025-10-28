@@ -1,0 +1,6 @@
+[*.cs]
+# Always require braces for if/else/for/foreach/while/do
+csharp_prefer_braces = true:suggestion
+
+# Make the analyzer (IDE0011) visible so Code Cleanup can apply it
+dotnet_diagnostic.IDE0011.severity = warning
