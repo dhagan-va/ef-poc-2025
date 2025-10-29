@@ -60,3 +60,11 @@ docker run -e "ACCEPT_EULA=Y" \
 
 docker start sqlserver
 ```
+
+# S3 Integration
+```
+python -m pip install moto[all]
+
+python start_moto.py
+python uploadFile.py
+```

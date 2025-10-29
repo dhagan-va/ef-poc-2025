@@ -33,11 +33,32 @@ namespace EDI837IngestionTask.HIPAA_5010_837P
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ClaimCreatedDt")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("KICEDINumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PBSEDINumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("ProcessedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ProviderNPI")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ProviderName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProviderZIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubmitterId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tin")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TransactionControlNumber")
                         .HasColumnType("nvarchar(450)");

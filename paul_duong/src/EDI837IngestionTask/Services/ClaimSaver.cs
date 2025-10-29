@@ -19,12 +19,12 @@ namespace EDI837IngestionTask.Services
 
             var existingKeys = ediDb.ClaimProcesses
                 .AsNoTracking()
-                .Select(c => new { c.ProviderNPI, c.TransactionControlNumber })
+                .Select(c => new { c.ProviderNPI, c.TransactionControlNumber, c.Tin, c.SubmitterId })
                 .ToList()
-                .Select(x => (x.ProviderNPI.Trim(), x.TransactionControlNumber.Trim()))
+                .Select(x => (x.ProviderNPI, x.TransactionControlNumber, x.Tin, x.SubmitterId))
                 .ToHashSet();
 
-            var seenKeys = new HashSet<(string ProviderNpi, string TransactionNumber)>();
+            var seenKeys = new HashSet<(string ProviderNpi, string TransactionNumber, string Tin, string SubmitterId)>();
 
             int total = 0;
             int skippedDuplicates = 0;
@@ -39,15 +39,29 @@ namespace EDI837IngestionTask.Services
                     .FirstOrDefault(npi => !string.IsNullOrWhiteSpace(npi));
                 var transactionControlNumber = transaction.ST?.TransactionSetControlNumber_02;
 
+                var submitterId = transaction.BHT_BeginningOfHierarchicalTransaction?.SubmitterTransactionIdentifier_03;
+                var claimCreatedDt = transaction.BHT_BeginningOfHierarchicalTransaction?.TransactionSetCreationDate_04;
+                var pbsEdiNumber = transaction.AllNM1.Loop1000A?.NM1_SubmitterName?.ResponseContactIdentifier_09;
+                var kicEdiNumber = transaction.AllNM1.Loop1000B?.NM1_ReceiverName?.ResponseContactIdentifier_09;
+                var providerName = transaction.Loop2000A?
+                    .Select(a => a.AllNM1?.Loop2010AA?.NM1_BillingProviderName?.ResponseContactLastorOrganizationName_03)
+                    .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+                var providerZIP = transaction.Loop2000A?
+                    .Select(a => a.AllNM1?.Loop2010AA?.N4_BillingProviderCity_State_ZIPCode?.AdditionalPatientInformationContactPostalZoneorZIPCode_03)
+                    .FirstOrDefault(zip => !string.IsNullOrWhiteSpace(zip));
+                var tin = transaction.Loop2000A?
+                    .Select(a => a.AllNM1?.Loop2010AA?.AllREF?.REF_BillingProviderTaxIdentification?.MemberGrouporPolicyNumber_02)
+                    .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
+
                 // Validate for non-null
-                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber))
+                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber) || string.IsNullOrWhiteSpace(tin)|| string.IsNullOrWhiteSpace(submitterId))
                 {
                     skippedInvalid++;
                     Console.WriteLine("Skipping claim with missing identifiers.");
                     continue;
                 }
 
-                var key = (providerNpi.Trim(), transactionControlNumber.Trim());
+                var key = (providerNpi, transactionControlNumber, tin, submitterId);
                 // check dup in file
                 if (!seenKeys.Add(key))
                 {
@@ -66,7 +80,14 @@ namespace EDI837IngestionTask.Services
 
                 var claim = new ClaimProcess
                 {
+                    PBSEDINumber = pbsEdiNumber,
+                    KICEDINumber = kicEdiNumber,
+                    SubmitterId = submitterId,
+                    ClaimCreatedDt = claimCreatedDt,
                     ProviderNPI = providerNpi,
+                    ProviderName = providerName,
+                    ProviderZIP = providerZIP,
+                    Tin = tin,
                     TransactionControlNumber = transactionControlNumber,
                     ProcessedAt = DateTime.UtcNow
                 };

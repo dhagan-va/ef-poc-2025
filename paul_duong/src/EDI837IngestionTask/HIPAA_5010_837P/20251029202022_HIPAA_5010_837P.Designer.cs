@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EDI837IngestionTask.HIPAA_5010_837P
 {
     [DbContext(typeof(HIPAA_5010_837P_Context))]
-    [Migration("20251028053053_HIPAA_5010_837P")]
+    [Migration("20251029202022_HIPAA_5010_837P")]
     partial class HIPAA_5010_837P
     {
         /// <inheritdoc />
@@ -36,11 +36,32 @@ namespace EDI837IngestionTask.HIPAA_5010_837P
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ClaimCreatedDt")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("KICEDINumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PBSEDINumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("ProcessedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ProviderNPI")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ProviderName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProviderZIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubmitterId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tin")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TransactionControlNumber")
                         .HasColumnType("nvarchar(450)");

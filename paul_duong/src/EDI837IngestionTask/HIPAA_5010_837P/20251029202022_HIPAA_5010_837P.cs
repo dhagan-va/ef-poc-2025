@@ -491,7 +491,14 @@ namespace EDI837IngestionTask.HIPAA_5010_837P
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    PBSEDINumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    KICEDINumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SubmitterId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ClaimCreatedDt = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ProviderNPI = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    ProviderName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ProviderZIP = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Tin = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TransactionControlNumber = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     ProcessedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },

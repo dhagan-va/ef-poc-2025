@@ -36,7 +36,7 @@ namespace EDI837IngestionTask.Services
 
         public static string GetSampleEmptyFile()
         {
-            return Path.GetFullPath(Path.Combine(projectDir, "samples", "ClaimPaymentEmpty.edi"));
+            return Path.GetFullPath(Path.Combine(projectDir, "samples", "TestClaimPaymentEmpty.edi"));
 
         }
 
