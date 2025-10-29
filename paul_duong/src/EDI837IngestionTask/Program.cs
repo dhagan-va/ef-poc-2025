@@ -30,8 +30,7 @@ namespace EDI837IngestionTask
         {
             modelBuilder.Entity<ClaimProcess>()
                 .HasIndex(c => new { c.ProviderNPI, c.TransactionControlNumber })
-                .IsUnique()
-                .HasFilter("[ProviderNPI] IS NOT NULL AND [TransactionControlNumber] IS NOT NULL");
+                .IsUnique();
         }
     }
 

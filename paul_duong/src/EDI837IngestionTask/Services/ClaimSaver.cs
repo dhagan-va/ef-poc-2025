@@ -16,6 +16,14 @@ namespace EDI837IngestionTask.Services
         public static void Save837P(List<TS837P> trans)
         {
             using var ediDb = new HIPAA_5010_837P_Context();
+
+            var existingKeys = ediDb.ClaimProcesses
+                .AsNoTracking()
+                .Select(c => new { c.ProviderNPI, c.TransactionControlNumber })
+                .ToList()
+                .Select(x => (x.ProviderNPI.Trim(), x.TransactionControlNumber.Trim()))
+                .ToHashSet();
+
             var seenKeys = new HashSet<(string ProviderNpi, string TransactionNumber)>();
 
             int total = 0;
@@ -48,9 +56,8 @@ namespace EDI837IngestionTask.Services
                     continue;
                 }
 
-                bool exists = ediDb.ClaimProcesses.AsNoTracking().Any(c => c.ProviderNPI == providerNpi.Trim() && c.TransactionControlNumber == transactionControlNumber.Trim());
 
-                if (exists)
+                if (existingKeys.Contains(key))
                 {
                     skippedDuplicates++;
                     Console.WriteLine($"Duplicate Records in DB: NPI={providerNpi}, ST02={transactionControlNumber}");

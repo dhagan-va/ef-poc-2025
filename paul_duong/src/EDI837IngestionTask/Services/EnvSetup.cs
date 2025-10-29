@@ -6,13 +6,17 @@ namespace EDI837IngestionTask.Services
     public static class EnvSetup
     {
         private static bool loaded = false;
+        private static readonly string BaseDir = AppContext.BaseDirectory;
+        private static readonly string projectDir = Path.GetFullPath(Path.Combine(BaseDir,"..","..","..","..",".."));
 
         private static void LoadEnv()
         {
             if (!loaded)
             {
-                var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "samples", ".env"));
+                var envPath = Path.GetFullPath(Path.Combine(projectDir, "samples", ".env"));
                 Console.WriteLine($"check path={envPath}");
+                Console.WriteLine($"BaseDir path={BaseDir}");
+                Console.WriteLine($"projectDir path={projectDir}");
                 Env.Load(envPath);
                 loaded = true;
             }
@@ -26,13 +30,13 @@ namespace EDI837IngestionTask.Services
 
         public static string GetSampleFile()
         {
-            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "samples", "ClaimPayment.edi"));
+            return Path.GetFullPath(Path.Combine(projectDir, "samples", "ClaimPayment.edi"));
 
         }
 
         public static string GetSampleEmptyFile()
         {
-            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),  "..", "..", "samples", "ClaimPaymentEmpty.edi"));
+            return Path.GetFullPath(Path.Combine(projectDir, "samples", "ClaimPaymentEmpty.edi"));
 
         }
 
