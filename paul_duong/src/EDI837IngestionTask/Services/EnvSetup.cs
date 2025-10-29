@@ -11,8 +11,8 @@ namespace EDI837IngestionTask.Services
         {
             if (!loaded)
             {
-                var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "samples", ".env"));
-
+                var envPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "samples", ".env"));
+                Console.WriteLine($"check path={envPath}");
                 Env.Load(envPath);
                 loaded = true;
             }
@@ -26,13 +26,13 @@ namespace EDI837IngestionTask.Services
 
         public static string GetSampleFile()
         {
-            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "samples", "ClaimPayment.txt"));
+            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "samples", "ClaimPayment.edi"));
 
         }
 
         public static string GetSampleEmptyFile()
         {
-            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "samples", "ClaimPaymentEmpty.txt"));
+            return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),  "..", "..", "samples", "ClaimPaymentEmpty.edi"));
 
         }
 
