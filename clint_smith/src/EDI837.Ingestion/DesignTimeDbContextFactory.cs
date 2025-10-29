@@ -1,19 +1,20 @@
-using System;
-using System.IO;
-using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace EDI837.Ingestion
 {
-    public class HIPAA_5010_837P_ContextFactory
-        : IDesignTimeDbContextFactory<HIPAA_5010_837P_Context>
+    public class HIPAA_5010_837P_ContextFactory : IDesignTimeDbContextFactory<HIPAA_5010_837P_Context>
     {
         public HIPAA_5010_837P_Context CreateDbContext(string[] args)
         {
-            // Always load .env manually for CLI tools
-            Env.Load(Path.Combine(AppContext.BaseDirectory, "../../.env"));
-            var conn = Environment.GetEnvironmentVariable("SQL_CONN_STRING");
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.Development.json", optional: false)
+                .Build();
+
+            var conn = config["Database:ConnectionStrings:HIPAA_5010_837P"];
 
             var options = new DbContextOptionsBuilder<HIPAA_5010_837P_Context>()
                 .UseSqlServer(conn)
@@ -27,9 +28,12 @@ namespace EDI837.Ingestion
     {
         public ClaimStagingContext CreateDbContext(string[] args)
         {
-            Console.WriteLine(Path.Combine(AppContext.BaseDirectory, "../../.env"));
-            Env.Load(Path.Combine(AppContext.BaseDirectory, "../../.env"));
-            var conn = Environment.GetEnvironmentVariable("STAGING_CONN_STRING");
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.Development.json", optional: false)
+                .Build();
+
+            var conn = config["Database:ConnectionStrings:ClaimStaging"];
 
             var options = new DbContextOptionsBuilder<ClaimStagingContext>()
                 .UseSqlServer(conn)

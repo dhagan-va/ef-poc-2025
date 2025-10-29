@@ -3,11 +3,19 @@ using Amazon.S3.Model;
 
 namespace EDI837.Ingestion.Gateways
 {
+    /// <summary>
+    /// S3 Gateway is a convenience class for interacting with S3.
+    /// </summary>
     public sealed class S3Gateway : IDisposable
     {
         private readonly AmazonS3Client _s3Client;
         private readonly string _bucketName = "edi-bucket";
 
+        /// <summary>
+        /// Constructor for S3 Gateway
+        /// </summary>
+        /// <param name="serviceURI"></param>
+        /// <param name="bucketName"></param>
         public S3Gateway(Uri serviceURI, string bucketName)
         {
             ArgumentNullException.ThrowIfNull(serviceURI);
@@ -31,6 +39,12 @@ namespace EDI837.Ingestion.Gateways
             }
         }
 
+        /// <summary>
+        /// Asynchronous method which List files in the bucket given
+        /// during class instantiation,
+        /// </summary>
+        /// <param name="prefix">An optional prefix for filtering files</param>
+        /// <returns></returns>
         public async Task<List<S3Object>> ListFilesAsync(string prefix = "")
         {
             if (_s3Client == null)
@@ -65,6 +79,11 @@ namespace EDI837.Ingestion.Gateways
             }
         }
 
+        /// <summary>
+        /// Asynchronously retrieves the contents of a file stored in the configured S3 bucket.
+        /// </summary>
+        /// <param name="key">The S3 object key (path) identifying the file to retrieve.</param>
+        /// <returns>A task representing the asynchronous operation. The task result contains the file content as a string.</returns>
         public async Task<string> GetFileContentAsync(string key)
         {
             var response = await _s3Client.GetObjectAsync(_bucketName, key);
@@ -72,12 +91,26 @@ namespace EDI837.Ingestion.Gateways
             return await reader.ReadToEndAsync();
         }
 
+        /// <summary>
+        /// Asynchronously retrieves a file from the configured S3 bucket as a readable stream.
+        /// </summary>
+        /// <param name="key">The S3 object key (path) identifying the file to retrieve.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation. The task result contains a <see cref="Stream"/>
+        /// providing access to the file’s contents.
+        /// </returns>
         public async Task<Stream> GetFileStreamAsync(string key)
         {
             var response = await _s3Client.GetObjectAsync(_bucketName, key);
             return response.ResponseStream;
         }
 
+        /// <summary>
+        /// Asynchronously uploads text content to the configured S3 bucket.
+        /// </summary>
+        /// <param name="key">The S3 object key (path) to assign to the uploaded file.</param>
+        /// <param name="content">The text content to upload to S3.</param>
+        /// <returns>A task representing the asynchronous upload operation.</returns>
         public async Task UploadFileAsync(string key, string content)
         {
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
@@ -91,6 +124,14 @@ namespace EDI837.Ingestion.Gateways
             );
         }
 
+        /// <summary>
+        /// Asynchronously deletes a file from the configured S3 bucket.
+        /// </summary>
+        /// <param name="key">The S3 object key (path) of the file to delete.</param>
+        /// <returns>A task representing the asynchronous delete operation.</returns>
+        /// <remarks>
+        /// Logs S3-specific errors and rethrows unexpected exceptions to the caller.
+        /// </remarks>
         public async Task DeleteFileAsync(string key)
         {
             try
@@ -112,6 +153,9 @@ namespace EDI837.Ingestion.Gateways
             }
         }
 
+        /// <summary>
+        /// Releases all resources used by the underlying S3 client.
+        /// </summary>
         public void Dispose()
         {
             _s3Client?.Dispose();

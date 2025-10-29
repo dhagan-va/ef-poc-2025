@@ -1,5 +1,9 @@
 namespace EDI837.Ingestion
 {
+    /// <summary>
+    /// A model used to build the ClaimStaging DB.
+    /// Used for storing XML Blob and ensuring we don't process duplicate transactions.
+    /// </summary>
     public class ClaimStaging
     {
         public int Id { get; set; }
@@ -11,6 +15,9 @@ namespace EDI837.Ingestion
         public DateTime ReceivedAt { get; set; }
     }
 
+    /// <summary>
+    /// Top-Level App Settings Object
+    /// </summary>
     public class AppSettings
     {
         public DatabaseSettings Database { get; set; } = new();

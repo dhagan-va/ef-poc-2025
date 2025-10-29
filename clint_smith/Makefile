@@ -5,7 +5,7 @@ ifneq (,$(wildcard .env))
 endif
 
 .PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage \
- moto populate-s3 reset-db run-ingest-local run-ingest-s3 build
+ moto populate-s3 reset-db run-ingest-local run-ingest-s3 build drop-db create-db
 
 run-sql:
 	@echo "Starting SQL Server container ($(SQL_CONTAINER))..."
@@ -92,13 +92,20 @@ populate-s3:
 	@aws --endpoint-url=http://localhost:5000 s3 cp $(SAMPLE_PATH) s3://edi-bucket/incoming/$(notdir $(SAMPLE_PATH))
 	@echo "Uploaded $(SAMPLE_PATH) to edi-bucket/incoming/"
 
-reset-db:
-	@echo "Dropping and recreating both EDI and Claim Staging databases..."
+drop-db:
+	@echo "Dropping both EDI and Claim Staging databases..."
 	dotnet ef database drop -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c HIPAA_5010_837P_Context --force --no-build
 	dotnet ef database drop -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c ClaimStagingContext --force --no-build
+	@echo "Databases dropped successfully."
+
+create-db:
+	@echo "Creating both EDI and Claim Staging databases..."
 	dotnet ef database update -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c HIPAA_5010_837P_Context --no-build
 	dotnet ef database update -p src/EDI837.Ingestion/EDI837.Ingestion.csproj -c ClaimStagingContext --no-build
-	@echo "Databases recreated successfully."
+	@echo "Databases created successfully."
+
+reset-db: drop-db create-db
+	@echo "Dropping and recreating both EDI and Claim Staging databases..."
 
 run-ingest-local:
 	@echo "Running Ingestion project synchronoushly with local sample file."
@@ -106,7 +113,12 @@ run-ingest-local:
 
 run-ingest-s3:
 	@echo "Running Ingestion project synchronoushly with local sample file."
+	@echo "Starting moto_server..."
+	@moto_server -p 5000 & \
+	MOTO_PID=$$!; \
+	sleep 2; \
 	cd src/EDI837.Ingestion && dotnet run -- s3
+	kill $$MOTO_PID
 
 build:
 	cd src/EDI837.Ingestion && dotnet build
@@ -126,6 +138,8 @@ help:
 	@echo "  make coverage    			-> Run tests with coverage"
 	@echo "  make moto        			-> Run moto server"
 	@echo "  make populate-s3 			-> Add files in sample directory to s3"
+	@echo "  make drop-db    			-> Drop local DBs"
+	@echo "  make create-db    			-> Drop local DBs"
 	@echo "  make reset-db    			-> Drop local DBs and recreate"
 	@echo "  make run-ingest-local    	-> Run ingestion synchronously with a local sample file"
 	@echo "  make run-ingest-s3    		-> Run ingestion asynchronously; polling s3 bucket for incoming edi files"
