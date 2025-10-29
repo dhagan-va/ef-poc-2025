@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: edi-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-Pa55w0rd!}"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost,1433", "-U", "sa", "-No", "-C", "-Q", "SELECT 1", "-P", "${SA_PASSWORD:-Pa55w0rd!}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+volumes:
+  mssql-data:

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ef837Ingest", "Nicholas-Hall_N\src\Ef837Ingest\Ef837Ingest.csproj", "{64379C25-0FB2-D30C-92B3-B37F9D9A2CF4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ef837Ingest.Tests", "Nicholas-Hall_N\test\Ef837Ingest.Tests.csproj", "{CAF2CAC7-025F-7DF4-1436-9E05ABADDE40}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{64379C25-0FB2-D30C-92B3-B37F9D9A2CF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64379C25-0FB2-D30C-92B3-B37F9D9A2CF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64379C25-0FB2-D30C-92B3-B37F9D9A2CF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64379C25-0FB2-D30C-92B3-B37F9D9A2CF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAF2CAC7-025F-7DF4-1436-9E05ABADDE40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAF2CAC7-025F-7DF4-1436-9E05ABADDE40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAF2CAC7-025F-7DF4-1436-9E05ABADDE40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAF2CAC7-025F-7DF4-1436-9E05ABADDE40}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F9221147-313E-4D02-9FAB-CDEF77B9BAEA}
+	EndGlobalSection
+EndGlobal
