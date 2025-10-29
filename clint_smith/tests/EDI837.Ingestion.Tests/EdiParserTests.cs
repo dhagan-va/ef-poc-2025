@@ -2,11 +2,11 @@ using EDI837.Ingestion.Services;
 
 namespace EDI837.Ingestion.Tests;
 
-public class EdiParserTests
+public class EdiParserTests : TestBase
 {
     public EdiParserTests()
     {
-        EnvSetup.SetEdiTokenKey();
+        // EnvSetup.SetEdiTokenKey();
     }
 
     [Fact]

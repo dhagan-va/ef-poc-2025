@@ -5,7 +5,7 @@ ifneq (,$(wildcard .env))
 endif
 
 .PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage \
- moto populate-s3 reset-db run-ingest-local run-ingest-s3
+ moto populate-s3 reset-db run-ingest-local run-ingest-s3 build
 
 run-sql:
 	@echo "Starting SQL Server container ($(SQL_CONTAINER))..."
@@ -40,10 +40,20 @@ status:
 	docker ps -a | grep $(SQL_CONTAINER) || echo "No container named $(SQL_CONTAINER) found."
 
 test:
-	dotnet test tests/EDI837.Ingestion.Tests
+	@echo "Starting moto_server..."
+	@moto_server -p 5000 & \
+	MOTO_PID=$$!; \
+	sleep 2; \
+	dotnet test tests/EDI837.Ingestion.Tests; \
+	kill $$MOTO_PID
 
 coverage:
-	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal
+	@echo "Starting moto_server..."
+	@moto_server -p 5000 & \
+	MOTO_PID=$$!; \
+	sleep 2; \
+	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal; \
+	kill $$MOTO_PID
 
 	# Find the most recent coverage.cobertura.xml file (sorted by modification time)
 	report_file=$$(find ./tests/EDI837.Ingestion.Tests/TestResults -name "coverage.cobertura.xml" -type f -print0 | xargs -0 ls -t | head -n 1); \
@@ -98,6 +108,9 @@ run-ingest-s3:
 	@echo "Running Ingestion project synchronoushly with local sample file."
 	cd src/EDI837.Ingestion && dotnet run -- s3
 
+build:
+	cd src/EDI837.Ingestion && dotnet build
+
 help:
 	@echo ""
 	@echo "Available commands:"
@@ -116,5 +129,6 @@ help:
 	@echo "  make reset-db    			-> Drop local DBs and recreate"
 	@echo "  make run-ingest-local    	-> Run ingestion synchronously with a local sample file"
 	@echo "  make run-ingest-s3    		-> Run ingestion asynchronously; polling s3 bucket for incoming edi files"
+	@echo "  make build    				-> Build the main project"
 
 
