@@ -1,13 +1,11 @@
-using DotNetEnv;
 using System.Reflection;
-
-
+using DotNetEnv;
 
 namespace EDI837.Ingestion.Services
 {
     public static class EnvSetup
     {
-        private static bool loaded = false;
+        private static bool loaded;
 
         // Load .env once
         private static void LoadEnv()
@@ -39,7 +37,7 @@ namespace EDI837.Ingestion.Services
             LoadEnv();
             return Environment.GetEnvironmentVariable(key);
         }
-    
+
         /// <summary>
         /// Attempts to se the EDI Token key
         /// </summary>

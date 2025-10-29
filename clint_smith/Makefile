@@ -67,6 +67,7 @@ format:
 	--fix-style \
 	--fix-analyzers \
 	--verbosity detailed
+	csharpier format .
 
 
 moto:

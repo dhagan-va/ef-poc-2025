@@ -1,22 +1,22 @@
-﻿using EdiFabric.Templates.Hipaa5010;
+﻿using System.ComponentModel;
 using DotNetEnv;
-using Microsoft.EntityFrameworkCore;
-using EDI837.Ingestion.Services;
 using EDI837.Ingestion.Gateways;
+using EDI837.Ingestion.Services;
+using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Data.SqlClient;
-using System.ComponentModel;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-
-
 namespace EDI837.Ingestion
-{        
+{
     internal class Program
     {
         static async Task Main(string[] args)
         {
-            string source = args.Length > 0 ? args[0].ToLower() : "s3"; // default to s3
-            Console.WriteLine($"Starting Ingestion Process using source: {source.ToUpper()}");
+            string source = args.Length > 0 ? args[0].ToUpperInvariant() : "S3"; // default to s3
+            Console.WriteLine(
+                $"Starting Ingestion Process using source: {source.ToUpperInvariant()}"
+            );
 
             var settings = GetAppSettings();
 
@@ -24,18 +24,17 @@ namespace EDI837.Ingestion
 
             var transactionSaver = new TransactionSaver(settings);
 
-            if (source == "local")
+            if (source == "LOCAL")
             {
                 var file_path = "../../samples/837-sample-file.edi";
                 var claims = EdiParser.ParseEdiFileFromPath(file_path);
                 await transactionSaver.SaveTransactionsAsync(claims);
             }
-            else if (source == "s3")
+            else if (source == "S3")
             {
-                string s3Url = settings.S3.ServiceUrl;
+                Uri s3Uri = new Uri(settings.S3.ServiceUrl);
                 var bucketName = settings.S3.Bucket;
-                var s3Gateway = new S3Gateway(s3Url, bucketName);
-                var parser = new EdiParser();
+                using var s3Gateway = new S3Gateway(s3Uri, bucketName);
 
                 using var cts = new CancellationTokenSource();
                 Console.CancelKeyPress += (s, e) =>
@@ -46,7 +45,7 @@ namespace EDI837.Ingestion
 
                 try
                 {
-                    await parser.RunAsync(s3Gateway, transactionSaver, cts.Token);
+                    await EdiParser.RunAsync(s3Gateway, transactionSaver, cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -56,12 +55,12 @@ namespace EDI837.Ingestion
                 {
                     Console.WriteLine($"Unexpected error: {ex.Message}");
                     Environment.ExitCode = 1;
+                    throw;
                 }
                 finally
                 {
                     Console.WriteLine("Cleanup complete. Exiting.");
                 }
-
             }
             else
             {
@@ -70,15 +69,15 @@ namespace EDI837.Ingestion
 
             Console.WriteLine("Finished ingestion process.");
         }
-        
+
         static AppSettings GetAppSettings()
         {
             var config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables()
-            .Build();
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
 
             // Bind to strongly typed class
             var settings = new AppSettings();

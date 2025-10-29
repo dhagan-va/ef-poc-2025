@@ -1,9 +1,8 @@
-
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using DotNetEnv;
 using System;
 using System.IO;
+using DotNetEnv;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 
 namespace EDI837.Ingestion
 {
@@ -24,8 +23,7 @@ namespace EDI837.Ingestion
         }
     }
 
-    public class ClaimStagingContextFactory
-        : IDesignTimeDbContextFactory<ClaimStagingContext>
+    public class ClaimStagingContextFactory : IDesignTimeDbContextFactory<ClaimStagingContext>
     {
         public ClaimStagingContext CreateDbContext(string[] args)
         {

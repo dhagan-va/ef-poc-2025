@@ -3,27 +3,27 @@ using Amazon.S3.Model;
 
 namespace EDI837.Ingestion.Gateways
 {
-    public class S3Gateway
+    public sealed class S3Gateway : IDisposable
     {
         private readonly AmazonS3Client _s3Client;
         private readonly string _bucketName = "edi-bucket";
 
-        public S3Gateway(string serviceURL, string bucketName)
+        public S3Gateway(Uri serviceURI, string bucketName)
         {
+            ArgumentNullException.ThrowIfNull(serviceURI);
+            ArgumentNullException.ThrowIfNull(bucketName);
+
             var config = new AmazonS3Config
             {
-                ServiceURL = serviceURL,
-                ForcePathStyle = true
+                ServiceURL = serviceURI.ToString(),
+                ForcePathStyle = true,
             };
 
             _s3Client = new AmazonS3Client("test", "test", config);
 
             try
             {
-                _s3Client.PutBucketAsync(new PutBucketRequest
-                {
-                    BucketName = bucketName
-                }).Wait();
+                _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = bucketName }).Wait();
             }
             catch (AmazonS3Exception ex) when (ex.ErrorCode == "BucketAlreadyOwnedByYou")
             {
@@ -47,11 +47,9 @@ namespace EDI837.Ingestion.Gateways
 
             try
             {
-                var response = await _s3Client.ListObjectsV2Async(new ListObjectsV2Request
-                {
-                    BucketName = _bucketName,
-                    Prefix = prefix
-                });
+                var response = await _s3Client.ListObjectsV2Async(
+                    new ListObjectsV2Request { BucketName = _bucketName, Prefix = prefix }
+                );
 
                 return response.S3Objects ?? [];
             }
@@ -63,10 +61,9 @@ namespace EDI837.Ingestion.Gateways
             catch (Exception ex)
             {
                 Console.WriteLine($"Unexpected error listing objects: {ex.Message}");
-                return [];
+                throw;
             }
         }
-
 
         public async Task<string> GetFileContentAsync(string key)
         {
@@ -84,23 +81,23 @@ namespace EDI837.Ingestion.Gateways
         public async Task UploadFileAsync(string key, string content)
         {
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
-            await _s3Client.PutObjectAsync(new PutObjectRequest
-            {
-                BucketName = _bucketName,
-                Key = key,
-                InputStream = stream
-            });
+            await _s3Client.PutObjectAsync(
+                new PutObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = key,
+                    InputStream = stream,
+                }
+            );
         }
 
         public async Task DeleteFileAsync(string key)
         {
             try
             {
-                await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
-                {
-                    BucketName = _bucketName,
-                    Key = key
-                });
+                await _s3Client.DeleteObjectAsync(
+                    new DeleteObjectRequest { BucketName = _bucketName, Key = key }
+                );
 
                 Console.WriteLine($"Deleted file '{key}' from bucket '{_bucketName}'.");
             }
@@ -111,7 +108,14 @@ namespace EDI837.Ingestion.Gateways
             catch (Exception ex)
             {
                 Console.WriteLine($"Unexpected error deleting '{key}': {ex.Message}");
+                throw;
             }
+        }
+
+        public void Dispose()
+        {
+            _s3Client?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

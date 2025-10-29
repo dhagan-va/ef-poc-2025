@@ -76,8 +76,8 @@ pip install moto\[server\]
  dotnet add package AWSSDK.S3
  ```
 
- # Linters
+ # Linters/Formatters
  ```
 dotnet add package Microsoft.CodeAnalysis.CSharp.CodeStyle
-dotnet add package StyleCop.Analyzers
+dotnet tool install -g csharpier
 ```

@@ -31,7 +31,7 @@ public class EdiParserTests
         Assert.NotEmpty(transactions);
         Assert.Single(transactions);
     }
-    
+
     [Fact]
     public void TestParseEdiFileFailNoClaim_Fails()
     {

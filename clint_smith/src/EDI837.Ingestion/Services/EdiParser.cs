@@ -1,21 +1,20 @@
-using EdiFabric.Framework.Readers;
-using EdiFabric.Core.Model.Edi;
-using EdiFabric.Templates.Hipaa5010;
 using EDI837.Ingestion.Gateways;
-using Microsoft.VisualBasic;
+using EdiFabric.Core.Model.Edi;
+using EdiFabric.Framework.Readers;
+using EdiFabric.Templates.Hipaa5010;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.VisualBasic;
 
 namespace EDI837.Ingestion.Services
 {
-    public class EdiParser
+    public static class EdiParser
     {
-
         /// <summary>
         /// Parse the Edi file from a given local path
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static List<TS837P> ParseEdiFileFromPath(string path)
+        public static IEnumerable<TS837P> ParseEdiFileFromPath(string path)
         {
             using var ediStream = File.OpenRead(path);
             return ParseEdiStream(ediStream);
@@ -27,9 +26,8 @@ namespace EDI837.Ingestion.Services
         /// </summary>
         /// <param name="ediStream">A Stream object</param>
         /// <returns>List of valid 837P transactions.</returns>
-        public static List<TS837P> ParseEdiStream(Stream ediStream)
+        public static IEnumerable<TS837P> ParseEdiStream(Stream ediStream)
         {
-
             List<IEdiItem> ediItems;
             using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
             {
@@ -46,9 +44,11 @@ namespace EDI837.Ingestion.Services
 
                 if (transaction.HasErrors)
                 {
-                    var errors = transaction.ErrorContext.Flatten();
+                    var errors = transaction.ErrorContext.Flatten().ToList();
 
-                    Console.WriteLine($"Claim {transaction.ST?.TransactionSetControlNumber_02 ?? "(unknown)"} has {errors.Count()} errors:");
+                    Console.WriteLine(
+                        $"Claim {transaction.ST?.TransactionSetControlNumber_02 ?? "(unknown)"} has {errors.Count} errors:"
+                    );
                     foreach (var err in errors)
                     {
                         Console.WriteLine($"  {err}");
@@ -63,17 +63,23 @@ namespace EDI837.Ingestion.Services
             Console.WriteLine($"Parsed {validTransactions.Count} valid claims successfully.");
 
             return validTransactions;
-
         }
 
-        public async Task RunAsync(S3Gateway s3Gateway, TransactionSaver transactionSaver, CancellationToken cancellationToken)
+        public static async Task RunAsync(
+            S3Gateway s3Gateway,
+            TransactionSaver transactionSaver,
+            CancellationToken cancellationToken
+        )
         {
+            ArgumentNullException.ThrowIfNull(s3Gateway);
+            ArgumentNullException.ThrowIfNull(transactionSaver);
+
             if (s3Gateway == null)
             {
                 Console.WriteLine("S3Gateway not initialized. Exiting poller.");
                 return;
             }
-        
+
             Console.WriteLine("Starting EDI poller... Press Ctrl-C to stop.");
 
             // poll forever until Ctrl-C (cancellation) is requested
@@ -109,6 +115,7 @@ namespace EDI837.Ingestion.Services
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error while polling S3: {ex.Message}");
+                    throw;
                 }
 
                 // Wait 10 seconds before next poll

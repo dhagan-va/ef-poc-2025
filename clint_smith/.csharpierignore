@@ -1,0 +1,12 @@
+# Build outputs
+bin/
+obj/
+
+# Auto-generated EF migrations
+**/Migrations_*/**
+**/Migrations/**
+
+# Project and config files
+*.csproj
+*.props
+*.targets
