@@ -19,17 +19,22 @@ class Program
         // EDI service registration from .Core
         services.AddEDIServices(options =>
         {
-            options.SerialKey = "your-serial-key-here";
-            // Add more config if needed
+            options.SerialKey = Environment.GetEnvironmentVariable("EDIKEY");
         });
 
         using var provider = services.BuildServiceProvider();
 
-        // Optional: test logging
+        // test logging
         var logger = provider.GetRequiredService<ILogger<Program>>();
         logger.LogInformation("CLI harness bootstrapped.");
 
-        // Resolve and run your parser
+
+        // Verify serial key
+        var ediOptions = provider.GetRequiredService<EdiOptions>();
+        logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey)?"not":"")} set.");
+
+
+        // Resolve and run parser
         var parser = provider.GetRequiredService<IX12ParserService>();
         await parser.RunAsync(args, CancellationToken.None);
     }
