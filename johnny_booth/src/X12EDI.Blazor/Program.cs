@@ -1,10 +1,25 @@
-using X12_IngestionServer.Components;
+using X12EDI.Blazor.Components;
+using X12EDI.Core.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.ConfigureEdiFabric("");
+
+builder.Services.AddEDIServices((options) => 
+{
+    options.SerialKey = "serial-key";
+});
+
+builder.Services.AddLogging(config =>
+{
+    config.AddConsole(); // or AddDebug, AddEventSourceLogger, etc.
+    config.SetMinimumLevel(LogLevel.Information);
+});
+
 
 var app = builder.Build();
 

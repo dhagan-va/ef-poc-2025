@@ -1,0 +1,6 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/johnny_booth/src/X12EDI_Ingestion/X12_IngestionServer/X12EDI.Blazor.csproj.user

@@ -30,7 +30,7 @@ Create .NET C# application using EdiFabric to ingest sample 837 EDI file, store 
 #### 3. Folder Structure
 
 ```
-firstname-lastname_firstetter/
+firstname-lastname_firstletter/
 ├── src/
 ├── tests/
 ├── docs/

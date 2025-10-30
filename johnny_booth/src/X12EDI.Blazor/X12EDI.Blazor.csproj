@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Services\" />
+    <ProjectReference Include="..\X12EDI.Abstractions\X12EDI.Abstractions.csproj" />
+    <ProjectReference Include="..\X12EDI.Core\X12EDI.Core.csproj" />
   </ItemGroup>
 
 </Project>
