@@ -1,11 +1,12 @@
+using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using System.IO;
 
 namespace EDI837.Ingestion
 {
-    public class HIPAA_5010_837P_ContextFactory : IDesignTimeDbContextFactory<HIPAA_5010_837P_Context>
+    public class HIPAA_5010_837P_ContextFactory
+        : IDesignTimeDbContextFactory<HIPAA_5010_837P_Context>
     {
         public HIPAA_5010_837P_Context CreateDbContext(string[] args)
         {
