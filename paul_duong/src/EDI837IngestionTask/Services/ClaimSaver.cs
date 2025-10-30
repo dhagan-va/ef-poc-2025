@@ -66,7 +66,7 @@ namespace EDI837IngestionTask.Services
                 if (!seenKeys.Add(key))
                 {
                     skippedDuplicates++;
-                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}");
+                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
                     continue;
                 }
 
@@ -74,7 +74,7 @@ namespace EDI837IngestionTask.Services
                 if (existingKeys.Contains(key))
                 {
                     skippedDuplicates++;
-                    Console.WriteLine($"Duplicate Records in DB: NPI={providerNpi}, ST02={transactionControlNumber}");
+                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
                     continue;
                 }
 

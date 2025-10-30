@@ -4,19 +4,16 @@ using EDI837IngestionTask;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace EDI837IngestionTask.HIPAA_5010_837P
+namespace EDI837IngestionTask.Migrations.HIPAA_5010_837P
 {
     [DbContext(typeof(HIPAA_5010_837P_Context))]
-    [Migration("20251029202022_HIPAA_5010_837P")]
-    partial class HIPAA_5010_837P
+    partial class HIPAA_5010_837P_ContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

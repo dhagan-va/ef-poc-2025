@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace EDI837IngestionTask.HIPAA_5010_837P
+namespace EDI837IngestionTask.Migrations.HIPAA_5010_837P
 {
     /// <inheritdoc />
     public partial class HIPAA_5010_837P : Migration
