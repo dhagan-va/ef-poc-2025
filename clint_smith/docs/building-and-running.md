@@ -7,6 +7,11 @@ Makefile entry for the command you want to run and run the steps directly.
 Setup according to commands in `install-notes.md` unless you have a different
 environment type in which case you may have to adapt some of the instructions.
 
+# Demo Video (Optional)
+If you want to watch a demo of the following steps, here is a video link
+
+[Dropbox Demo Link](https://www.dropbox.com/scl/fi/c0qd672qfycuku1unjd4h/Screen-Recording-2025-10-29-at-1.13.13-PM.mov?rlkey=gpqoe5s50508o6zdr4fxfa79u&st=9o3g0ujp&dl=0)
+
 # Run Migrations
 
 ## Step 1: Create and setup appsettings.Development.json
