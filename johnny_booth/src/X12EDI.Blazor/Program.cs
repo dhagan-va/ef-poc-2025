@@ -7,11 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.ConfigureEdiFabric("");
-
 builder.Services.AddEDIServices((options) => 
 {
     options.SerialKey = Environment.GetEnvironmentVariable("EDIKEY");
+    options.FolderPath = builder.Configuration["EdiOptions:FolderPath"];
 });
 
 builder.Services.AddLogging(config =>
@@ -27,7 +26,7 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 // Verify serial key
 var ediOptions = app.Services.GetRequiredService<EdiOptions>();
-logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "")} set.");
+logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "is")} set.");
 
 
 

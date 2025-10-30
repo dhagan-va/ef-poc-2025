@@ -1,6 +1,8 @@
 ﻿using EdiFabric;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using X12EDI.Abstractions.Services;
+using X12EDI.Core.Services;
 
 namespace X12EDI.Core.Extensions
 {
@@ -33,6 +35,14 @@ namespace X12EDI.Core.Extensions
             services.Configure(configure);
             services.AddScoped<IX12ParserService, X12ParserService>();
 
+            if (!string.IsNullOrEmpty(options.FolderPath))
+            {
+                services.AddSingleton<IFileProvider>(
+                    new PhysicalFileProvider(options.FolderPath));
+            }
+            services.AddScoped<IFileIngestionService, FileIngestionService>();
+
+
             return services;
         }
     }
@@ -40,5 +50,7 @@ namespace X12EDI.Core.Extensions
     public class EdiOptions
     {
         public string? SerialKey { get; set; }
+
+        public string? FolderPath { get; set; }
     }
 }

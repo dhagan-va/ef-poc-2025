@@ -1,6 +1,7 @@
 ﻿using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 using X12EDI.Abstractions.Services;
 
 public class X12ParserService : IX12ParserService
@@ -22,32 +23,28 @@ public class X12ParserService : IX12ParserService
 
     #region Public Methods
 
-    public async Task<IEnumerable<T>> ParseEdiTransactionsAsync<T>(string ediPath, CancellationToken cancellationToken) where T : IEdiItem
+
+    public async IAsyncEnumerable<ParsedResult> ParseEdiTransactionsAsync(
+       IEnumerable<(Stream stream, string Identifier)> sources,
+       [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var results = new List<T>();
-        using var stream = File.OpenRead(ediPath);
-        using var ediReader = new X12Reader(stream);
-
-        while (await ediReader.ReadAsync(cancellationToken))
+        foreach (var (stream, identifier) in sources)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _logger?.LogWarning("EDI parsing cancelled for type {Type}", typeof(T).Name);
-                return results;
-            }
+            using var ediReader = new X12Reader(stream);
 
-            if (ediReader.Item is T transaction)
+            while (await ediReader.ReadAsync(cancellationToken))
             {
-                results.Add(transaction);
+                if (ediReader.Item is IEdiItem transaction)
+                {
+                    yield return new ParsedResult(identifier, transaction);
+                }
             }
         }
-        return results;
     }
 
-    public Task RunAsync(string[] args, CancellationToken none)
-    {
-        throw new NotImplementedException();
-    }
+
+
+
 
     #endregion Public Methods
 }
