@@ -1,6 +1,9 @@
 # Setup
 Note: This project was built on a Mac so may have subtle differences for someone running on a Windows machine.
 
+For instance, you may not have `make` installed. You can either install it, or look at the 
+Makefile entry for the command you want to run and run the steps directly.
+
 Setup according to commands in `install-notes.md` unless you have a different
 environment type in which case you may have to adapt some of the instructions.
 
