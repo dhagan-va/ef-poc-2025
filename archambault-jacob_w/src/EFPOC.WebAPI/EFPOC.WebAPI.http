@@ -1,0 +1,6 @@
+@EFPOC.WebAPI_HostAddress = http://localhost:5226
+
+GET {{EFPOC.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
