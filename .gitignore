@@ -62,3 +62,7 @@ coverage*.info
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+
+appsettings.*
+!appsettings.*.example.*
