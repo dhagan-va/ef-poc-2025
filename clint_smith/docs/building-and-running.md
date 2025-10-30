@@ -10,7 +10,7 @@ environment type in which case you may have to adapt some of the instructions.
 Copy the `src/EDI837.Ingestion/appsettings.Development.example.json` file, name it `appsettings.Development.json` in the same directory.
 
 ## Step 2: Update DB Connection information
-Change attributes to match your DB connection information.
+Change attributes to match your DB connection information. This project will create 2 DBs. I named them HIPAA_5010_837P and CLAIM_STAGING but you should be able to name them whatever you'd like in your connections strings.
 
 ## Step 3: Run the migrations
 In the `clint_smith` directory level, run
@@ -35,7 +35,7 @@ make run-ingest-local
 ```
 
 ## Step 2: Verify it worked
-
+(You may have named the DBs differently)
 You can open the the CLAIM_STAGING DB and make sure you have a record in the ClaimStagings table and then go to the HIPAA_5010_837P DB and look in the T837P table and verify the record is there.
 
 ## Step 3: Verify it won't add a duplicate
