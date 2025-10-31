@@ -2,7 +2,9 @@
 using EdiFabric.Core.Model.Edi.ErrorContexts;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
+using X12EDI.Abstractions.Repositories;
 using X12EDI.Abstractions.Services;
+using X12EDI.Data.Repositories;
 
 namespace X12EDI.Core.Services
 {
@@ -10,6 +12,7 @@ namespace X12EDI.Core.Services
     {
         #region Private Fields
 
+        private readonly IEdiRepository _ediRepository;
         private readonly IFileProvider _fileProvider;
         private readonly ILogger<FileIngestionService> _logger;
         private readonly IX12ParserService _parser;
@@ -21,11 +24,12 @@ namespace X12EDI.Core.Services
         public FileIngestionService(
             IFileProvider fileProvider,
             IX12ParserService parser,
-            ILogger<FileIngestionService> logger)
+            ILogger<FileIngestionService> logger, IEdiRepository ediRepository)
         {
             _fileProvider = fileProvider;
             _parser = parser;
             _logger = logger;
+            _ediRepository = ediRepository;
         }
 
         #endregion Public Constructors
@@ -68,6 +72,8 @@ namespace X12EDI.Core.Services
 
             using var stream = fileInfo.CreateReadStream();
 
+            var items = new List<object>();
+
             await foreach (var result in _parser.ParseEdiTransactionsAsync(
                                new[] { (stream, identifier) }, cancellationToken))
             {
@@ -90,12 +96,25 @@ namespace X12EDI.Core.Services
                     }
                 }
                 else
-                {                     
-                    // Process the successfully parsed item (e.g., save to database, further processing, etc.)
+                {
                     _logger.LogInformation("Successfully processed item of type {Type} from file {File}",
                         item.GetType().Name,
                         result.FilePath);
                 }
+
+                if (item != null)
+                {
+                    items.Add(item); // collect all items regardless of error state
+                }
+            }
+
+            if (await _ediRepository.SaveFileAsync(identifier, items, cancellationToken))
+            {
+                _logger.LogInformation("Persisted file {File} with {ItemCount} items", identifier, items.Count);
+            }
+            else
+            {
+                _logger.LogWarning("File {File} was not persisted (possible duplicate)", identifier);
             }
         }
 

@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\X12EDI.Abstractions\X12EDI.Abstractions.csproj" />
+    <ProjectReference Include="..\X12EDI.Data\X12EDI.Data.csproj" />
   </ItemGroup>
 
 </Project>

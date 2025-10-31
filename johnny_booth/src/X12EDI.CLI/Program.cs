@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using X12EDI.Core.Extensions;
 using X12EDI.Core.Services;
+using X12EDI.Data.Extensions;
 
 public class Program
 {
@@ -35,6 +36,9 @@ public class Program
             options.FolderPath = configuration["EdiOptions:FolderPath"];
         });
 
+        // 5. Database context registration from .Data
+        services.AddX12EdiData(configuration);
+
         using var provider = services.BuildServiceProvider();
 
         // test logging
@@ -43,7 +47,7 @@ public class Program
 
         // Verify serial key
         var ediOptions = provider.GetRequiredService<EdiOptions>();
-        logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "")} set.");
+        logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "is")} set.");
 
         // Resolve and run parser
         var parser = provider.GetRequiredService<IFileIngestionService>();

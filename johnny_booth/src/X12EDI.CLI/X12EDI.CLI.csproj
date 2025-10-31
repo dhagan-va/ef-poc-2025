@@ -19,11 +19,16 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
+	  <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		  <PrivateAssets>all</PrivateAssets>
+	  </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\X12EDI.Abstractions\X12EDI.Abstractions.csproj" />
     <ProjectReference Include="..\X12EDI.Core\X12EDI.Core.csproj" />
+    <ProjectReference Include="..\X12EDI.Data\X12EDI.Data.csproj" />
   </ItemGroup>
 
 </Project>

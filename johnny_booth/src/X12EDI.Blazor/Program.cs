@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Configuration;
 using X12EDI.Blazor.Components;
 using X12EDI.Core.Extensions;
+using X12EDI.Data.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,8 @@ builder.Services.AddEDIServices((options) =>
     options.SerialKey = Environment.GetEnvironmentVariable("EDIKEY");
     options.FolderPath = builder.Configuration["EdiOptions:FolderPath"];
 });
+
+builder.Services.AddX12EdiData(builder.Configuration);
 
 builder.Services.AddLogging(config =>
 {
