@@ -10,6 +10,11 @@ namespace EDI275AttachmentParser
     {
         static async Task<int> Main(string[] args)
         {
+            // Set EdiFabric free trial serial key
+            // See: https://support.edifabric.com/hc/en-us/articles/360000280532-Free-code-to-master-your-EDI-files
+            // NOTE: Uncomment and use the correct namespace based on your EdiFabric version
+            // EdiFabric.Core.Model.Edi.SerialKey.Set("1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567");
+            
             // Setup dependency injection
             var services = new ServiceCollection();
             ConfigureServices(services);
@@ -34,12 +39,6 @@ namespace EDI275AttachmentParser
                 getDefaultValue: () => new DirectoryInfo("./attachments"));
             outputOption.AddAlias("-o");
 
-            // Add license key option
-            var licenseOption = new Option<string>(
-                name: "--license",
-                description: "EdiFabric license key (or set EDIFABRIC_LICENSE environment variable)");
-            licenseOption.AddAlias("-l");
-
             // Add verbose option
             var verboseOption = new Option<bool>(
                 name: "--verbose",
@@ -54,30 +53,15 @@ namespace EDI275AttachmentParser
 
             rootCommand.AddOption(fileOption);
             rootCommand.AddOption(outputOption);
-            rootCommand.AddOption(licenseOption);
             rootCommand.AddOption(verboseOption);
             rootCommand.AddOption(jsonOption);
 
-            rootCommand.SetHandler(async (file, output, license, verbose, exportJson) =>
+            rootCommand.SetHandler(async (file, output, verbose, exportJson) =>
             {
                 var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
                 
                 try
                 {
-                    // Set EdiFabric license key
-                    var licenseKey = license ?? Environment.GetEnvironmentVariable("EDIFABRIC_LICENSE");
-                    if (!string.IsNullOrEmpty(licenseKey))
-                    {
-                        // EdiFabric.Core.Model.Edi.SerialKey.Set(licenseKey);
-                        logger.LogInformation("EdiFabric license key provided");
-                    }
-                    else
-                    {
-                        logger.LogWarning("No EdiFabric license provided. Using trial mode (may have limitations)");
-                        logger.LogWarning("Set license with --license option or EDIFABRIC_LICENSE environment variable");
-                        logger.LogWarning("Get trial license at: https://www.edifabric.com/trial.html");
-                    }
-
                     var parser = serviceProvider.GetRequiredService<EDI275Parser>();
 
                     logger.LogInformation("Starting EDI 275 parsing...");
@@ -155,7 +139,7 @@ namespace EDI275AttachmentParser
                     }
                     Environment.Exit(1);
                 }
-            }, fileOption, outputOption, licenseOption, verboseOption, jsonOption);
+            }, fileOption, outputOption, verboseOption, jsonOption);
 
             return await rootCommand.InvokeAsync(args);
         }
