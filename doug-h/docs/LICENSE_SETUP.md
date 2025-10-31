@@ -22,21 +22,21 @@ For production use:
 
 ### Environment Variable (Recommended)
 
-Set the `EDIFABRIC_LICENSE` environment variable with your license key:
+Set the `TRIAL_EDIFABRIC_LICENSE` environment variable with your license key:
 
 **Windows (PowerShell)**:
 ```powershell
-$env:EDIFABRIC_LICENSE = "your-license-key-here"
+$env:TRIAL_EDIFABRIC_LICENSE = "your-license-key-here"
 ```
 
 **Windows (Command Prompt)**:
 ```cmd
-set EDIFABRIC_LICENSE=your-license-key-here
+set TRIAL_EDIFABRIC_LICENSE=your-license-key-here
 ```
 
 **Linux/Mac**:
 ```bash
-export EDIFABRIC_LICENSE="your-license-key-here"
+export TRIAL_EDIFABRIC_LICENSE="your-license-key-here"
 ```
 
 For permanent setup, add the environment variable to your system settings.

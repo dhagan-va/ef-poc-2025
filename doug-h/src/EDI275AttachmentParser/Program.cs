@@ -11,11 +11,11 @@ namespace EDI275AttachmentParser
         static Program()
         {
             // Set EdiFabric license key from environment variable
-            var licenseKey = Environment.GetEnvironmentVariable("EDIFABRIC_LICENSE");
+            var licenseKey = Environment.GetEnvironmentVariable("TRIAL_EDIFABRIC_LICENSE");
             
             if (string.IsNullOrEmpty(licenseKey))
             {
-                Console.WriteLine("Warning: EDIFABRIC_LICENSE environment variable not set.");
+                Console.WriteLine("Warning: TRIAL_EDIFABRIC_LICENSE environment variable not set.");
                 Console.WriteLine("EdiFabric parser will not work without a valid license.");
                 Console.WriteLine("Set the environment variable or use ManualEDI275Parser instead.");
                 return;

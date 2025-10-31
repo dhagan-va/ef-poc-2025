@@ -32,16 +32,16 @@ EdiFabric requires a valid license key to function.
 
 ```powershell
 # Windows PowerShell
-$env:EDIFABRIC_LICENSE = "your-license-key-here"
+$env:TRIAL_EDIFABRIC_LICENSE = "your-license-key-here"
 
 # Windows CMD
-set EDIFABRIC_LICENSE=your-license-key-here
+set TRIAL_EDIFABRIC_LICENSE=your-license-key-here
 
 # Linux/Mac
-export EDIFABRIC_LICENSE="your-license-key-here"
+export TRIAL_EDIFABRIC_LICENSE="your-license-key-here"
 ```
 
-The application will automatically read the `EDIFABRIC_LICENSE` environment variable at startup.
+The application will automatically read the `TRIAL_EDIFABRIC_LICENSE` environment variable at startup.
 
 ### Alternative: Manual Parser (No License Required)
 

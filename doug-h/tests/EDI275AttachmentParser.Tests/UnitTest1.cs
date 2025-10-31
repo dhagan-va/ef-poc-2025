@@ -13,11 +13,11 @@ public class EDI275ParserIntegrationTests
     private static void SetEdiFabricTrialKey()
     {
         // Get license key from environment variable
-        var licenseKey = Environment.GetEnvironmentVariable("EDIFABRIC_LICENSE");
+        var licenseKey = Environment.GetEnvironmentVariable("TRIAL_EDIFABRIC_LICENSE");
         
         if (string.IsNullOrEmpty(licenseKey))
         {
-            Console.WriteLine("⚠ Warning: EDIFABRIC_LICENSE environment variable not set");
+            Console.WriteLine("⚠ Warning: TRIAL_EDIFABRIC_LICENSE environment variable not set");
             Console.WriteLine("Tests using EdiFabric parser will fail without a valid license");
             return;
         }
