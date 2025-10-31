@@ -1,60 +1,47 @@
 # EdiFabric License Setup
 
-## Free Trial Serial Key
+## Getting a License Key
 
-EdiFabric provides a **free serial key** that you can use for development and testing purposes:
+EdiFabric requires a valid license key to function.
 
-```
-1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567
-```
+### Option 1: Free Trial License
 
-**Reference**: [Free code to master your EDI files](https://support.edifabric.com/hc/en-us/articles/360000280532-Free-code-to-master-your-EDI-files)
+1. Visit https://www.edifabric.com/trial.html
+2. Sign up with your email address
+3. Receive your trial license key via email
+4. Trial licenses are valid for a limited time (typically 30 days)
 
-## How to Set the Serial Key
+### Option 2: Commercial License
 
-### Option 1: In Code (Recommended for Trial)
+For production use:
+1. Visit https://www.edifabric.com/
+2. Choose the appropriate license tier
+3. Purchase and obtain your commercial license key
 
-Uncomment the serial key line in `Program.cs`:
+## Setting the License Key
 
-```csharp
-// Set EdiFabric free trial serial key
-// NOTE: The exact namespace may vary depending on your EdiFabric version
-EdiFabric.Core.Model.Edi.SerialKey.Set("1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567");
-```
+### Environment Variable (Recommended)
 
-**Important**: The exact namespace for `SerialKey` may vary depending on your EdiFabric version. Common namespaces include:
-- `EdiFabric.Core.Model.Edi.SerialKey`
-- `EdiFabric.Framework.SerialKey`
-
-Check the EdiFabric documentation or use IntelliSense to find the correct namespace for your version.
-
-### Option 2: Environment Variable
-
-Set the `EDIFABRIC_LICENSE` environment variable:
+Set the `EDIFABRIC_LICENSE` environment variable with your license key:
 
 **Windows (PowerShell)**:
 ```powershell
-$env:EDIFABRIC_LICENSE = "1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567"
+$env:EDIFABRIC_LICENSE = "your-license-key-here"
 ```
 
 **Windows (Command Prompt)**:
 ```cmd
-set EDIFABRIC_LICENSE=1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567
+set EDIFABRIC_LICENSE=your-license-key-here
 ```
 
 **Linux/Mac**:
 ```bash
-export EDIFABRIC_LICENSE="1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567"
+export EDIFABRIC_LICENSE="your-license-key-here"
 ```
 
-## Commercial License
+For permanent setup, add the environment variable to your system settings.
 
-For production use, you need a commercial license from EdiFabric:
-
-1. Visit [EdiFabric](https://www.edifabric.com/)
-2. Choose the appropriate license for your needs
-3. Purchase and obtain your license key
-4. Replace the trial serial key with your commercial key
+The application automatically reads this environment variable at startup and configures EdiFabric.
 
 ## Alternative: Manual Parser
 

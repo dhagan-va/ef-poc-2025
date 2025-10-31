@@ -19,34 +19,33 @@ A command-line tool built with .NET 8 and EdiFabric to parse EDI 275 (Additional
 
 ## EdiFabric License Setup
 
-EdiFabric provides a **free trial serial key** for development and testing:
+EdiFabric requires a valid license key to function. 
 
+### Get a License Key
+
+1. **Trial License** (Free): Visit https://www.edifabric.com/trial.html
+2. **Commercial License**: Visit https://www.edifabric.com/ for production use
+
+### Set the License Key
+
+**Set as environment variable** (Required):
+
+```powershell
+# Windows PowerShell
+$env:EDIFABRIC_LICENSE = "your-license-key-here"
+
+# Windows CMD
+set EDIFABRIC_LICENSE=your-license-key-here
+
+# Linux/Mac
+export EDIFABRIC_LICENSE="your-license-key-here"
 ```
-1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567
-```
 
-**Source**: [Free code to master your EDI files](https://support.edifabric.com/hc/en-us/articles/360000280532-Free-code-to-master-your-EDI-files)
-
-### Quick Setup
-
-1. **Uncomment the serial key line in `Program.cs`**:
-   ```csharp
-   EdiFabric.Core.Model.Edi.SerialKey.Set("1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567");
-   ```
-   
-2. **Or set as environment variable**:
-   ```powershell
-   # Windows PowerShell
-   $env:EDIFABRIC_LICENSE = "1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567"
-   ```
+The application will automatically read the `EDIFABRIC_LICENSE` environment variable at startup.
 
 ### Alternative: Manual Parser (No License Required)
 
-The project includes `ManualEDI275Parser` which doesn't require any license. See [LICENSE_SETUP.md](docs/LICENSE_SETUP.md) for details.
-
-### Commercial License
-
-For production use, purchase a commercial license from [EdiFabric](https://www.edifabric.com/).
+The project includes `ManualEDI275Parser` which doesn't require any license. See [LICENSE_SETUP.md](docs/LICENSE_SETUP.md) for details on switching parsers.
 
 ## Installation
 

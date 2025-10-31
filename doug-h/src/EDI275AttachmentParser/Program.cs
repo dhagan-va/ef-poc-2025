@@ -6,14 +6,48 @@ using Newtonsoft.Json;
 
 namespace EDI275AttachmentParser
 {
-    class Program
+    public class Program
     {
-        static async Task<int> Main(string[] args)
+        static Program()
         {
-            // Set EdiFabric free trial serial key
-            // See: https://support.edifabric.com/hc/en-us/articles/360000280532-Free-code-to-master-your-EDI-files
-            // NOTE: Uncomment and use the correct namespace based on your EdiFabric version
-            // EdiFabric.Core.Model.Edi.SerialKey.Set("1BB5-6C32-3E81-4380-F8DE-A92C-0123-4567");
+            // Set EdiFabric license key from environment variable
+            var licenseKey = Environment.GetEnvironmentVariable("EDIFABRIC_LICENSE");
+            
+            if (string.IsNullOrEmpty(licenseKey))
+            {
+                Console.WriteLine("Warning: EDIFABRIC_LICENSE environment variable not set.");
+                Console.WriteLine("EdiFabric parser will not work without a valid license.");
+                Console.WriteLine("Set the environment variable or use ManualEDI275Parser instead.");
+                return;
+            }
+
+            try
+            {
+                var ediFabricAssembly = System.Reflection.Assembly.Load("EdiFabric");
+                var serialKeyType = ediFabricAssembly.GetType("EdiFabric.SerialKey");
+                if (serialKeyType != null)
+                {
+                    var setMethod = serialKeyType.GetMethod("Set", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (setMethod != null)
+                    {
+                        var parameters = setMethod.GetParameters();
+                        if (parameters.Length == 2 && parameters[1].ParameterType == typeof(bool))
+                        {
+                            setMethod.Invoke(null, new object[] { licenseKey, true });
+                            Console.WriteLine("✓ EdiFabric license key set successfully");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not set EdiFabric license: {ex.Message}");
+            }
+        }
+
+        public static async Task<int> Main(string[] args)
+        {
+            // EdiFabric license is set in static constructor above
             
             // Setup dependency injection
             var services = new ServiceCollection();
@@ -120,6 +154,12 @@ namespace EDI275AttachmentParser
                     // Export to JSON if requested
                     if (exportJson)
                     {
+                        // Ensure output directory exists
+                        if (!output.Exists)
+                        {
+                            output.Create();
+                        }
+                        
                         var jsonPath = Path.Combine(output.FullName, "parsed_data.json");
                         var json = JsonConvert.SerializeObject(document, Formatting.Indented);
                         File.WriteAllText(jsonPath, json);
@@ -152,6 +192,7 @@ namespace EDI275AttachmentParser
                 configure.SetMinimumLevel(LogLevel.Information);
             });
 
+            // Use EdiFabric parser (license set in static constructor)
             services.AddTransient<EDI275Parser>();
             services.AddTransient<ManualEDI275Parser>();
         }
