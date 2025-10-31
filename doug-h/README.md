@@ -28,7 +28,21 @@ EdiFabric requires a valid license key to function.
 
 ### Set the License Key
 
-**Set as environment variable** (Required):
+**Option 1: Using .env file** (Recommended):
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your license key:
+   ```
+   TRIAL_EDIFABRIC_LICENSE=your-license-key-here
+   ```
+
+The application automatically loads the `.env` file at startup.
+
+**Option 2: Environment variable**:
 
 ```powershell
 # Windows PowerShell
@@ -40,8 +54,6 @@ set TRIAL_EDIFABRIC_LICENSE=your-license-key-here
 # Linux/Mac
 export TRIAL_EDIFABRIC_LICENSE="your-license-key-here"
 ```
-
-The application will automatically read the `TRIAL_EDIFABRIC_LICENSE` environment variable at startup.
 
 ### Alternative: Manual Parser (No License Required)
 

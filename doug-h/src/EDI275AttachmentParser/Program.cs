@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
 using Newtonsoft.Json;
+using DotNetEnv;
 
 namespace EDI275AttachmentParser
 {
@@ -10,6 +11,14 @@ namespace EDI275AttachmentParser
     {
         static Program()
         {
+            // Load .env file if it exists
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+            if (File.Exists(envPath))
+            {
+                Env.Load(envPath);
+                Console.WriteLine("✓ Loaded configuration from .env file");
+            }
+
             // Set EdiFabric license key from environment variable
             var licenseKey = Environment.GetEnvironmentVariable("TRIAL_EDIFABRIC_LICENSE");
             
@@ -17,7 +26,7 @@ namespace EDI275AttachmentParser
             {
                 Console.WriteLine("Warning: TRIAL_EDIFABRIC_LICENSE environment variable not set.");
                 Console.WriteLine("EdiFabric parser will not work without a valid license.");
-                Console.WriteLine("Set the environment variable or use ManualEDI275Parser instead.");
+                Console.WriteLine("Set the environment variable or create a .env file with TRIAL_EDIFABRIC_LICENSE.");
                 return;
             }
 

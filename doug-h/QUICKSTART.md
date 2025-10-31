@@ -19,16 +19,28 @@ A .NET 8 command-line tool that parses EDI 275 files (Additional Information to 
 # Copy the license key from your email
 ```
 
-### 2. Set License as Environment Variable
+### 2. Set License
+
+**Option A: Using .env file (Recommended)**
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env and add your license key
+# TRIAL_EDIFABRIC_LICENSE=your-license-key-here
+```
+
+**Option B: Environment Variable**
 
 **Windows PowerShell:**
 ```powershell
-$env:EDIFABRIC_LICENSE="YOUR_LICENSE_KEY_HERE"
+$env:TRIAL_EDIFABRIC_LICENSE="YOUR_LICENSE_KEY_HERE"
 ```
 
 **Windows CMD:**
 ```cmd
-set EDIFABRIC_LICENSE=YOUR_LICENSE_KEY_HERE
+set TRIAL_EDIFABRIC_LICENSE=YOUR_LICENSE_KEY_HERE
 ```
 
 **Linux/Mac:**

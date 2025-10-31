@@ -1,4 +1,5 @@
 using System.Reflection;
+using DotNetEnv;
 
 namespace EDI275AttachmentParser.Tests;
 
@@ -6,6 +7,21 @@ public class EDI275ParserIntegrationTests
 {
     static EDI275ParserIntegrationTests()
     {
+        // Load .env file from the project root (5 levels up from test binary)
+        var testDir = Directory.GetCurrentDirectory();
+        var projectRoot = Path.Combine(testDir, "..", "..", "..", "..", "..");
+        var envPath = Path.Combine(projectRoot, ".env");
+        
+        if (File.Exists(envPath))
+        {
+            Env.Load(envPath);
+            Console.WriteLine($"✓ Loaded .env file from: {envPath}");
+        }
+        else
+        {
+            Console.WriteLine($"⚠ No .env file found at: {envPath}");
+        }
+
         // Set EdiFabric trial key once for all tests
         SetEdiFabricTrialKey();
     }

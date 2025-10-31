@@ -20,7 +20,27 @@ For production use:
 
 ## Setting the License Key
 
-### Environment Variable (Recommended)
+### Option 1: Using .env File (Recommended)
+
+The project uses DotNetEnv to load configuration from a `.env` file.
+
+1. **Copy the example file**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` and add your license key**:
+   ```
+   # EdiFabric License Configuration
+   TRIAL_EDIFABRIC_LICENSE=your-license-key-here
+   ```
+
+3. **Run the application**:
+   The `.env` file is automatically loaded at startup.
+
+**Note**: The `.env` file is git-ignored and should never be committed to version control.
+
+### Option 2: Environment Variable
 
 Set the `TRIAL_EDIFABRIC_LICENSE` environment variable with your license key:
 
