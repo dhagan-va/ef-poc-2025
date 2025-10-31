@@ -7,7 +7,7 @@ namespace EDI837IngestionTask.Services
 {
     public static class ClaimSaver
     {
-        private const int BATCH_SIZE = 100;
+        private static int BATCH_SIZE = EnvSetup.BatchSize;
 
         /// <summary>
         /// Saves a list of 837P transactions to the database.
@@ -66,7 +66,7 @@ namespace EDI837IngestionTask.Services
                 if (!seenKeys.Add(key))
                 {
                     skippedDuplicates++;
-                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}");
+                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
                     continue;
                 }
 
@@ -74,7 +74,7 @@ namespace EDI837IngestionTask.Services
                 if (existingKeys.Contains(key))
                 {
                     skippedDuplicates++;
-                    Console.WriteLine($"Duplicate Records in DB: NPI={providerNpi}, ST02={transactionControlNumber}");
+                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
                     continue;
                 }
 

@@ -30,7 +30,11 @@ dotnet add package Microsoft.EntityFrameworkCore --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.Tools --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.Proxies --version 9.0.10
-dotnet add package DotNetEnv --version 3.1.1
+dotnet add package Microsoft.Extensions.Configuration --version 9.0.10
+dotnet add package Microsoft.Extensions.Configuration.Binder --version 9.0.10
+dotnet add package Microsoft.Extensions.FileExtensions --version 9.0.10
+dotnet add package Microsoft.Extensions.Json --version 9.0.10
+dotnet add package AWSSDK.S3 --version 4.0.9.1
 dotnet tool install --global dotnet-ef
 ```
 
@@ -59,6 +63,8 @@ docker run -e "ACCEPT_EULA=Y" \
            -d mcr.microsoft.com/mssql/server:2022-latest
 
 docker start sqlserver
+
+modify src/{your project}/appsettings.json db Password part
 ```
 
 # S3 Integration
@@ -67,4 +73,30 @@ python -m pip install moto[all]
 
 python start_moto.py
 python uploadFile.py
+
+```
+
+# Running Instruction
+```
+First running, please follow migrations.md to conduct the misrations first so that database will be created.
+/src/EDI837IngestionTask provide two run mode, local and s3
+Running in local mode, use this command:
+dotnet run -- --mode local
+
+or
+dotnet run -- local
+
+or
+
+dotnet run
+
+Running in S3 mode, please run above python script 
+which under /src/S3Integration to start the moto_server and upload sample file into S3 mock.
+Then, use this command to run:
+dotnet run -- --mode s3
+
+or 
+
+dotnet run -- s3
+
 ```
