@@ -1,4 +1,4 @@
-# EDI 275 Attachment Parser
+# EDI 275 Attachment Parser - THANK YOU CLINT
 
 A command-line tool built with .NET 8 and EdiFabric to parse EDI 275 (Additional Information to Support a Health Care Claim or Encounter) files and extract attachments.
 
