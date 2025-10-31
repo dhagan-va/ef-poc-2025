@@ -8,6 +8,10 @@ namespace EDI837IngestionTask.Services
 
         public static int PollingSeconds { get; private set; } = 30;
 
+        public static int BatchSize { get; private set; } = 100;
+
+        public static int MaxConcurrency { get; private set; } = 5;
+
         private static readonly string BaseDir = AppContext.BaseDirectory;
         private static readonly string ProjectDir = Path.GetFullPath(Path.Combine(BaseDir, "..", "..", ".."));
         public static readonly string SamplesDir = Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "samples"));
@@ -28,9 +32,6 @@ namespace EDI837IngestionTask.Services
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                 _config = builder.Build();
                 Console.WriteLine("Completed Loading Configuration from appsettings.json...");
-                Console.WriteLine($"BaseDir path={BaseDir}");
-                Console.WriteLine($"ProjectDir path={ProjectDir}");
-                Console.WriteLine($"SamplesDir path={SamplesDir}");
             }
         }
 
@@ -77,6 +78,19 @@ namespace EDI837IngestionTask.Services
 
         }
 
+        public static void GeneralInitalize()
+        {
+            EnsureConfigLoad();
+            if (_config != null)
+            {
+                PollingSeconds = _config.GetValue<int>("Ingestion:PollingSeconds", 30);
+
+                BatchSize = _config.GetValue<int>("Ingestion:BatchSize", 100);
+
+                MaxConcurrency = _config.GetValue<int>("Ingestion:MaxConcurrency", 5);
+            }
+        }
+
         public static void S3Initalize()
         {
             EnsureConfigLoad();
@@ -90,8 +104,6 @@ namespace EDI837IngestionTask.Services
                 var secretKey = aws["SecretKey"] ?? "fake-secret-key";
 
                 S3Reader.Init(bucket, endpoint, region, accessKey, secretKey);
-
-                PollingSeconds = _config.GetValue<int>("Ingestion:PollingSeconds", 30);
 
                 Console.WriteLine($"Environment For S3 Mock initialized. Polling every {PollingSeconds}s.");
 

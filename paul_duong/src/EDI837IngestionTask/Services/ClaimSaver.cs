@@ -7,7 +7,7 @@ namespace EDI837IngestionTask.Services
 {
     public static class ClaimSaver
     {
-        private const int BATCH_SIZE = 100;
+        private static int BATCH_SIZE = EnvSetup.BatchSize;
 
         /// <summary>
         /// Saves a list of 837P transactions to the database.

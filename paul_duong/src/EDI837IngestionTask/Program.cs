@@ -10,6 +10,7 @@ namespace EDI837IngestionTask
         private static readonly Dictionary<string, string> ProcessedFileEtags = new();
         private static IngestionMode Mode = IngestionMode.Local;
         private static readonly List<string> TempFiles = new();
+
         static async Task Main(string[] args)
         {
             Console.WriteLine("Main Service started.");
@@ -23,6 +24,8 @@ namespace EDI837IngestionTask
                 Console.WriteLine("Invalid Serial key. Skip remaining process!!!");
                 return;
             }
+
+            EnvSetup.GeneralInitalize();
 
             if (Mode == IngestionMode.S3)
             {
@@ -45,6 +48,7 @@ namespace EDI837IngestionTask
             {
                 if (Mode == IngestionMode.S3)
                 {
+                    // scan S3 file and process file every 30s
                     while (!cts.Token.IsCancellationRequested)
                     {
                         await RunAsyncProcess();
@@ -77,7 +81,8 @@ namespace EDI837IngestionTask
             }
         }
 
-        // scan S3 file and process file every 30s
+
+        // main logic to handle Process files asynchronously
         static async Task RunAsyncProcess()
         {
             Console.WriteLine("Starting Ingestion Process...");
@@ -91,32 +96,27 @@ namespace EDI837IngestionTask
                     Console.WriteLine("No Files found");
                 }
 
-                foreach (var file in files)
+                var maxConcurrency = EnvSetup.MaxConcurrency;
+
+                var semaphore = new SemaphoreSlim(maxConcurrency);
+                var tasks = files.Select(async file =>
                 {
-                    if (ProcessedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
+                    await semaphore.WaitAsync();
+                    try
                     {
-                        Console.WriteLine($"Skipping already processed file");
-                        continue;
+                        await ProcessSingleFileAsync(file);
                     }
-                    Console.WriteLine($"Processing file: {file.Key} (ETag: {file.ETag})");
-
-                    string tempPath = Mode == IngestionMode.S3 ? await S3Reader.DownloadFromS3Async(file) : file.Key;
-
-                    if (Mode == IngestionMode.S3)
+                    catch (Exception e)
                     {
-                        TempFiles.Add(tempPath);
+                        Console.WriteLine($"Error happens during processing file: {e.Message}");
                     }
-                    //read and parse file
-                    var claims = EdiReaderParser.ReadAndParse(tempPath);
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
 
-                    //save into db
-                    ClaimSaver.Save837P(claims);
-
-                    //update processed list
-                    ProcessedFileEtags[file.Key] = file.ETag;
-
-                    Console.WriteLine($"Completed {file.Key}");
-                }
+                await Task.WhenAll(tasks);
 
                 Console.WriteLine("Completed Ingestion Process!!!");
 
@@ -128,6 +128,49 @@ namespace EDI837IngestionTask
             }
         }
 
+        // main logic to check whether file is processed, retrieve file, parse, and save into db.
+        private static async Task ProcessSingleFileAsync(S3FileInfo file)
+        {
+            try
+            {
+                if (ProcessedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
+                {
+                    Console.WriteLine($"Skipping already processed file");
+                    return;
+                }
+                Console.WriteLine($"Processing file: {file.Key} (ETag: {file.ETag})");
+
+                string tempPath = Mode == IngestionMode.S3 ? await S3Reader.DownloadFromS3Async(file) : file.Key;
+
+                if (Mode == IngestionMode.S3)
+                {
+                    TempFiles.Add(tempPath);
+                }
+
+                //read and parse file
+                var claims = EdiReaderParser.ReadAndParse(tempPath);
+
+                //save into db
+                ClaimSaver.Save837P(claims);
+
+
+                //update processed list
+                ProcessedFileEtags[file.Key] = file.ETag;
+
+                Console.WriteLine($"Completed {file.Key}");
+            }
+            catch (OperationCanceledException)
+            {
+
+                Console.WriteLine($"Cancelled {file.Key}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {file.Key} : {e.Message}");
+            }
+        }
+
+        // retrieve input mode, default is local
         private static IngestionMode ParseMode(string[] args)
         {
             if (args == null || args.Length == 0)
@@ -150,16 +193,17 @@ namespace EDI837IngestionTask
 
             var joined = string.Join(" ", args).ToLowerInvariant();
             if (joined.Contains("local", StringComparison.OrdinalIgnoreCase))
-                {
-                    return IngestionMode.Local;
-                }
-                if (joined.Contains("s3", StringComparison.OrdinalIgnoreCase))
-                {
-                    return IngestionMode.S3;
-                }
+            {
+                return IngestionMode.Local;
+            }
+            if (joined.Contains("s3", StringComparison.OrdinalIgnoreCase))
+            {
+                return IngestionMode.S3;
+            }
             return IngestionMode.Local;
         }
 
+        // clean temp files which download from S3
         private static void clearTmp()
         {
             if (Mode == IngestionMode.S3)
