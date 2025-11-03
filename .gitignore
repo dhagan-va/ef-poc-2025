@@ -4,6 +4,11 @@ obj/
 [Bb]uild/
 [Ll]og/
 [Tt]emp/
+**/src/*/bin/**
+**/src/*/obj/**
+**/tests/*/bin/**
+**/tests/*/obj/**
+
 
 # User-specific files
 *.user
