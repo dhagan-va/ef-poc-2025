@@ -65,8 +65,9 @@ namespace EDI275AttachmentParser.Models
             return string.Empty;
         }
         
-        public void SaveToFile(string directory)
+        public string SaveToFile(string directory)
         {
+            Directory.CreateDirectory(directory);
             var filePath = Path.Combine(directory, FileName);
             
             if (BinaryData != null)
@@ -82,6 +83,8 @@ namespace EDI275AttachmentParser.Models
             {
                 File.WriteAllText(filePath, TextData);
             }
+            
+            return filePath;
         }
     }
 }

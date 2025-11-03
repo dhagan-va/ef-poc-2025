@@ -2,6 +2,7 @@ using EdiFabric.Core.Model.Edi;
 using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
 using EDI275AttachmentParser.Models;
+using EDI275AttachmentParser.Templates;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
@@ -36,28 +37,23 @@ namespace EDI275AttachmentParser.Services
             try
             {
                 using (var stream = File.OpenRead(filePath))
-                using (var reader = new X12Reader(stream, "EdiFabric.Rules.X12008010.Rep"))
+                using (var reader = new X12Reader(stream, "EDI275AttachmentParser.Templates"))
                 {
                     while (reader.Read())
                     {
                         var item = reader.Item;
-
+                        
                         if (item is ISA isa)
                         {
-                            ParseISA(isa, document);
+                            ParseISASegment(isa, document);
                         }
                         else if (item is GS gs)
                         {
-                            ParseGS(gs, document);
+                            ParseGSSegment(gs, document);
                         }
-                        else if (item is ST st)
+                        else if (item is TS275 ts275)
                         {
-                            ParseST(st, document);
-                        }
-                        else
-                        {
-                            // Parse transaction-specific segments
-                            ParseTransactionSegments(item, document);
+                            Parse275Transaction(ts275, document);
                         }
                     }
                 }
@@ -72,45 +68,202 @@ namespace EDI275AttachmentParser.Services
             _logger.LogInformation("Parsed {AttachmentCount} attachments from EDI 275", document.Attachments.Count);
             return document;
         }
-
-        private void ParseISA(ISA isa, EDI275Document document)
+        
+        private void Parse275Transaction(TS275 transaction, EDI275Document document)
         {
-            // Use reflection to handle different EdiFabric versions
-            var interchangeControl = isa.GetType().GetProperty("InterchangeControlNumber")?.GetValue(isa)?.ToString()
-                ?? isa.GetType().GetProperty("ISA13")?.GetValue(isa)?.ToString()
-                ?? string.Empty;
+            // Parse ST segment
+            if (transaction.ST != null)
+            {
+                document.TransactionSetControlNumber = transaction.ST.TransactionSetControlNumber_02 ?? string.Empty;
+                _logger.LogDebug("ST - Control: {Control}", document.TransactionSetControlNumber);
+            }
+            
+            // Parse each information source loop (2000)
+            if (transaction.Loop2000 != null)
+            {
+                foreach (var loop2000 in transaction.Loop2000)
+                {
+                    // Parse patient loops (2100)
+                    if (loop2000.Loop2100 != null)
+                    {
+                        foreach (var loop2100 in loop2000.Loop2100)
+                        {
+                            ParsePatientLoop(loop2100, document);
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void ParsePatientLoop(Loop_2100_275 patientLoop, EDI275Document document)
+        {
+            // Parse patient information
+            var patient = new PatientReport();
+            
+            if (patientLoop.NM1 != null)
+            {
+                patient.PatientName = $"{patientLoop.NM1.NameFirst_04} {patientLoop.NM1.NameLast_03}".Trim();
+                patient.PatientId = patientLoop.NM1.IdentificationCode_09 ?? string.Empty;
                 
-            var senderId = isa.GetType().GetProperty("InterchangeSenderID")?.GetValue(isa)?.ToString()
-                ?? isa.GetType().GetProperty("ISA06")?.GetValue(isa)?.ToString()
-                ?? string.Empty;
+                _logger.LogDebug("Parsed patient: {Name} (ID: {Id})", patient.PatientName, patient.PatientId);
+            }
+            
+            if (patientLoop.DMG != null)
+            {
+                patient.Gender = patientLoop.DMG.GenderCode_03 ?? string.Empty;
                 
-            var receiverId = isa.GetType().GetProperty("InterchangeReceiverID")?.GetValue(isa)?.ToString()
-                ?? isa.GetType().GetProperty("ISA08")?.GetValue(isa)?.ToString()
-                ?? string.Empty;
+                if (DateTime.TryParseExact(patientLoop.DMG.DateTimePeriod_02, 
+                    "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var dob))
+                {
+                    patient.DateOfBirth = dob;
+                }
+            }
+            
+            document.PatientReports.Add(patient);
+            
+            // Parse attachment loops (2110)
+            if (patientLoop.Loop2110 != null)
+            {
+                foreach (var loop2110 in patientLoop.Loop2110)
+                {
+                    ParseAttachmentLoop(loop2110, document);
+                }
+            }
+        }
+        
+        private void ParseAttachmentLoop(Loop_2110_275 attachmentLoop, EDI275Document document)
+        {
+            var attachment = new Attachment
+            {
+                AttachmentDate = DateTime.UtcNow
+            };
+            
+            // Parse PWK segment
+            if (attachmentLoop.PWK != null)
+            {
+                attachment.AttachmentTypeCode = attachmentLoop.PWK.ReportTypeCode_01 ?? string.Empty;
+                attachment.TransmissionCode = attachmentLoop.PWK.ReportTransmissionCode_02 ?? string.Empty;
+                attachment.Description = attachmentLoop.PWK.Description_06 ?? string.Empty;
+                
+                // If description looks like a filename, use it with timestamp
+                if (!string.IsNullOrEmpty(attachment.Description) && attachment.Description.Contains('.'))
+                {
+                    var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    var ext = Path.GetExtension(attachment.Description);
+                    var nameWithoutExt = Path.GetFileNameWithoutExtension(attachment.Description);
+                    attachment.FileName = $"{nameWithoutExt}_{timestamp}{ext}";
+                }
+                
+                _logger.LogInformation("Parsed PWK segment - Type: {Type}, Description: {Desc}", 
+                    attachment.AttachmentTypeCode, attachment.Description);
+            }
+            
+            // Parse BIN segments
+            if (attachmentLoop.BIN != null && attachmentLoop.BIN.Count > 0)
+            {
+                foreach (var bin in attachmentLoop.BIN)
+                {
+                    ParseBINSegment(bin, attachment, document);
+                }
+            }
+            
+            // Only add if we have actual data
+            if (!string.IsNullOrEmpty(attachment.Base64Data) || attachment.BinaryData != null)
+            {
+                document.Attachments.Add(attachment);
+            }
+        }
+        
+        private void ParseBINSegment(BIN_BinaryData bin, Attachment attachment, EDI275Document document)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                
+                // BIN01 - Length of Binary Data
+                if (long.TryParse(bin.LengthofBinaryData_01, out var length))
+                {
+                    attachment.FileSize = length;
+                }
 
-            document.InterchangeControlNumber = interchangeControl;
-            document.SenderId = senderId;
-            document.ReceiverId = receiverId;
+                // BIN02 - Binary Data (Base64 encoded)
+                if (!string.IsNullOrEmpty(bin.BinaryData_02))
+                {
+                    var base64Data = bin.BinaryData_02.TrimEnd('~');
+                    attachment.Base64Data = base64Data;
+
+                    // Try to decode
+                    try
+                    {
+                        var bytes = Convert.FromBase64String(base64Data);
+                        attachment.BinaryData = bytes;
+                        
+                        // Check if it looks like text
+                        if (IsLikelyText(bytes))
+                        {
+                            attachment.TextData = Encoding.UTF8.GetString(bytes);
+                            if (string.IsNullOrEmpty(attachment.FileName))
+                            {
+                                attachment.FileName = $"attachment_{timestamp}_{document.Attachments.Count + 1}.txt";
+                            }
+                        }
+                        else if (string.IsNullOrEmpty(attachment.FileName))
+                        {
+                            attachment.FileName = $"attachment_{timestamp}_{document.Attachments.Count + 1}.bin";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Could not decode Base64 data");
+                        if (string.IsNullOrEmpty(attachment.FileName))
+                        {
+                            attachment.FileName = $"attachment_{timestamp}_{document.Attachments.Count + 1}.bin";
+                        }
+                    }
+                }
+
+                _logger.LogInformation("Parsed BIN segment - Size: {Size} bytes, File: {FileName}", 
+                    attachment.FileSize, attachment.FileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing BIN segment");
+            }
+        }
+        
+        private bool IsLikelyText(byte[] data)
+        {
+            if (data.Length == 0) return false;
+            
+            // Check if most bytes are printable ASCII
+            int printableCount = 0;
+            foreach (var b in data)
+            {
+                if ((b >= 32 && b <= 126) || b == 9 || b == 10 || b == 13) // printable + tab/newline/CR
+                {
+                    printableCount++;
+                }
+            }
+            
+            return (double)printableCount / data.Length > 0.8; // 80% printable = likely text
+        }
+        
+        private void ParseISASegment(ISA isa, EDI275Document document)
+        {
+            document.InterchangeControlNumber = isa.InterchangeControlNumber_13 ?? string.Empty;
+            document.SenderId = isa.InterchangeSenderID_06 ?? string.Empty;
+            document.ReceiverId = isa.InterchangeReceiverID_08 ?? string.Empty;
 
             _logger.LogDebug("ISA - Control: {Control}, Sender: {Sender}, Receiver: {Receiver}",
                 document.InterchangeControlNumber, document.SenderId, document.ReceiverId);
         }
 
-        private void ParseGS(GS gs, EDI275Document document)
+        private void ParseGSSegment(GS gs, EDI275Document document)
         {
-            var groupControl = gs.GetType().GetProperty("GroupControlNumber")?.GetValue(gs)?.ToString()
-                ?? gs.GetType().GetProperty("GS06")?.GetValue(gs)?.ToString()
-                ?? string.Empty;
-                
-            var dateStr = gs.GetType().GetProperty("Date")?.GetValue(gs)?.ToString()
-                ?? gs.GetType().GetProperty("GS04")?.GetValue(gs)?.ToString()
-                ?? string.Empty;
-                
-            var timeStr = gs.GetType().GetProperty("Time")?.GetValue(gs)?.ToString()
-                ?? gs.GetType().GetProperty("GS05")?.GetValue(gs)?.ToString()
-                ?? string.Empty;
+            document.GroupControlNumber = gs.GroupControlNumber_06 ?? string.Empty;
             
-            document.GroupControlNumber = groupControl;
+            var dateStr = gs.Date_04 ?? string.Empty;
+            var timeStr = gs.Time_05 ?? string.Empty;
             
             if (DateTime.TryParseExact($"{dateStr}{timeStr}", 
                 "yyyyMMddHHmm", null, System.Globalization.DateTimeStyles.None, out var date))
@@ -120,182 +273,6 @@ namespace EDI275AttachmentParser.Services
 
             _logger.LogDebug("GS - Control: {Control}, Date: {Date}", 
                 document.GroupControlNumber, document.TransactionDate);
-        }
-
-        private void ParseST(ST st, EDI275Document document)
-        {
-            // EdiFabric ST segment properties
-            var controlNumber = st.GetType().GetProperty("TransactionSetControlNumber")?.GetValue(st)?.ToString()
-                ?? st.GetType().GetProperty("ST02")?.GetValue(st)?.ToString()
-                ?? string.Empty;
-            
-            document.TransactionSetControlNumber = controlNumber;
-            _logger.LogDebug("ST - Control: {Control}", document.TransactionSetControlNumber);
-        }
-
-        private void ParseTransactionSegments(object item, EDI275Document document)
-        {
-            var segmentType = item.GetType().Name;
-
-            // Parse BIN segment (Binary Data Segment) for attachments
-            if (segmentType == "BIN" || item.ToString()?.StartsWith("BIN") == true)
-            {
-                ParseBinarySegment(item, document);
-            }
-            // Parse PWK segment (Paperwork Segment) for attachment metadata
-            else if (segmentType == "PWK" || item.ToString()?.StartsWith("PWK") == true)
-            {
-                ParsePaperworkSegment(item, document);
-            }
-            // Parse NM1 segment for patient information
-            else if (segmentType == "NM1" || item.ToString()?.StartsWith("NM1") == true)
-            {
-                ParseNameSegment(item, document);
-            }
-        }
-
-        private void ParseBinarySegment(object segment, EDI275Document document)
-        {
-            try
-            {
-                // The BIN segment contains binary data
-                var segmentString = segment.ToString() ?? string.Empty;
-                var elements = segmentString.Split('*');
-
-                if (elements.Length > 1)
-                {
-                    var attachment = new Attachment
-                    {
-                        AttachmentDate = DateTime.UtcNow
-                    };
-
-                    // BIN01 - Length of Binary Data
-                    if (elements.Length > 1 && long.TryParse(elements[1], out var length))
-                    {
-                        attachment.FileSize = length;
-                    }
-
-                    // BIN02 - Binary Data (Base64 encoded in EDI)
-                    if (elements.Length > 2 && !string.IsNullOrEmpty(elements[2]))
-                    {
-                        try
-                        {
-                            attachment.Base64Data = elements[2];
-                            attachment.BinaryData = Convert.FromBase64String(elements[2]);
-                            attachment.FileName = $"attachment_{document.Attachments.Count + 1}.bin";
-                        }
-                        catch (FormatException)
-                        {
-                            // If not Base64, treat as text
-                            attachment.TextData = elements[2];
-                            attachment.FileName = $"attachment_{document.Attachments.Count + 1}.txt";
-                        }
-                    }
-
-                    document.Attachments.Add(attachment);
-                    _logger.LogInformation("Parsed BIN segment - Size: {Size} bytes", attachment.FileSize);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing BIN segment");
-            }
-        }
-
-        private void ParsePaperworkSegment(object segment, EDI275Document document)
-        {
-            try
-            {
-                // PWK segment contains attachment metadata
-                var segmentString = segment.ToString() ?? string.Empty;
-                var elements = segmentString.Split('*');
-
-                if (elements.Length > 1)
-                {
-                    // Get or create the last attachment
-                    Attachment attachment;
-                    if (document.Attachments.Count > 0)
-                    {
-                        attachment = document.Attachments[^1];
-                    }
-                    else
-                    {
-                        attachment = new Attachment { AttachmentDate = DateTime.UtcNow };
-                        document.Attachments.Add(attachment);
-                    }
-
-                    // PWK01 - Report Type Code
-                    if (elements.Length > 1)
-                    {
-                        attachment.AttachmentTypeCode = elements[1];
-                    }
-
-                    // PWK02 - Report Transmission Code
-                    if (elements.Length > 2)
-                    {
-                        attachment.TransmissionCode = elements[2];
-                    }
-
-                    // PWK05 - Identification Code (Control Number)
-                    if (elements.Length > 5)
-                    {
-                        attachment.AttachmentControlNumber = elements[5];
-                    }
-
-                    // PWK06 - Description
-                    if (elements.Length > 6)
-                    {
-                        attachment.Description = elements[6];
-                    }
-
-                    _logger.LogInformation("Parsed PWK segment - Type: {Type}, Description: {Desc}", 
-                        attachment.AttachmentTypeCode, attachment.Description);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing PWK segment");
-            }
-        }
-
-        private void ParseNameSegment(object segment, EDI275Document document)
-        {
-            try
-            {
-                var segmentString = segment.ToString() ?? string.Empty;
-                var elements = segmentString.Split('*');
-
-                if (elements.Length > 1 && elements[1] == "IL") // Patient/Insured
-                {
-                    var patient = new PatientReport();
-
-                    // NM103 - Last Name
-                    if (elements.Length > 3)
-                    {
-                        patient.PatientName = elements[3];
-                    }
-
-                    // NM104 - First Name
-                    if (elements.Length > 4 && !string.IsNullOrEmpty(elements[4]))
-                    {
-                        patient.PatientName = $"{elements[4]} {patient.PatientName}";
-                    }
-
-                    // NM109 - Patient ID
-                    if (elements.Length > 9)
-                    {
-                        patient.PatientId = elements[9];
-                    }
-
-                    document.PatientReports.Add(patient);
-                    _logger.LogInformation("Parsed patient: {Name} (ID: {Id})", 
-                        patient.PatientName, patient.PatientId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing NM1 segment");
-            }
         }
 
         /// <summary>
@@ -315,14 +292,47 @@ namespace EDI275AttachmentParser.Services
             {
                 try
                 {
-                    attachment.SaveToFile(outputDirectory);
-                    _logger.LogInformation("Saved attachment: {FileName}", attachment.FileName);
+                    var savedPath = attachment.SaveToFile(outputDirectory);
+                    _logger.LogInformation("Saved attachment to: {FilePath}", savedPath);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error saving attachment: {FileName}", attachment.FileName);
                 }
             }
+        }
+        
+        /// <summary>
+        /// Parse an EDI 275 file and extract attachments to a directory, returning the list of saved file paths
+        /// </summary>
+        public List<string> ExtractAttachmentsFromFile(string filePath, string outputDirectory)
+        {
+            var document = ParseFile(filePath);
+            var savedPaths = new List<string>();
+            
+            _logger.LogInformation("Extracting {Count} attachments to {Dir}", 
+                document.Attachments.Count, outputDirectory);
+                
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+            
+            foreach (var attachment in document.Attachments)
+            {
+                try
+                {
+                    var savedPath = attachment.SaveToFile(outputDirectory);
+                    savedPaths.Add(savedPath);
+                    _logger.LogInformation("Saved attachment to: {FilePath}", savedPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving attachment: {FileName}", attachment.FileName);
+                }
+            }
+            
+            return savedPaths;
         }
     }
 }
