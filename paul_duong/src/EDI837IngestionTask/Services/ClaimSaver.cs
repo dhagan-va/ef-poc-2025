@@ -54,7 +54,7 @@ namespace EDI837IngestionTask.Services
                     .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
 
                 // Validate for non-null
-                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber) || string.IsNullOrWhiteSpace(tin)|| string.IsNullOrWhiteSpace(submitterId))
+                if (string.IsNullOrWhiteSpace(providerNpi) || string.IsNullOrWhiteSpace(transactionControlNumber) || string.IsNullOrWhiteSpace(tin) || string.IsNullOrWhiteSpace(submitterId))
                 {
                     skippedInvalid++;
                     Console.WriteLine("Skipping claim with missing identifiers.");

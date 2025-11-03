@@ -150,8 +150,17 @@ namespace EDI837IngestionTask
                 //read and parse file
                 var claims = EdiReaderParser.ReadAndParse(tempPath);
 
-                //save into db
-                ClaimSaver.Save837P(claims);
+                if (claims.Count > 0)
+                {
+                    //save into db
+                    ClaimSaver.Save837P(claims);
+                }
+                else
+                {
+                    Console.WriteLine("After Reading and Parse, no Data exists. Skip Save into DB step");
+                }
+
+
 
 
                 //update processed list
