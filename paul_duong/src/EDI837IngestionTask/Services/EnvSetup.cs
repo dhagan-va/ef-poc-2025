@@ -7,10 +7,9 @@ namespace EDI837IngestionTask.Services
         private static IConfigurationRoot? _config;
 
         public static int PollingSeconds { get; private set; } = 30;
-
         public static int BatchSize { get; private set; } = 100;
-
         public static int MaxConcurrency { get; private set; } = 5;
+        public static int validLevel { get; private set; } = 1;
 
         private static readonly string BaseDir = AppContext.BaseDirectory;
         private static readonly string ProjectDir = Path.GetFullPath(Path.Combine(BaseDir, "..", "..", ".."));
@@ -88,6 +87,8 @@ namespace EDI837IngestionTask.Services
                 BatchSize = _config.GetValue<int>("Ingestion:BatchSize", 100);
 
                 MaxConcurrency = _config.GetValue<int>("Ingestion:MaxConcurrency", 5);
+
+                validLevel = _config.GetValue<int>("Ingestion:ValidationLevel", 5);
             }
         }
 
