@@ -6,11 +6,9 @@ using X12EDI.Core.Services;
 
 namespace X12EDI.Core.Extensions
 {
-
-
-
     public static class ParserServiceCollectionExtensions
     {
+        #region Public Methods
 
         /// <summary>Adds the edi services.</summary>
         /// <param name="services">The services.</param>
@@ -42,15 +40,20 @@ namespace X12EDI.Core.Extensions
             }
             services.AddScoped<IFileIngestionService, FileIngestionService>();
 
-
             return services;
         }
+
+        #endregion Public Methods
     }
 
     public class EdiOptions
     {
+        #region Public Properties
+
+        public bool ContinueOnError { get; set; } = true;
+        public string? FolderPath { get; set; }
         public string? SerialKey { get; set; }
 
-        public string? FolderPath { get; set; }
+        #endregion Public Properties
     }
 }

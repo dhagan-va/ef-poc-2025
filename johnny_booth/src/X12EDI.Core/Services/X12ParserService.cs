@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using X12EDI.Abstractions.Services;
+using X12EDI.Core.Extensions;
 
 namespace X12EDI.Core.Services
 {
@@ -13,15 +14,17 @@ namespace X12EDI.Core.Services
     {
         #region Private Fields
 
+        private EdiOptions _ediOptions;
         private ILogger<X12ParserService> _logger;
 
         #endregion Private Fields
 
         #region Public Constructors
 
-        public X12ParserService(ILogger<X12ParserService> logger)
+        public X12ParserService(ILogger<X12ParserService> logger, EdiOptions ediOptions)
         {
             _logger = logger;
+            _ediOptions = ediOptions;
         }
 
         #endregion Public Constructors
@@ -48,13 +51,11 @@ namespace X12EDI.Core.Services
                 return default!;
             };
 
-
-
             foreach (var (stream, identifier) in sources)
             {
                 using var ediReader = new X12Reader(stream, factory, new X12ReaderSettings()
                 {
-                    ContinueOnError = true
+                    ContinueOnError = _ediOptions.ContinueOnError
                 });
 
                 while (await ediReader.ReadAsync(cancellationToken))
@@ -62,10 +63,6 @@ namespace X12EDI.Core.Services
                     if (ediReader.Item is IEdiItem transaction)
                     {
                         yield return new ParsedResult(identifier, transaction);
-                    }
-                    else
-                    {
-
                     }
                 }
             }
