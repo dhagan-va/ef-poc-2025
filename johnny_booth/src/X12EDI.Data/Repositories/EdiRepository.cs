@@ -49,7 +49,8 @@ namespace X12EDI.Data.Repositories
                 IngestedAt = DateTime.UtcNow
             };
 
-            var exists = _dbContext.EdiFiles.Where((a) => a.Identifier == identifier).Any();
+            var fileAlreadyProcessed = await _dbContext.EdiFiles.AnyAsync((a) => a.Identifier == identifier);
+            var hasNewTransactions = false;
 
             foreach (var item in items)
             {
@@ -74,6 +75,7 @@ namespace X12EDI.Data.Repositories
                             file.Envelope.Timestamp = DateTime.UtcNow;
                         }
                         break;
+
                     case GS gs:
                         if (file.Envelope == null)
                         {
@@ -89,11 +91,12 @@ namespace X12EDI.Data.Repositories
                             file.Envelope.CodeIdentifyingInformationType = gs.CodeIdentifyingInformationType_1;
                         }
                         break;
+
                     case EdiMessage message:
                         var raw = message.ToXml();
                         var checksum = EDIDataExtensions.ComputeSha256(raw);
                         // Check for existing transaction with same checksum
-                        exists = await _dbContext.EdiTransactions
+                        var exists = await _dbContext.EdiTransactions
                             .AnyAsync(t => t.Checksum == checksum, cancellationToken);
 
                         if (exists)
@@ -108,6 +111,7 @@ namespace X12EDI.Data.Repositories
                             TransactionType = message.GetType().Name,
                             ControlNumber = TryGetControlNumber(message) ?? string.Empty,
                         });
+                        hasNewTransactions = true;
                         break;
 
                     case ReaderErrorContext error:
@@ -116,9 +120,8 @@ namespace X12EDI.Data.Repositories
                 }
             }
 
-            if (exists == false)
+            if (!fileAlreadyProcessed && hasNewTransactions)
             {
-
                 if (file.Envelope != null)
                 {
                     file.Envelope.EdiFile = file;
