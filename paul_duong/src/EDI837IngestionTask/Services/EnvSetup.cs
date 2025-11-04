@@ -16,6 +16,9 @@ namespace EDI837IngestionTask.Services
         public static readonly string SamplesDir = Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "samples"));
 
 
+        /// <summary>
+        /// load appsettings.json
+        /// </summary>
         private static void EnsureConfigLoad()
         {
             if (_config == null)
@@ -34,18 +37,30 @@ namespace EDI837IngestionTask.Services
             }
         }
 
+        /// <summary>
+        /// Get DB connection setup from appsettings.json
+        /// </summary>
+        /// <returns>DB Connection setup info</returns>
         public static string GetDbConnection()
         {
             EnsureConfigLoad();
             return _config!.GetConnectionString("HIPAA_5010_837P") ?? "";
         }
 
+        /// <summary>
+        /// Get sample file - SampleClaimPayment837PEdi.edi path
+        /// </summary>
+        /// <returns>sample file path</returns>
         public static string GetSampleFile()
         {
-            return Path.GetFullPath(Path.Combine(SamplesDir, "ClaimPayment.edi"));
+            return Path.GetFullPath(Path.Combine(SamplesDir, "SampleClaimPayment837PEdi.edi"));
 
         }
 
+        /// <summary>
+        /// Get sample file - TestClaimPaymentEmpty.edi path
+        /// </summary>
+        /// <returns>sample file path</returns>
         public static string GetSampleEmptyFile()
         {
             return Path.GetFullPath(Path.Combine(SamplesDir, "TestClaimPaymentEmpty.edi"));
@@ -77,6 +92,9 @@ namespace EDI837IngestionTask.Services
 
         }
 
+        /// <summary>
+        /// Retrieve setups from appsettings.json and initalize the variables
+        /// </summary>
         public static void GeneralInitalize()
         {
             EnsureConfigLoad();
@@ -92,6 +110,9 @@ namespace EDI837IngestionTask.Services
             }
         }
 
+        /// <summary>
+        /// Retrieve setups from appsettings.json and initalize the variables for S3
+        /// </summary>
         public static void S3Initalize()
         {
             EnsureConfigLoad();

@@ -76,13 +76,15 @@ namespace EDI837IngestionTask
             }
             finally
             {
-                clearTmp();
+                cleanTmp();
                 Console.WriteLine("Main Service Existed.");
             }
         }
 
 
-        // main logic to handle Process files asynchronously
+        /// <summary>
+        /// main logic to handle Process files asynchronously
+        /// </summary>
         static async Task RunAsyncProcess()
         {
             Console.WriteLine("Starting Ingestion Process...");
@@ -95,31 +97,31 @@ namespace EDI837IngestionTask
                 {
                     Console.WriteLine("No Files found");
                 }
-
-                var maxConcurrency = EnvSetup.MaxConcurrency;
-
-                var semaphore = new SemaphoreSlim(maxConcurrency);
-                var tasks = files.Select(async file =>
+                else
                 {
-                    await semaphore.WaitAsync();
-                    try
-                    {
-                        await ProcessSingleFileAsync(file);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine($"Error happens during processing file: {e.Message}");
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
+                    var maxConcurrency = EnvSetup.MaxConcurrency;
 
-                await Task.WhenAll(tasks);
+                    var semaphore = new SemaphoreSlim(maxConcurrency);
+                    var tasks = files.Select(async file =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            await ProcessSingleFileAsync(file);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Error happens during processing file: {e.Message}");
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
 
+                    await Task.WhenAll(tasks);
+                }
                 Console.WriteLine("Completed Ingestion Process!!!");
-
             }
             catch (Exception ex)
             {
@@ -128,14 +130,17 @@ namespace EDI837IngestionTask
             }
         }
 
-        // main logic to check whether file is processed, retrieve file, parse, and save into db.
+
+        /// <summary>
+        /// main logic to check whether file is processed, retrieve file, parse, and save into db.
+        /// </summary>
         private static async Task ProcessSingleFileAsync(S3FileInfo file)
         {
             try
             {
                 if (ProcessedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
                 {
-                    Console.WriteLine($"Skipping already processed file");
+                    Console.WriteLine($"Skipping already processed file {file.Key} (ETag: {file.ETag})");
                     return;
                 }
                 Console.WriteLine($"Processing file: {file.Key} (ETag: {file.ETag})");
@@ -160,9 +165,6 @@ namespace EDI837IngestionTask
                     Console.WriteLine("After Reading and Parse, no Data exists. Skip Save into DB step");
                 }
 
-
-
-
                 //update processed list
                 ProcessedFileEtags[file.Key] = file.ETag;
 
@@ -179,7 +181,9 @@ namespace EDI837IngestionTask
             }
         }
 
-        // retrieve input mode, default is local
+        /// <summary>
+        /// retrieve input mode, default is local
+        /// </summary>
         private static IngestionMode ParseMode(string[] args)
         {
             if (args == null || args.Length == 0)
@@ -212,8 +216,10 @@ namespace EDI837IngestionTask
             return IngestionMode.Local;
         }
 
-        // clean temp files which download from S3
-        private static void clearTmp()
+        /// <summary>
+        /// clean temp files which download from S3
+        /// </summary>
+        private static void cleanTmp()
         {
             if (Mode == IngestionMode.S3)
             {

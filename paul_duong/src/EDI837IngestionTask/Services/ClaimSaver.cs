@@ -17,6 +17,7 @@ namespace EDI837IngestionTask.Services
         {
             using var ediDb = new HIPAA_5010_837P_Context();
 
+            // search the db and generate a hashset to check the duplicate
             var existingKeys = ediDb.ClaimProcesses
                 .AsNoTracking()
                 .Select(c => new { c.ProviderNPI, c.TransactionControlNumber, c.Tin, c.SubmitterId })
@@ -62,7 +63,7 @@ namespace EDI837IngestionTask.Services
                 }
 
                 var key = (providerNpi, transactionControlNumber, tin, submitterId);
-                // check dup in file
+                // check duplicate in file based on the key
                 if (!seenKeys.Add(key))
                 {
                     skippedDuplicates++;
@@ -70,11 +71,11 @@ namespace EDI837IngestionTask.Services
                     continue;
                 }
 
-
+                // check duplicate in DB based on the key
                 if (existingKeys.Contains(key))
                 {
                     skippedDuplicates++;
-                    Console.WriteLine($"Duplicate Records in File: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
+                    Console.WriteLine($"Duplicate Records in DB: NPI={providerNpi}, ST02={transactionControlNumber}, TIN={tin}, SUBMITTERID={submitterId}");
                     continue;
                 }
 

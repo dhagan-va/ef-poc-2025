@@ -8,7 +8,7 @@ namespace EDI837IngestionTask.Services
     public static class EdiReaderParser
     {
         /// <summary>
-        /// Read Claim and Parses it
+        /// Read Claim and Parse it to TS837P
         /// </summary>
         public static List<TS837P> ReadAndParse(string filePath)
         {
@@ -22,6 +22,8 @@ namespace EDI837IngestionTask.Services
             using var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa", settings);
 
             var ediItems = ediReader.ReadToEnd().ToList();
+
+            //Get all TS837P data from ediItems
             var transactions = ediItems.OfType<TS837P>();
 
             var transactionsList = new List<TS837P>();
@@ -43,11 +45,14 @@ namespace EDI837IngestionTask.Services
                     transactionsList.Add(transaction);
                 }
             }
-
+            // return valid data
             return ValidateSnip(transactionsList, EnvSetup.validLevel);
 
         }
 
+        /// <summary>
+        /// verify TS837P data and check whether match SNIP Validation level
+        /// </summary>
         private static List<TS837P> ValidateSnip(IEnumerable<TS837P> transactions, int level = 3)
         {
             Console.WriteLine($"Start Running SNIP Validation - Level {level}");
