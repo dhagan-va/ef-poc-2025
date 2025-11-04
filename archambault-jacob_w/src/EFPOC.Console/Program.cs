@@ -20,7 +20,9 @@ namespace ConsoleApp
             {
                 ediItems = reader.ReadToEnd().ToList();
             }
-            foreach (var ediItem in ediItems)
+            Console.WriteLine($"Number of EDI Items: {ediItems.Count}");
+            var claims = ediItems.OfType<TS837P>();
+            foreach (var ediItem in claims)
             {
                 PropertyInfo[] objectInfo = ediItem.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
