@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ConsoleApp
 {
@@ -20,8 +21,9 @@ namespace ConsoleApp
             {
                 ediItems = reader.ReadToEnd().ToList();
             }
-            Console.WriteLine($"Number of EDI Items: {ediItems.Count}");
             var claims = ediItems.OfType<TS837P>();
+            Console.WriteLine($"Number of Claims: {ediItems.Count}");
+            Console.WriteLine("Console version using reflection (Doesn't unpack all properties yet):");
             foreach (var ediItem in claims)
             {
                 PropertyInfo[] objectInfo = ediItem.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -31,6 +33,8 @@ namespace ConsoleApp
 
                 Console.WriteLine();
             }
+            Console.WriteLine("JSON Version: ");
+            Console.WriteLine(JsonSerializer.Serialize(claims, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
 }
