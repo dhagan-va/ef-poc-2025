@@ -11,13 +11,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{4E810803
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDI837IngestionTaskTests", "tests\EDI837IngestionTaskTests\EDI837IngestionTaskTests.csproj", "{126CE77A-DA1F-4156-AF51-1DEC154C310E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{EA26F6C9-56F9-45E0-AFBF-0794BEFAF677}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0C2BBD0F-AB3D-4289-9D59-C42230BF8D5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -29,8 +30,14 @@ Global
 		{126CE77A-DA1F-4156-AF51-1DEC154C310E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{126CE77A-DA1F-4156-AF51-1DEC154C310E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0C2BBD0F-AB3D-4289-9D59-C42230BF8D5B} = {838D3FCD-068D-4D2F-9E80-52823AD2BBB1}
 		{126CE77A-DA1F-4156-AF51-1DEC154C310E} = {4E810803-D506-45DC-AD00-191E8409900D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4D11098A-FACB-45D8-A6F9-059C1C230A65}
 	EndGlobalSection
 EndGlobal
