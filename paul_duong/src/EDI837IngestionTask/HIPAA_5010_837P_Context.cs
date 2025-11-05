@@ -15,10 +15,17 @@ namespace EDI837IngestionTask
         public DbSet<TS837P> TS837P { get; set; }
         public DbSet<ClaimProcess> ClaimProcesses { get; set; }
 
+        public HIPAA_5010_837P_Context(DbContextOptions<HIPAA_5010_837P_Context> options)
+            : base(options) { }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            var connString = EnvSetup.GetDbConnection();
-            optionsBuilder.UseSqlServer(connString);
+            if (!optionsBuilder.IsConfigured)
+            {
+                var connString = EnvSetup.GetDbConnection();
+                optionsBuilder.UseSqlServer(connString);
+            }
+
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

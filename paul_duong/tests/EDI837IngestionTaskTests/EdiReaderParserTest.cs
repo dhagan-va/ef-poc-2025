@@ -2,14 +2,14 @@ using EDI837IngestionTask.Services;
 
 namespace EDI837IngestionTaskTests;
 
-public class UnitTest
+public class EdiReaderParserTest
 {
-    public UnitTest()
+    public EdiReaderParserTest()
     {
         EnvSetup.SetEdiSerialKey();
     }
     [Fact]
-    public void Test1()
+    public void EdiReaderParser_ShouldReadFile()
     {
         var claimFilePath = EnvSetup.GetSampleFile();
         var tran = EdiReaderParser.ReadAndParse(claimFilePath);
@@ -19,7 +19,15 @@ public class UnitTest
     }
 
     [Fact]
-    public void Test2()
+    public void EdiReaderParser_ShouldReadFileAndReturnEmpty()
+    {
+        var claimFilePath = EnvSetup.GetSampleFile1();
+        var tran = EdiReaderParser.ReadAndParse(claimFilePath);
+        Assert.Empty(tran);
+    }
+
+    [Fact]
+    public void EdiReaderParser_ShouldReturnEmpty()
     {
         var claimFilePath = EnvSetup.GetSampleEmptyFile();
         var tran = EdiReaderParser.ReadAndParse(claimFilePath);

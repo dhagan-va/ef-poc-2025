@@ -11,6 +11,11 @@ namespace EDI837IngestionTask.Services
         private static IAmazonS3? s3Client;
         private static string bucketName = "";
 
+        public static void SetClient(IAmazonS3 client)
+        {
+            s3Client = client;
+        }
+
         /// <summary>
         /// Init provided variables
         /// </summary>

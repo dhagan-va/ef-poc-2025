@@ -30,6 +30,7 @@ dotnet add package Microsoft.EntityFrameworkCore --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.Tools --version 9.0.10
 dotnet add package Microsoft.EntityFrameworkCore.Proxies --version 9.0.10
+dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 9.0.10
 dotnet add package Microsoft.Extensions.Configuration --version 9.0.10
 dotnet add package Microsoft.Extensions.Configuration.Binder --version 9.0.10
 dotnet add package Microsoft.Extensions.FileExtensions --version 9.0.10
@@ -46,6 +47,8 @@ cd tests/EDI837IngestionTaskTests
 dotnet add package xunit --version 2.9.3
 dotnet add package xunit.runner.console --version 2.9.3
 dotnet add package coverlet.collector --version 6.0.4
+dotnet add package Moq --version 4.20.72
+dotnet tool install --global coverlet.console
 dotnet tool install --global dotnet-reportgenerator-globaltool
 ```
 

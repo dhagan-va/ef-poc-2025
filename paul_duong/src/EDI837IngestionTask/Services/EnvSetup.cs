@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace EDI837IngestionTask.Services
@@ -54,6 +55,16 @@ namespace EDI837IngestionTask.Services
         public static string GetSampleFile()
         {
             return Path.GetFullPath(Path.Combine(SamplesDir, "SampleClaimPayment837PEdi.edi"));
+
+        }
+
+        /// <summary>
+        /// Get sample file - SampleClaim837PEdi4.edi path
+        /// </summary>
+        /// <returns>sample file path</returns>
+        public static string GetSampleFile1()
+        {
+            return Path.GetFullPath(Path.Combine(SamplesDir, "SampleClaim837PEdi4.edi"));
 
         }
 
@@ -131,6 +142,17 @@ namespace EDI837IngestionTask.Services
 
             }
 
+        }
+
+        /// <summary>
+        /// Setup DB config
+        /// </summary>
+        public static HIPAA_5010_837P_Context CreateContext()
+        {
+            var options = new DbContextOptionsBuilder<HIPAA_5010_837P_Context>()
+            .UseSqlServer(GetDbConnection())
+            .Options;
+            return new HIPAA_5010_837P_Context(options);
         }
     }
 

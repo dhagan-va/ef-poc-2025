@@ -158,7 +158,14 @@ namespace EDI837IngestionTask
                 if (claims.Count > 0)
                 {
                     //save into db
-                    ClaimSaver.Save837P(claims);
+                    if (ClaimSaver.Save837P(claims))
+                    {
+                        Console.WriteLine("Store in DB Successfully");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to Store in DB");
+                    }
                 }
                 else
                 {
