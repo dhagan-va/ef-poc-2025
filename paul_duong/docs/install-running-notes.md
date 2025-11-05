@@ -72,7 +72,7 @@ modify src/{your project}/appsettings.json db Password part
 
 # S3 Integration
 ```
-python -m pip install moto[all]
+python -m pip install moto[all] flask flask_cors
 
 python start_moto.py
 python uploadFile.py
