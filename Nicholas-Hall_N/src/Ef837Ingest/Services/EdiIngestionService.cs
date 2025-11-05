@@ -1,118 +1,208 @@
-﻿using Edi837Ingestion.Data;
-using Edi837Ingestion.Domain.Entities;
+﻿using System.Reflection;
+using System.Text.Json;
+using System.Linq;
+using Edi837Ingestion.Data;
 using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
-using EdiFabric.Templates.Hipaa5010;
-using Ef837Ingest.Data;
-using System.Reflection;
+using EdiFabric.Templates.Hipaa5010;   
+using EdiFabric.Templates.X12004010;    
+using Ef837Ingest.Data.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
-namespace Edi837Ingestion.Edi;
+using Ef837Ingest.Edi.Validator;
 
-public class EdiIngestionService(IngestionDbContext db)
+namespace Edi837Ingestion.Edi
 {
-    private readonly IngestionDbContext _db = db;
-
-    public async Task<int> Ingest837Async(Stream ediStream, CancellationToken ct = default)
+    public class EdiIngestionService : IEdiIngestionService
     {
-        // Resolve 837P template when ST01 == "837"
-        using var reader = new X12Reader(
-            ediStream,
-            (isa, gs, st) =>
-            {
-                if (st.TransactionSetIdentifierCode_01 == "837")
-                    return typeof(TS837P).GetTypeInfo(); 
-                return null;
-            },
-            new X12ReaderSettings { Split = true });
+        private readonly Hipaa5010Context _db;
+        private readonly ILogger<EdiIngestionService> _log;
 
-        Interchange? currentInterchange = null;
-        FunctionalGroup? currentGroup = null;
-        var ingestedTransactions = 0;
-
-        while (reader.Read())
+        public EdiIngestionService(Hipaa5010Context db, ILogger<EdiIngestionService> log)
         {
-            ct.ThrowIfCancellationRequested();
-
-            switch (reader.Item)
-            {
-                // ISA envelope
-                case ISA isa:
-                    currentInterchange = new Interchange
-                    {
-                        Isa01 = isa.AuthorizationInformationQualifier_1,
-                        Isa02 = isa.AuthorizationInformation_2,
-                        Isa03 = isa.SecurityInformationQualifier_3,
-                        Isa04 = isa.SecurityInformation_4,
-                        Isa05 = isa.SenderIDQualifier_5,    
-                        Isa06 = isa.InterchangeSenderID_6,
-                        Isa07 = isa.ReceiverIDQualifier_7,   
-                        Isa08 = isa.InterchangeReceiverID_8,
-                        Isa09Date = isa.InterchangeDate_9,
-                        Isa10Time = isa.InterchangeTime_10,
-                        ControlNumber = isa.InterchangeControlNumber_13
-                    };
-                    _db.Interchanges.Add(currentInterchange);
-                    break;
-
-                case GS gs when currentInterchange is not null:
-                    currentGroup = new FunctionalGroup
-                    {
-                        Interchange = currentInterchange,
-                        Gs01 = gs.CodeIdentifyingInformationType_1,
-                        Gs02 = gs.SenderIDCode_2,
-                        Gs03 = gs.ReceiverIDCode_3,
-                        Gs04Date = gs.Date_4,
-                        Gs05Time = gs.Time_5,
-                        ControlNumber = gs.GroupControlNumber_6,
-                        TransactionTypeCode = gs.TransactionTypeCode_7,
-                        VersionAndRelease = gs.VersionAndRelease_8
-                    };
-                    _db.FunctionalGroups.Add(currentGroup);
-                    break;
-
-                case TS837P p when currentGroup is not null:
-                    ingestedTransactions += await Persist837PAsync(currentGroup, p, ct);
-                    break;
-
-            }
+            _db = db;
+            _log = log;
         }
 
-        await _db.SaveChangesAsync(ct);
-        return ingestedTransactions;
-    }
-
-    private Task<int> Persist837PAsync(FunctionalGroup group, TS837P p, CancellationToken ct)
-    {
-        var tx = new TransactionSet
+        public async Task<int> IngestAsync(Stream ediStream, CancellationToken ct = default)
         {
-            FunctionalGroup = group,
-            St01 = p.ST.TransactionSetIdentifierCode_01,
-            ControlNumber = p.ST.TransactionSetControlNumber_02,
-            Bht02 = p.BHT_BeginningOfHierarchicalTransaction.TransactionSetPurposeCode_02,
-            Bht06 = p.BHT_BeginningOfHierarchicalTransaction.TransactionTypeCode_06,
-            RawJson = System.Text.Json.JsonSerializer.Serialize(p)
-        };
-        _db.TransactionSets.Add(tx);
+            using var reader = new X12Reader(
+                ediStream,
+                (isa, gs, st) => st.TransactionSetIdentifierCode_01 switch
+                {
+                    "837" => typeof(TS837P).GetTypeInfo(),
+                    "850" => typeof(TS850).GetTypeInfo(),
+                    _ => null
+                },
+                new X12ReaderSettings { Split = true });
 
-        var first2300 = p.Loop2000A?
-            .FirstOrDefault()?
-            .Loop2000B?
-            .FirstOrDefault()?
-            .Loop2300?
-            .FirstOrDefault();
+            int saved = 0;
+            IDbContextTransaction? tx = null;
 
-        decimal? totalAmt = null;
-        if (decimal.TryParse(first2300?.CLM_ClaimInformation?.TotalClaimChargeAmount_02, out var parsed))
-            totalAmt = parsed;
+            try
+            {
+                if (_db.Database.IsRelational())
+                {
+                    tx = await _db.Database.BeginTransactionAsync(ct);
+                }
 
-        var claim = new ClaimStub
-        {
-            TransactionSet = tx,
-            PatientControlNumber = first2300?.CLM_ClaimInformation?.PatientControlNumber_01 ?? string.Empty,
-            TotalClaimCharge = totalAmt
-        };
-        _db.ClaimStubs.Add(claim);
+                while (reader.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
 
-        return Task.FromResult(1);
+                    switch (reader.Item)
+                    {
+                        case ISA isa:
+                            _db.ISA.Add(new IsaEntity
+                            {
+                                InterchangeControlNumber = isa.InterchangeControlNumber_13,
+                                SenderId = isa.InterchangeSenderID_6,
+                                ReceiverId = isa.InterchangeReceiverID_8,
+                                RawJson = JsonSerializer.Serialize(isa)
+                            });
+                            break;
+
+                        case GS gs:
+                            _db.GS.Add(new GsEntity
+                            {
+                                FunctionalIdCode = gs.CodeIdentifyingInformationType_1,
+                                AppSenderCode = gs.SenderIDCode_2,
+                                AppReceiverCode = gs.ReceiverIDCode_3,
+                                GroupControlNumber = gs.GroupControlNumber_6,
+                                RawJson = JsonSerializer.Serialize(gs)
+                            });
+                            break;
+
+                        case ST st:
+                            _db.ST.Add(new StEntity
+                            {
+                                TransactionSetId = st.TransactionSetIdentifierCode_01,
+                                ControlNumber = st.TransactionSetControlNumber_02,
+                                RawJson = JsonSerializer.Serialize(st)
+                            });
+                            break;
+
+                        case TS837P msg837:
+                            {
+                                var snipOptions = new SnipOptions
+                                {
+                                    Level = SnipLevel.Snip4,     
+                                    FailOnError = true,
+                                    ThrowOnNullMessage = true
+                                };
+
+                                var snip = SnipValidator.Validate(msg837, snipOptions);
+
+                                if (!snip.IsValid)
+                                {
+                                    var controlNumber = msg837.ST?.TransactionSetControlNumber_02;
+
+                                    var segErrors = snip.ErrorContext?.Errors
+                                                    ?? Enumerable.Empty<EdiFabric.Core.Model.Edi.ErrorContexts.SegmentErrorContext>();
+
+                                    foreach (var e in segErrors)
+                                    {
+                                        _db.ValidationIssues.Add(new ValidationIssue
+                                        {
+                                            Transaction = "837P",
+                                            ControlNumber = controlNumber,
+                                            Level = snipOptions.Level.ToString(),
+                                            SegmentId = e.LoopId,
+                                            Position = e.Position,
+                                            Code = e.Name,
+                                            Message = e.Errors.FirstOrDefault().Message,
+                                            Severity = "Error",
+                                            RawContextJson = JsonSerializer.Serialize(e)
+                                        });
+                                    }
+
+                                    await _db.SaveChangesAsync(ct);
+
+                                    _log.LogError("SNIP validation failed for 837P ControlNumber={CN} (Level={Level}).",
+                                        controlNumber, snipOptions.Level);
+
+
+                                }
+
+                                if (msg837.ST != null)
+                                {
+                                    _db.ST.Add(new StEntity
+                                    {
+                                        TransactionSetId = msg837.ST.TransactionSetIdentifierCode_01,
+                                        ControlNumber = msg837.ST.TransactionSetControlNumber_02,
+                                        RawJson = JsonSerializer.Serialize(msg837.ST)
+                                    });
+                                }
+
+                                if (msg837.SE != null)
+                                {
+                                    if (!int.TryParse(msg837.SE?.NumberofIncludedSegments_01, out var segCount) || segCount <= 0)
+                                        throw new InvalidOperationException(
+                                            $"Invalid or missing SE01 segment count. Value was: '{msg837.SE?.NumberofIncludedSegments_01}'");
+
+                                    _db.SE.Add(new SeEntity
+                                    {
+                                        SegmentCount = segCount,
+                                        ControlNumber = msg837.SE.TransactionSetControlNumber_02,
+                                        RawJson = JsonSerializer.Serialize(msg837.SE)
+                                    });
+                                }
+
+                                _db.TS837P.Add(new Ts837pEntity
+                                {
+                                    ControlNumber = msg837.ST?.TransactionSetControlNumber_02,
+                                    PatientControlNumber =
+                                        msg837?.Loop2000A?.FirstOrDefault()?
+                                              .Loop2000B?.FirstOrDefault()?
+                                              .Loop2300?.FirstOrDefault()?
+                                              .CLM_ClaimInformation?.PatientControlNumber_01,
+                                    RawJson = JsonSerializer.Serialize(msg837)
+                                });
+
+                                saved++;
+                                break;
+                            }
+
+
+                        case TS850 po850:
+                            _db.TS850.Add(new Ts850Entity
+                            {
+                                PurchaseOrderNumber = po850?.BEG?.PurchaseOrderNumber_03,
+                                RawJson = JsonSerializer.Serialize(po850)
+                            });
+                            saved++;
+                            break;
+
+                        case SE se:
+                            _db.SE.Add(new SeEntity
+                            {
+                                SegmentCount = int.TryParse(se.NumberofIncludedSegments_01, out var n) ? n : 0,
+                                ControlNumber = se.TransactionSetControlNumber_02,
+                                RawJson = JsonSerializer.Serialize(se)
+                            });
+                            break;
+                    }
+                }
+
+                await _db.SaveChangesAsync(ct);
+
+                if (tx is not null)
+                {
+                    await tx.CommitAsync(ct);
+                }
+
+                return saved;
+            }
+            catch (Exception ex)
+            {
+                if (tx is not null)
+                    await tx.RollbackAsync(ct);
+
+                _log.LogError(ex, "Failed to ingest EDI file.");
+                throw;
+            }
+        }
     }
 }

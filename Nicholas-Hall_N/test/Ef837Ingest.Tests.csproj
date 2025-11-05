@@ -32,6 +32,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\Ef837Ingest\Ef837Ingest.csproj" />
+	  <Content Include="..\..\src\Ef837Ingest\Documents\**\*.*">
+		  <Link>Documents\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
   </ItemGroup>
 
   <ItemGroup>
