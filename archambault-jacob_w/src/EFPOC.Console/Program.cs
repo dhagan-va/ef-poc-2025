@@ -2,6 +2,7 @@
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using EFPOC.FileIO;
+using EFPOC.Application;
 using System.Reflection;
 using System.Text.Json;
 
@@ -24,7 +25,7 @@ namespace ConsoleApp
                 Console.WriteLine();
             }
             Console.WriteLine("JSON Version: ");
-            Console.WriteLine(JsonSerializer.Serialize(claims, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine(new TS837Parser().Serialize(claims));
         }
     }
 }
