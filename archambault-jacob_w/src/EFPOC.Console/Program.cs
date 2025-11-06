@@ -1,6 +1,4 @@
-﻿using EdiFabric.Framework.Readers;
-using EdiFabric.Templates.Hipaa5010;
-using EFPOC.FileIO;
+﻿using EFPOC.FileIO;
 using EFPOC.Application;
 
 namespace ConsoleApp
