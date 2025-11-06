@@ -1,3 +1,17 @@
+# Quick start
+
+1. 
+```
+docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
+   -p 1433:1433 --name sql1 --hostname sql1 \
+   -d \
+   mcr.microsoft.com/mssql/server:latest
+```
+2. `cd <project location>/ef-poc-2025/archambault-jacob_w/src/EFPOC.DB`
+3. `dotnet ef database update`
+4. ` cd ef-poc-2025/archambault-jacob_w/src/EFPOC.Console`
+5. `dotnet run`
+
 # About
 
 # Prerequisites
