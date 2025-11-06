@@ -7,7 +7,7 @@ namespace EDI837IngestionTask.Services
 {
     public static class ClaimSaver
     {
-        private static int BATCH_SIZE = EnvSetup.BatchSize;
+        private static int _BATCH_SIZE = EnvSetup.BatchSize;
 
         /// <summary>
         /// Saves a list of 837P transactions to the database.
@@ -100,7 +100,7 @@ namespace EDI837IngestionTask.Services
                     ediDb.TS837P.Add(transaction);
                     inserted++;
 
-                    if (inserted % BATCH_SIZE == 0)
+                    if (inserted % _BATCH_SIZE == 0)
                     {
                         ediDb.SaveChanges();
                         Console.WriteLine($"batch inserted {inserted} records");

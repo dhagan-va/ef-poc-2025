@@ -12,9 +12,9 @@ namespace EDI837IngestionTask.Services
         public static int MaxConcurrency { get; private set; } = 5;
         public static int validLevel { get; private set; } = 1;
 
-        private static readonly string BaseDir = AppContext.BaseDirectory;
-        private static readonly string ProjectDir = Path.GetFullPath(Path.Combine(BaseDir, "..", "..", ".."));
-        public static readonly string SamplesDir = Path.GetFullPath(Path.Combine(ProjectDir, "..", "..", "samples"));
+        private static readonly string _baseDir = AppContext.BaseDirectory;
+        private static readonly string _projectDir = Path.GetFullPath(Path.Combine(_baseDir, "..", "..", ".."));
+        public static readonly string SamplesDir = Path.GetFullPath(Path.Combine(_projectDir, "..", "..", "samples"));
 
 
         /// <summary>
@@ -25,13 +25,13 @@ namespace EDI837IngestionTask.Services
             if (_config == null)
             {
                 Console.WriteLine("Loading Configuration from appsettings.json...");
-                var appSettingsPath = Path.Combine(ProjectDir, "appsettings.json");
+                var appSettingsPath = Path.Combine(_projectDir, "appsettings.json");
                 if (!File.Exists(appSettingsPath))
                 {
                     throw new FileNotFoundException($"Cannot find appsettings.json at {appSettingsPath}");
                 }
                 var builder = new ConfigurationBuilder()
-                    .SetBasePath(ProjectDir)
+                    .SetBasePath(_projectDir)
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                 _config = builder.Build();
                 Console.WriteLine("Completed Loading Configuration from appsettings.json...");

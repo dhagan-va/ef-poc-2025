@@ -5,7 +5,7 @@ namespace EDI837IngestionTask.Services
     public static class LocalReader
     {
 
-        private static readonly string SamplesDir = EnvSetup.SamplesDir;
+        private static readonly string _samplesDir = EnvSetup.SamplesDir;
 
         /// <summary>
         /// check all end with .edi files in Samples dir and return a list of the file
@@ -13,7 +13,7 @@ namespace EDI837IngestionTask.Services
         /// <returns>a list of the file</returns>
         public static List<S3FileInfo> ListFiles()
         {
-            var files = Directory.GetFiles(SamplesDir, "*.edi");
+            var files = Directory.GetFiles(_samplesDir, "*.edi");
 
             return files.Select(o => new S3FileInfo(o, ComputeETag(File.ReadAllBytes(o)), File.GetLastWriteTimeUtc(o))).ToList();
         }

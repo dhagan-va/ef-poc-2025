@@ -7,16 +7,16 @@ namespace EDI837IngestionTask
     internal class Program
     {
 
-        private static readonly Dictionary<string, string> ProcessedFileEtags = new();
-        private static IngestionMode Mode = IngestionMode.Local;
-        private static readonly List<string> TempFiles = new();
+        private static readonly Dictionary<string, string> _processedFileEtags = new();
+        private static IngestionMode _mode = IngestionMode.Local;
+        private static readonly List<string> _tempFiles = new();
 
         static async Task Main(string[] args)
         {
             Console.WriteLine("Main Service started.");
 
-            Mode = ParseMode(args);
-            Console.WriteLine($"Choose Running Mode is {Mode}");
+            _mode = ParseMode(args);
+            Console.WriteLine($"Choose Running Mode is {_mode}");
 
             // Attempt to set EDI Serial key from .env file
             if (!EnvSetup.SetEdiSerialKey())
@@ -27,7 +27,7 @@ namespace EDI837IngestionTask
 
             EnvSetup.GeneralInitalize();
 
-            if (Mode == IngestionMode.S3)
+            if (_mode == IngestionMode.S3)
             {
                 // load S3 env and initialize
                 EnvSetup.S3Initalize();
@@ -46,7 +46,7 @@ namespace EDI837IngestionTask
 
             try
             {
-                if (Mode == IngestionMode.S3)
+                if (_mode == IngestionMode.S3)
                 {
                     // scan S3 file and process file every 30s
                     while (!cts.Token.IsCancellationRequested)
@@ -91,7 +91,7 @@ namespace EDI837IngestionTask
 
             try
             {
-                var files = Mode == IngestionMode.S3 ? await S3Reader.ListFilesAsync() : LocalReader.ListFiles();
+                var files = _mode == IngestionMode.S3 ? await S3Reader.ListFilesAsync() : LocalReader.ListFiles();
 
                 if (files.Count == 0)
                 {
@@ -138,18 +138,18 @@ namespace EDI837IngestionTask
         {
             try
             {
-                if (ProcessedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
+                if (_processedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
                 {
                     Console.WriteLine($"Skipping already processed file {file.Key} (ETag: {file.ETag})");
                     return;
                 }
                 Console.WriteLine($"Processing file: {file.Key} (ETag: {file.ETag})");
 
-                string tempPath = Mode == IngestionMode.S3 ? await S3Reader.DownloadFromS3Async(file) : file.Key;
+                string tempPath = _mode == IngestionMode.S3 ? await S3Reader.DownloadFromS3Async(file) : file.Key;
 
-                if (Mode == IngestionMode.S3)
+                if (_mode == IngestionMode.S3)
                 {
-                    TempFiles.Add(tempPath);
+                    _tempFiles.Add(tempPath);
                 }
 
                 //read and parse file
@@ -173,7 +173,7 @@ namespace EDI837IngestionTask
                 }
 
                 //update processed list
-                ProcessedFileEtags[file.Key] = file.ETag;
+                _processedFileEtags[file.Key] = file.ETag;
 
                 Console.WriteLine($"Completed {file.Key}");
             }
@@ -228,10 +228,10 @@ namespace EDI837IngestionTask
         /// </summary>
         private static void cleanTmp()
         {
-            if (Mode == IngestionMode.S3)
+            if (_mode == IngestionMode.S3)
             {
                 Console.WriteLine("Cleaning up temporary files...");
-                foreach (var tmpFile in TempFiles)
+                foreach (var tmpFile in _tempFiles)
                 {
                     try
                     {

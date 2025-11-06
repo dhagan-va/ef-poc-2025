@@ -8,12 +8,12 @@ namespace EDI837IngestionTask.Services
 {
     public static class S3Reader
     {
-        private static IAmazonS3? s3Client;
-        private static string bucketName = "";
+        private static IAmazonS3? _s3Client;
+        private static string _bucketName = "";
 
         public static void SetClient(IAmazonS3 client)
         {
-            s3Client = client;
+            _s3Client = client;
         }
 
         /// <summary>
@@ -26,14 +26,14 @@ namespace EDI837IngestionTask.Services
             string accessKey,
             string secretKey)
         {
-            bucketName = bucket;
+            _bucketName = bucket;
             var config = new AmazonS3Config
             {
                 ServiceURL = endpoint,
                 ForcePathStyle = true,
                 AuthenticationRegion = region
             };
-            s3Client = new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
+            _s3Client = new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
 
             Console.WriteLine($"Connected to S3 mock: {endpoint}, bucket: {bucket}");
         }
@@ -44,10 +44,10 @@ namespace EDI837IngestionTask.Services
         /// <returns>a list of the file</returns>
         public static async Task<List<S3FileInfo>> ListFilesAsync()
         {
-            if (s3Client == null) throw new InvalidOperationException("S3Reader is not initialized!!!");
+            if (_s3Client == null) throw new InvalidOperationException("S3Reader is not initialized!!!");
             try
             {
-                var response = await s3Client.ListObjectsV2Async(new ListObjectsV2Request { BucketName = bucketName });
+                var response = await _s3Client.ListObjectsV2Async(new ListObjectsV2Request { BucketName = _bucketName });
                 return response.S3Objects.Select(o => new S3FileInfo(o.Key, o.ETag.Trim('"'), o.LastModified)).ToList();
             }
             catch (AmazonS3Exception e)
@@ -65,9 +65,9 @@ namespace EDI837IngestionTask.Services
         /// <returns>file content</returns>
         public static async Task<Stream> GetFileAsync(string key)
         {
-            if (s3Client == null) throw new InvalidOperationException("S3Reader is not initialized!!!");
+            if (_s3Client == null) throw new InvalidOperationException("S3Reader is not initialized!!!");
 
-            var response = await s3Client.GetObjectAsync(bucketName, key);
+            var response = await _s3Client.GetObjectAsync(_bucketName, key);
 
             return response.ResponseStream;
         }
