@@ -3,12 +3,6 @@ using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Core.Model.Edi.X12;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 using X12EDI.Abstractions.Repositories;
 using X12EDI.Data.DBContext;
 using X12EDI.Data.Entities;
@@ -37,8 +31,8 @@ namespace X12EDI.Data.Repositories
 
         #region Public Methods
 
-        /// <summary>Saves the file asynchronous.</summary>
-        /// <param name="identifier">The identifier.</param>
+        /// <summary>Saves the file asynchronously.</summary>
+        /// <param name="identifier">The file unique identifier.</param>
         /// <param name="items">The items.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         public async Task<bool> SaveFileAsync(string identifier, IEnumerable<object> items, CancellationToken cancellationToken)
@@ -59,36 +53,22 @@ namespace X12EDI.Data.Repositories
                     case ISA isa:
                         if (file.Envelope == null)
                         {
-                            file.Envelope = new EdiEnvelope
-                            {
-                                InterchangeControlNumber = isa.InterchangeControlNumber_13,
-                                SenderId = isa.InterchangeSenderID_6,
-                                ReceiverId = isa.InterchangeReceiverID_8,
-                                Timestamp = DateTime.UtcNow
-                            };
+                            file.Envelope = new EdiEnvelope(isa);
                         }
                         else
                         {
-                            file.Envelope.InterchangeControlNumber = isa.InterchangeControlNumber_13;
-                            file.Envelope.SenderId = isa.InterchangeSenderID_6;
-                            file.Envelope.ReceiverId = isa.InterchangeReceiverID_8;
-                            file.Envelope.Timestamp = DateTime.UtcNow;
+                            file.Envelope.MapISA(isa);
                         }
                         break;
 
                     case GS gs:
                         if (file.Envelope == null)
                         {
-                            file.Envelope = new EdiEnvelope
-                            {
-                                GroupControlNumber = gs.GroupControlNumber_6,
-                                CodeIdentifyingInformationType = gs.CodeIdentifyingInformationType_1
-                            };
+                            file.Envelope = new EdiEnvelope(gs);
                         }
                         else
                         {
-                            file.Envelope.GroupControlNumber = gs.GroupControlNumber_6;
-                            file.Envelope.CodeIdentifyingInformationType = gs.CodeIdentifyingInformationType_1;
+                            file.Envelope.MapGS(gs);
                         }
                         break;
 

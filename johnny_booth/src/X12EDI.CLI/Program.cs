@@ -39,6 +39,7 @@ public class Program
         // 5. Database context registration from .Data
         services.AddX12EdiData(configuration);
 
+        // Build and use IServiceProvider
         using var provider = services.BuildServiceProvider();
 
         // test logging
@@ -49,8 +50,8 @@ public class Program
         var ediOptions = provider.GetRequiredService<EdiOptions>();
         logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "is")} set.");
 
-        // Resolve and run parser
-        var parser = provider.GetRequiredService<IFileIngestionService>();
-        await parser.IngestAllAsync(CancellationToken.None);
+        // Resolve and run
+        var fileIngestionService = provider.GetRequiredService<IFileIngestionService>();
+        await fileIngestionService.IngestAllAsync(CancellationToken.None);
     }
 }

@@ -50,7 +50,10 @@ namespace X12EDI.Core.Services
 
             foreach (var file in contents.Where(f => f.Exists && !f.IsDirectory))
             {
-                await IngestAsync(file.Name, cancellationToken);
+                if (file.Name.EndsWith(".edi", StringComparison.OrdinalIgnoreCase))
+                {
+                    await IngestAsync(file.Name, cancellationToken);
+                }
             }
         }
 
