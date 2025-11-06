@@ -3,7 +3,6 @@ using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using EFPOC.FileIO;
 using EFPOC.Application;
-using System.Text.Json;
 
 namespace ConsoleApp
 {
@@ -17,7 +16,7 @@ namespace ConsoleApp
             Console.WriteLine("Console version using reflection (Doesn't unpack all properties yet):");
             parser.Parse(claims);
             Console.WriteLine("JSON Version: ");
-            Console.WriteLine(new TS837Parser().Serialize(claims));
+            Console.WriteLine(parser.Serialize(claims));
         }
     }
 }
