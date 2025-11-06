@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36623.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDI837", "EDI837\EDI837.csproj", "{11453A42-94A2-4ECB-8915-580557B6AF6F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{11453A42-94A2-4ECB-8915-580557B6AF6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11453A42-94A2-4ECB-8915-580557B6AF6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11453A42-94A2-4ECB-8915-580557B6AF6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11453A42-94A2-4ECB-8915-580557B6AF6F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {40A99CF1-E5B0-4035-B7CB-3B57C5321D17}
+	EndGlobalSection
+EndGlobal

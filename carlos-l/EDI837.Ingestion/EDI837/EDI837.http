@@ -1,0 +1,6 @@
+@EDI837_HostAddress = http://localhost:5279
+
+GET {{EDI837_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
