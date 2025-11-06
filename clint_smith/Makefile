@@ -4,6 +4,9 @@ ifneq (,$(wildcard .env))
 	export $(shell sed 's/=.*//' .env)
 endif
 
+MOTO_PORT ?= 5001
+MOTO_ENDPOINT := http://localhost:$(MOTO_PORT)
+
 .PHONY: run-sql start-sql stop-sql rm-sql shell-sql logs-sql status help test format coverage \
  moto populate-s3 reset-db run-ingest-local run-ingest-s3 build drop-db create-db
 
@@ -41,7 +44,7 @@ status:
 
 test:
 	@echo "Starting moto_server..."
-	@moto_server -p 5000 & \
+	@moto_server -p $(MOTO_PORT) & \
 	MOTO_PID=$$!; \
 	sleep 2; \
 	dotnet test tests/EDI837.Ingestion.Tests; \
@@ -49,7 +52,7 @@ test:
 
 coverage:
 	@echo "Starting moto_server..."
-	@moto_server -p 5000 & \
+	@moto_server -p $(MOTO_PORT) & \
 	MOTO_PID=$$!; \
 	sleep 2; \
 	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal; \
@@ -81,15 +84,25 @@ format:
 
 
 moto:
-	@echo "Starting Moto mock server (S3 included) on port 5000..."
-	@moto_server -p 5000
+	@echo "Starting Moto mock server (S3 included) on port $(MOTO_PORT)..."
+	@moto_server -p $(MOTO_PORT)
+
+kill-moto:
+	@PORT=$(MOTO_PORT); \
+	PIDS=$$(lsof -ti:$$PORT 2>/dev/null); \
+	if [ -z "$$PIDS" ]; then \
+		echo "No process found listening on port $$PORT."; \
+	else \
+		echo "Killing process(es) on port $$PORT: $$PIDS"; \
+		kill $$PIDS; \
+	fi
 
 # Upload sample EDI file to Moto S3 mock
 SAMPLE_PATH ?= samples/837-sample-file.edi
 populate-s3:
 	@echo "Creating bucket (if needed) and uploading sample EDI file..."
-	@aws --endpoint-url=http://localhost:5000 s3 mb s3://edi-bucket 2>/dev/null || true
-	@aws --endpoint-url=http://localhost:5000 s3 cp $(SAMPLE_PATH) s3://edi-bucket/incoming/$(notdir $(SAMPLE_PATH))
+	@aws --endpoint-url=$(MOTO_ENDPOINT) s3 mb s3://edi-bucket 2>/dev/null || true
+	@aws --endpoint-url=$(MOTO_ENDPOINT) s3 cp $(SAMPLE_PATH) s3://edi-bucket/incoming/$(notdir $(SAMPLE_PATH))
 	@echo "Uploaded $(SAMPLE_PATH) to edi-bucket/incoming/"
 
 drop-db:
@@ -114,11 +127,13 @@ run-ingest-local:
 run-ingest-s3:
 	@echo "Running Ingestion project synchronoushly with local sample file."
 	@echo "Starting moto_server..."
-	@moto_server -p 5000 & \
+	@moto_server -p $(MOTO_PORT) & \
 	MOTO_PID=$$!; \
 	sleep 2; \
-	cd src/EDI837.Ingestion && dotnet run -- s3
-	kill $$MOTO_PID
+	(cd src/EDI837.Ingestion && dotnet run -- s3); \
+	STATUS=$$?; \
+	$(MAKE) kill-moto; \
+	exit $$STATUS
 
 build:
 	cd src/EDI837.Ingestion && dotnet build
@@ -144,5 +159,3 @@ help:
 	@echo "  make run-ingest-local    	-> Run ingestion synchronously with a local sample file"
 	@echo "  make run-ingest-s3    		-> Run ingestion asynchronously; polling s3 bucket for incoming edi files"
 	@echo "  make build    				-> Build the main project"
-
-
