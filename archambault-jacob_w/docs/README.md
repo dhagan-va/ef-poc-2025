@@ -1,16 +1,22 @@
 # Quick start
 
-1. 
+## Run SQL Server:
 ```
 docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
    -p 1433:1433 --name sql1 --hostname sql1 \
    -d \
    mcr.microsoft.com/mssql/server:latest
 ```
-2. `cd <project location>/ef-poc-2025/archambault-jacob_w/src/EFPOC.DB`
-3. `dotnet ef database update`
-4. ` cd ef-poc-2025/archambault-jacob_w/src/EFPOC.Console`
-5. `dotnet run`
+##  Run EF migration:
+`cd <project location>/ef-poc-2025/archambault-jacob_w/src/EFPOC.DB`
+`dotnet ef database update`
+Check that initial migration was successful:
+- Check that database creation was successful: `docker exec -it sql1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P '<password>' -Q "SELECT name FROM sys.databases;" -No`
+- Check that tables were created: `docker exec -it sql1 /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U SA -P '<password>' -d HIPAA -Q "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES" -No`
+
+## Start project:
+`cd ef-poc-2025/archambault-jacob_w/src/EFPOC.Console`
+`dotnet run`
 
 # About
 
