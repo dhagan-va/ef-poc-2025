@@ -1,5 +1,4 @@
-﻿using EdiFabric.Core.Model.Edi;
-using EdiFabric.Framework.Readers;
+﻿using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using EFPOC.FileIO;
 using EFPOC.Application;
