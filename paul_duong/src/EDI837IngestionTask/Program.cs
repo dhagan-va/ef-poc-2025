@@ -1,45 +1,22 @@
-﻿using EdiFabric.Templates.Hipaa5010;
-using DotNetEnv;
-using Microsoft.EntityFrameworkCore;
+﻿using EDI837IngestionTask.Models;
 using EDI837IngestionTask.Services;
-using EDI837IngestionTask.Models;
+
 
 namespace EDI837IngestionTask
 {
-
-    /// <summary>
-    /// DB Context
-    /// </summary>
-    public class HIPAA_5010_837P_Context : DbContext
-    {
-        public DbSet<TS837P> TS837P { get; set; }
-        public DbSet<ClaimProcess> ClaimProcesses { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (!optionsBuilder.IsConfigured)
-            {
-                var connString = EnvSetup.GetDbConnection();
-                optionsBuilder
-                    .UseLazyLoadingProxies()
-                    .UseSqlServer(connString);
-            }
-        }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<ClaimProcess>()
-                .HasIndex(c => new { c.ProviderNPI, c.TransactionControlNumber })
-                .IsUnique();
-        }
-    }
-
-
     internal class Program
     {
-        static void Main()
+
+        private static readonly Dictionary<string, string> _processedFileEtags = new();
+        private static IngestionMode _mode = IngestionMode.Local;
+        private static readonly List<string> _tempFiles = new();
+
+        static async Task Main(string[] args)
         {
-            Console.WriteLine("Starting Ingestion Process...");
+            Console.WriteLine("Main Service started.");
+
+            _mode = ParseMode(args);
+            Console.WriteLine($"Choose Running Mode is {_mode}");
 
             // Attempt to set EDI Serial key from .env file
             if (!EnvSetup.SetEdiSerialKey())
@@ -48,11 +25,231 @@ namespace EDI837IngestionTask
                 return;
             }
 
-            var filePath = EnvSetup.GetSampleFile();
-            var claims = EdiReaderParser.ReadAndParse(filePath);
-            ClaimSaver.Save837P(claims);
-            Console.WriteLine("Completed Ingestion Process!!!");
+            EnvSetup.GeneralInitalize();
+
+            if (_mode == IngestionMode.S3)
+            {
+                // load S3 env and initialize
+                EnvSetup.S3Initalize();
+            }
+
+            // create cancel signal
+            var cts = new CancellationTokenSource();
+
+            // press Ctrl + C to exist
+            Console.CancelKeyPress += (s, e) =>
+            {
+                e.Cancel = true;
+                Console.WriteLine("Shutdown requested...");
+                cts.Cancel();
+            };
+
+            try
+            {
+                if (_mode == IngestionMode.S3)
+                {
+                    // scan S3 file and process file every 30s
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        await RunAsyncProcess();
+                        Console.WriteLine($"Waiting {EnvSetup.PollingSeconds}s...");
+                        var delayTask = Task.Delay(TimeSpan.FromSeconds(EnvSetup.PollingSeconds), cts.Token);
+                        var cancelTask = Task.Run(() =>
+                        {
+                            while (!cts.Token.IsCancellationRequested)
+                                Thread.Sleep(100);
+                        });
+
+                        await Task.WhenAny(delayTask, cancelTask);
+                    }
+                }
+                else
+                {
+                    await RunAsyncProcess();
+                    Console.WriteLine("Local processing completed. Existing...");
+                }
+
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Main Service stopped.");
+            }
+            finally
+            {
+                cleanTmp();
+                Console.WriteLine("Main Service Existed.");
+            }
         }
+
+
+        /// <summary>
+        /// main logic to handle Process files asynchronously
+        /// </summary>
+        static async Task RunAsyncProcess()
+        {
+            Console.WriteLine("Starting Ingestion Process...");
+
+            try
+            {
+                var files = _mode == IngestionMode.S3 ? await S3Reader.ListFilesAsync() : LocalReader.ListFiles();
+
+                if (files.Count == 0)
+                {
+                    Console.WriteLine("No Files found");
+                }
+                else
+                {
+                    var maxConcurrency = EnvSetup.MaxConcurrency;
+
+                    var semaphore = new SemaphoreSlim(maxConcurrency);
+                    var tasks = files.Select(async file =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            await ProcessSingleFileAsync(file);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Error happens during processing file: {e.Message}");
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
+
+                    await Task.WhenAll(tasks);
+                }
+                Console.WriteLine("Completed Ingestion Process!!!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                await Task.Delay(TimeSpan.FromSeconds(10));
+            }
+        }
+
+
+        /// <summary>
+        /// main logic to check whether file is processed, retrieve file, parse, and save into db.
+        /// </summary>
+        private static async Task ProcessSingleFileAsync(S3FileInfo file)
+        {
+            try
+            {
+                if (_processedFileEtags.TryGetValue(file.Key, out var oldEtag) && oldEtag == file.ETag)
+                {
+                    Console.WriteLine($"Skipping already processed file {file.Key} (ETag: {file.ETag})");
+                    return;
+                }
+                Console.WriteLine($"Processing file: {file.Key} (ETag: {file.ETag})");
+
+                string tempPath = _mode == IngestionMode.S3 ? await S3Reader.DownloadFromS3Async(file) : file.Key;
+
+                if (_mode == IngestionMode.S3)
+                {
+                    _tempFiles.Add(tempPath);
+                }
+
+                //read and parse file
+                var claims = EdiReaderParser.ReadAndParse(tempPath);
+
+                if (claims.Count > 0)
+                {
+                    //save into db
+                    if (ClaimSaver.Save837P(claims))
+                    {
+                        Console.WriteLine("Store in DB Successfully");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to Store in DB");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("After Reading and Parse, no Data exists. Skip Save into DB step");
+                }
+
+                //update processed list
+                _processedFileEtags[file.Key] = file.ETag;
+
+                Console.WriteLine($"Completed {file.Key}");
+            }
+            catch (OperationCanceledException)
+            {
+
+                Console.WriteLine($"Cancelled {file.Key}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {file.Key} : {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// retrieve input mode, default is local
+        /// </summary>
+        private static IngestionMode ParseMode(string[] args)
+        {
+            if (args == null || args.Length == 0)
+            {
+                return IngestionMode.Local;
+            }
+            var modeIndex = Array.FindIndex(args, a => a.Equals("--mode", StringComparison.OrdinalIgnoreCase));
+            if (modeIndex >= 0 && modeIndex + 1 < args.Length)
+            {
+                var value = args[modeIndex + 1].ToLowerInvariant();
+                if (value.Contains("local", StringComparison.OrdinalIgnoreCase))
+                {
+                    return IngestionMode.Local;
+                }
+                if (value.Contains("s3", StringComparison.OrdinalIgnoreCase))
+                {
+                    return IngestionMode.S3;
+                }
+            }
+
+            var joined = string.Join(" ", args).ToLowerInvariant();
+            if (joined.Contains("local", StringComparison.OrdinalIgnoreCase))
+            {
+                return IngestionMode.Local;
+            }
+            if (joined.Contains("s3", StringComparison.OrdinalIgnoreCase))
+            {
+                return IngestionMode.S3;
+            }
+            return IngestionMode.Local;
+        }
+
+        /// <summary>
+        /// clean temp files which download from S3
+        /// </summary>
+        private static void cleanTmp()
+        {
+            if (_mode == IngestionMode.S3)
+            {
+                Console.WriteLine("Cleaning up temporary files...");
+                foreach (var tmpFile in _tempFiles)
+                {
+                    try
+                    {
+                        if (File.Exists(tmpFile))
+                        {
+                            File.Delete(tmpFile);
+                            Console.WriteLine($"...Deleted: {tmpFile}");
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Could not delete {tmpFile}: {e.Message}");
+                    }
+                }
+
+            }
+        }
+
     }
 
 }
