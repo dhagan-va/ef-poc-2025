@@ -30,6 +30,7 @@ obj/
 !.env.sample
 *.local
 *.secret
+moto_env
 
 # Test results
 TestResult*/
