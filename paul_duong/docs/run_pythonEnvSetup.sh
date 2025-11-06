@@ -1,6 +1,6 @@
 #!/bin/bash
 
-py venv moto_env
+py -m venv moto_env
 
 source moto_env/Scripts/activate
 
