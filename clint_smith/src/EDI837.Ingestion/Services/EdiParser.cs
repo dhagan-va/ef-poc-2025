@@ -2,17 +2,25 @@ using EDI837.Ingestion.Gateways;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
+using Microsoft.Extensions.Logging;
 
 namespace EDI837.Ingestion.Services
 {
-    public static class EdiParser
+    public class EdiParser
     {
+        private readonly ILogger<EdiParser> _logger;
+
+        public EdiParser(ILogger<EdiParser> logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Parse the Edi file from a given local path
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static IEnumerable<TS837P> ParseEdiFileFromPath(string path)
+        public IEnumerable<TS837P> ParseEdiFileFromPath(string path)
         {
             using var ediStream = File.OpenRead(path);
             return ParseEdiStream(ediStream);
@@ -24,7 +32,7 @@ namespace EDI837.Ingestion.Services
         /// </summary>
         /// <param name="ediStream">A Stream object</param>
         /// <returns>List of valid 837P transactions.</returns>
-        public static IEnumerable<TS837P> ParseEdiStream(Stream ediStream)
+        public IEnumerable<TS837P> ParseEdiStream(Stream ediStream)
         {
             List<IEdiItem> ediItems;
             using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
@@ -44,12 +52,14 @@ namespace EDI837.Ingestion.Services
                 {
                     var errors = transaction.ErrorContext.Flatten().ToList();
 
-                    Console.WriteLine(
-                        $"Claim {transaction.ST?.TransactionSetControlNumber_02 ?? "(unknown)"} has {errors.Count} errors:"
+                    _logger.LogWarning(
+                        "Claim {TransactionControlNumber} has {ErrorCount} errors",
+                        transaction.ST?.TransactionSetControlNumber_02 ?? "(unknown)",
+                        errors.Count
                     );
                     foreach (var err in errors)
                     {
-                        Console.WriteLine($"  {err}");
+                        _logger.LogWarning("  {ErrorDetail}", err);
                     }
                 }
                 else
@@ -58,12 +68,15 @@ namespace EDI837.Ingestion.Services
                 }
             }
 
-            Console.WriteLine($"Parsed {validTransactions.Count} valid claims successfully.");
+            _logger.LogInformation(
+                "Parsed {ValidTransactionCount} valid claims successfully.",
+                validTransactions.Count
+            );
 
             return validTransactions;
         }
 
-        public static async Task RunAsync(
+        public async Task RunAsync(
             S3Gateway s3Gateway,
             TransactionSaver transactionSaver,
             CancellationToken cancellationToken
@@ -74,11 +87,11 @@ namespace EDI837.Ingestion.Services
 
             if (s3Gateway == null)
             {
-                Console.WriteLine("S3Gateway not initialized. Exiting poller.");
+                _logger.LogInformation("S3Gateway not initialized. Exiting poller.");
                 return;
             }
 
-            Console.WriteLine("Starting EDI poller... Press Ctrl-C to stop.");
+            _logger.LogInformation("Starting EDI poller... Press Ctrl-C to stop.");
 
             // poll forever until Ctrl-C (cancellation) is requested
             while (!cancellationToken.IsCancellationRequested)
@@ -89,10 +102,10 @@ namespace EDI837.Ingestion.Services
 
                     if (files.Count > 0)
                     {
-                        Console.WriteLine($"Found {files.Count} file(s):");
+                        _logger.LogInformation("Found {FileCount} file(s):", files.Count);
                         foreach (var file in files)
                         {
-                            Console.WriteLine($"  {file.Key}");
+                            _logger.LogInformation("  {FileKey}", file.Key);
 
                             // Example placeholder for your real processing
                             var stream = await s3Gateway.GetFileStreamAsync(file.Key);
@@ -107,12 +120,12 @@ namespace EDI837.Ingestion.Services
                     }
                     else
                     {
-                        Console.WriteLine("No new files found.");
+                        _logger.LogInformation("No new files found.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error while polling S3: {ex.Message}");
+                    _logger.LogError(ex, "Error while polling S3");
                     throw;
                 }
 
@@ -120,7 +133,7 @@ namespace EDI837.Ingestion.Services
                 await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
             }
 
-            Console.WriteLine("EDI poller stopped.");
+            _logger.LogInformation("EDI poller stopped.");
         }
     }
 }

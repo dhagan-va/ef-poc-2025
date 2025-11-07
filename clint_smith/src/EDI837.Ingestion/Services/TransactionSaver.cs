@@ -1,14 +1,30 @@
 using System.Xml.Serialization;
 using EdiFabric.Templates.Hipaa5010;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EDI837.Ingestion.Services
 {
     public class TransactionSaver
     {
+        private readonly ILogger<TransactionSaver> _logger;
+        private readonly HIPAA_5010_837P_Context _ediDb;
+        private readonly ClaimStagingContext _stagingDb;
         private readonly AppSettings _settings;
 
-        public TransactionSaver(AppSettings settings) => _settings = settings;
+        public TransactionSaver(
+            ILogger<TransactionSaver> logger,
+            HIPAA_5010_837P_Context ediDb,
+            ClaimStagingContext stagingDb,
+            AppSettings settings
+        )
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _ediDb = ediDb ?? throw new ArgumentNullException(nameof(ediDb));
+            _stagingDb = stagingDb ?? throw new ArgumentNullException(nameof(stagingDb));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
 
         /// <summary>
         /// Saves a list of 837P transactions to the database.
@@ -26,9 +42,6 @@ namespace EDI837.Ingestion.Services
         {
             ArgumentNullException.ThrowIfNull(transactions);
 
-            await using var ediDb = new HIPAA_5010_837P_Context(_settings);
-            await using var stagingDb = new ClaimStagingContext(_settings);
-
             foreach (var transaction in transactions)
             {
                 // Extract attributes used for detecting uniqueness
@@ -45,8 +58,11 @@ namespace EDI837.Ingestion.Services
                     || string.IsNullOrWhiteSpace(transactionControlNumber)
                 )
                 {
-                    Console.WriteLine("Skipping claim with missing identifiers.");
-                    Console.WriteLine($"NPI: {providerNpi}, ST02: {transactionControlNumber}");
+                    _logger.LogInformation(
+                        "Skipping claim with missing identifiers. NPI={ProviderNpi}, ST02={TransactionControlNumber}",
+                        providerNpi,
+                        transactionControlNumber
+                    );
                     continue;
                 }
 
@@ -60,32 +76,49 @@ namespace EDI837.Ingestion.Services
                     ClaimXml = "",
                 };
 
-                await stagingDb.ClaimStagings.AddAsync(stagingRecord);
+                await _stagingDb.ClaimStagings.AddAsync(stagingRecord);
 
                 try
                 {
-                    await stagingDb.SaveChangesAsync();
+                    await _stagingDb.SaveChangesAsync();
+                }
+                catch (DbUpdateException dbEx)
+                    when (dbEx.InnerException is SqlException sql && sql.Number == 2601)
+                {
+                    _logger.LogWarning(
+                        "Duplicate claim detected (NPI={ProviderNpi}, ST02={TransactionControlNumber}). "
+                            + "Will not write to database.",
+                        providerNpi,
+                        transactionControlNumber
+                    );
+                    _stagingDb.Entry(stagingRecord).State = EntityState.Detached;
+                    continue;
                 }
                 catch (DbUpdateException dbEx)
                 {
-                    Console.WriteLine(
-                        $"[DB Error] Failed to insert claim (NPI={providerNpi}, ST02={transactionControlNumber}): {dbEx.InnerException?.Message ?? dbEx.Message}"
+                    _logger.LogError(
+                        dbEx,
+                        "Failed to insert claim (NPI={ProviderNpi}, ST02={TransactionControlNumber})",
+                        providerNpi,
+                        transactionControlNumber
                     );
-                    stagingDb.Entry(stagingRecord).State = EntityState.Detached;
+                    _stagingDb.Entry(stagingRecord).State = EntityState.Detached;
                     continue;
                 }
 
                 // Only serialize and save XML if DB insert succeeded
                 var xml = SerializeToXml(transaction);
                 stagingRecord.ClaimXml = xml.ToString();
-                await stagingDb.SaveChangesAsync();
+                await _stagingDb.SaveChangesAsync();
 
                 // Add to X12 Hierarchy Tables now that we know its not a duplicate
-                await ediDb.TS837P.AddAsync(transaction);
-                await ediDb.SaveChangesAsync();
+                await _ediDb.TS837P.AddAsync(transaction);
+                await _ediDb.SaveChangesAsync();
 
-                Console.WriteLine(
-                    $"Successfully ingested claim: NPI={providerNpi}, ST02={transactionControlNumber}"
+                _logger.LogInformation(
+                    "Successfully ingested claim. NPI={ProviderNpi}, ST02={TransactionControlNumber}",
+                    providerNpi,
+                    transactionControlNumber
                 );
             }
         }

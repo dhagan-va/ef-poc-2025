@@ -59,6 +59,10 @@ dotnet_diagnostic.CA1056.severity = none         # URLs as string fine in config
 dotnet_diagnostic.CA1311.severity = suggestion   # Culture casing non-critical
 
 # ----- Excludes -----
+
+# CA1848: Use the LoggerMessage delegates
+dotnet_diagnostic.CA1848.severity = suggestion
+
 [*.Designer.cs]
 generated_code = true
 

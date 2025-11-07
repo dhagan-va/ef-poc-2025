@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using Microsoft.Extensions.Logging;
 
 namespace EDI837.Ingestion.Gateways
 {
@@ -8,6 +9,7 @@ namespace EDI837.Ingestion.Gateways
     /// </summary>
     public sealed class S3Gateway : IDisposable
     {
+        private readonly ILogger<S3Gateway> _logger;
         private readonly AmazonS3Client _s3Client;
         private readonly string _bucketName = "edi-bucket";
 
@@ -16,10 +18,13 @@ namespace EDI837.Ingestion.Gateways
         /// </summary>
         /// <param name="serviceURI"></param>
         /// <param name="bucketName"></param>
-        public S3Gateway(Uri serviceURI, string bucketName)
+        /// <param name="logger"></param>
+        public S3Gateway(Uri serviceURI, string bucketName, ILogger<S3Gateway> logger)
         {
             ArgumentNullException.ThrowIfNull(serviceURI);
             ArgumentNullException.ThrowIfNull(bucketName);
+
+            _logger = logger;
 
             var config = new AmazonS3Config
             {
@@ -49,13 +54,13 @@ namespace EDI837.Ingestion.Gateways
         {
             if (_s3Client == null)
             {
-                Console.WriteLine("Error: S3 client not initialized.");
+                _logger.LogError("S3 client not initialized.");
                 return [];
             }
 
             if (string.IsNullOrEmpty(_bucketName))
             {
-                Console.WriteLine("Error: Bucket name is missing.");
+                _logger.LogError("Bucket name is missing.");
                 return [];
             }
 
@@ -69,12 +74,12 @@ namespace EDI837.Ingestion.Gateways
             }
             catch (AmazonS3Exception ex)
             {
-                Console.WriteLine($"S3 error listing objects: {ex.ErrorCode} - {ex.Message}");
+                _logger.LogError(ex, "S3 error listing objects: {ErrorCode}", ex.ErrorCode);
                 return [];
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected error listing objects: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error listing objects.");
                 throw;
             }
         }
@@ -140,15 +145,19 @@ namespace EDI837.Ingestion.Gateways
                     new DeleteObjectRequest { BucketName = _bucketName, Key = key }
                 );
 
-                Console.WriteLine($"Deleted file '{key}' from bucket '{_bucketName}'.");
+                _logger.LogInformation(
+                    "Deleted file '{Key}' from bucket '{Bucket}'",
+                    key,
+                    _bucketName
+                );
             }
             catch (AmazonS3Exception ex)
             {
-                Console.WriteLine($"S3 error deleting '{key}': {ex.ErrorCode} - {ex.Message}");
+                _logger.LogError(ex, "S3 error deleting '{Key}': {ErrorCode}", key, ex.ErrorCode);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected error deleting '{key}': {ex.Message}");
+                _logger.LogError(ex, "Unexpected error deleting '{Key}'", key);
                 throw;
             }
         }

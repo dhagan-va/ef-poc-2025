@@ -1,8 +1,4 @@
-using DotNetEnv;
-using EDI837.Ingestion.Gateways;
-using EDI837.Ingestion.Services;
 using EdiFabric.Templates.Hipaa5010;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace EDI837.Ingestion
@@ -19,14 +15,6 @@ namespace EDI837.Ingestion
 
         public ClaimStagingContext(DbContextOptions<ClaimStagingContext> options)
             : base(options) { }
-
-        public ClaimStagingContext(AppSettings settings)
-        {
-            if (settings != null)
-            {
-                _connectionString = settings.Database.ConnectionStrings.ClaimStaging;
-            }
-        }
 
         public DbSet<ClaimStaging> ClaimStagings { get; set; }
 
@@ -63,14 +51,6 @@ namespace EDI837.Ingestion
 
         public HIPAA_5010_837P_Context(DbContextOptions<HIPAA_5010_837P_Context> options)
             : base(options) { }
-
-        public HIPAA_5010_837P_Context(AppSettings settings)
-        {
-            if (settings != null)
-            {
-                _connectionString = settings.Database.ConnectionStrings.HIPAA_5010_837P;
-            }
-        }
 
         public DbSet<TS837P> TS837P { get; set; }
 
