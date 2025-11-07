@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using EdiFabric.Core.Model.Edi;                  // EdiMessage, ValidationSettings, ValidationLevel
-using EdiFabric.Core.Model.Edi.ErrorContexts;   // MessageErrorContext
-using EdiFabric.Templates.Hipaa5010;            // TS837P
+using EdiFabric.Core.Model.Edi;                 
+using EdiFabric.Core.Model.Edi.ErrorContexts;  
+using EdiFabric.Templates.Hipaa5010;           
 
 namespace Ef837Ingest.Edi.Validator
 {
@@ -33,7 +33,6 @@ namespace Ef837Ingest.Edi.Validator
 
     public static class SnipValidator
     {
-        // -------- Public API (TS837P) --------
 
         public static SnipResult Validate(TS837P message, SnipOptions? options = null)
         {
@@ -115,7 +114,6 @@ namespace Ef837Ingest.Edi.Validator
             return result;
         }
 
-        // -------- Internals --------
 
         private static ValidationLevel MapLevel(SnipLevel level) => level switch
         {

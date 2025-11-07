@@ -3,13 +3,15 @@
 namespace Ef837Ingest.Edi
 {
 
-    public class IngestionQueue : IIngestionQueue
+    using System.Threading.Channels;
+
+    public sealed class IngestionQueue
     {
-        private readonly Channel<string> _channel;
-        public IngestionQueue(Channel<string> channel) => _channel = channel;
+        private readonly Channel<string> _channel = Channel.CreateUnbounded<string>();
+
+        public ChannelReader<string> Reader => _channel.Reader;
+
         public ValueTask EnqueueAsync(string s3Uri, CancellationToken ct = default)
             => _channel.Writer.WriteAsync(s3Uri, ct);
-        public ChannelReader<string> Reader => _channel.Reader; // for the worker
     }
-
 }

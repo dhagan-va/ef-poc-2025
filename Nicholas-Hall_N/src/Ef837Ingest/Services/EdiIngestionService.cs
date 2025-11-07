@@ -30,13 +30,33 @@ namespace Edi837Ingestion.Edi
         {
             using var reader = new X12Reader(
                 ediStream,
-                (isa, gs, st) => st.TransactionSetIdentifierCode_01 switch
+                (isa, gs, st) =>
                 {
-                    "837" => typeof(TS837P).GetTypeInfo(),
-                    "850" => typeof(TS850).GetTypeInfo(),
-                    _ => null
+                    if (st.TransactionSetIdentifierCode_01 == "837")
+                    {
+                        switch (st.ImplementationConventionPreference_03)
+                        {
+                            case "005010X222A1": 
+                                return typeof(TS837P).GetTypeInfo();
+
+                            // If/when you add Dental/Institutional support, uncomment:
+                            // case "005010X224A2": // 837 Dental
+                            //     return typeof(TS837D).GetTypeInfo();
+                            // case "005010X223A2": // 837 Institutional
+                            //     return typeof(TS837I).GetTypeInfo();
+
+                            default:
+                                return null;
+                        }
+                    }
+
+                    if (st.TransactionSetIdentifierCode_01 == "850")
+                        return typeof(TS850).GetTypeInfo();
+
+                    return null;
                 },
                 new X12ReaderSettings { Split = true });
+
 
             int saved = 0;
             IDbContextTransaction? tx = null;
@@ -112,7 +132,7 @@ namespace Edi837Ingestion.Edi
                                             SegmentId = e.LoopId,
                                             Position = e.Position,
                                             Code = e.Name,
-                                            Message = e.Errors.FirstOrDefault().Message,
+                                            Message = e?.Errors?.FirstOrDefault()?.Message ?? "Unknown error",
                                             Severity = "Error",
                                             RawContextJson = JsonSerializer.Serialize(e)
                                         });

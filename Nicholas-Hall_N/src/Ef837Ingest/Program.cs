@@ -1,74 +1,177 @@
-﻿using Edi837Ingestion.Data;
+﻿using Amazon.Runtime;
+using Amazon.S3;
+using Edi837Ingestion.Data;
 using Edi837Ingestion.Edi;
+using Ef837Ingest.Edi;                 // your IFileSource / FileSource
+using Ef837Ingest.Edi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 var baseDir = AppContext.BaseDirectory;
 
+// Build configuration
 var config = new ConfigurationBuilder()
     .SetBasePath(baseDir)
-    .AddJsonFile("appsettings.json", optional: true)
-    .AddUserSecrets<Program>(optional: true)  
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddUserSecrets<Program>(optional: true)
     .AddEnvironmentVariables()
     .Build();
 
+// EdiFabric license
 var ediKey = config["EdiFabric:LicenseKey"];
-if (!string.IsNullOrWhiteSpace(ediKey))
-{
-    EdiFabric.SerialKey.Set(ediKey);
-}
-else
-{
-    throw new Exception("EdiFabric License Key is missing. Add it to user secrets under 'EdiFabric:LicenseKey'.");
-}
+if (string.IsNullOrWhiteSpace(ediKey))
+    throw new Exception("Missing EdiFabric:LicenseKey in user secrets or environment.");
+EdiFabric.SerialKey.Set(ediKey);
 
-var services = new ServiceCollection();
+// mode flag
+var isWatchMode = args.Any(a => string.Equals(a, "--watch", StringComparison.OrdinalIgnoreCase));
 
-// Logging
-services.AddLogging(b => b.AddSimpleConsole().SetMinimumLevel(LogLevel.Information));
+// Host
+using var host = Host.CreateDefaultBuilder()
+    .ConfigureLogging(lb =>
+    {
+        lb.ClearProviders();
+        lb.AddSimpleConsole();
+        lb.SetMinimumLevel(LogLevel.Information);
+    })
+    .ConfigureServices(services =>
+    {
+        // Db
+        var connStr = config.GetConnectionString("X12")
+            ?? throw new InvalidOperationException("Missing connection string 'X12'.");
+        services.AddDbContext<Hipaa5010Context>(opt => opt.UseSqlServer(connStr));
 
-// Connection string check
-var connStr = config.GetConnectionString("X12");
-if (string.IsNullOrWhiteSpace(connStr))
-{
-    throw new InvalidOperationException(
-        "Missing connection string 'X12'. Add it to appsettings.json or environment variables.");
-}
+        var serviceUrl = config["S3:ServiceURL"] ?? "http://localhost:4566";
+        services.AddSingleton<IAmazonS3>(_ =>
+            new AmazonS3Client(
+                new BasicAWSCredentials(
+                    Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? "test",
+                    Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "test"),
+                new AmazonS3Config
+                {
+                    ServiceURL = serviceUrl,
+                    ForcePathStyle = true,
+                    UseHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                }));
 
-// DbContext
-services.AddDbContext<Hipaa5010Context>(opt => opt.UseSqlServer(connStr));
+        // App services
+        services.AddScoped<IEdiIngestionService, EdiIngestionService>();
 
-// Services
-services.AddScoped<IEdiIngestionService, EdiIngestionService>();
+        // File source + queue
+        services.AddSingleton<IFileSource, FileSource>();  
+        services.AddSingleton<IngestionQueue>();
 
-var sp = services.BuildServiceProvider();
+        services.Configure<S3Options>(config.GetSection("S3"));
 
-// Migrate DB
-using (var scope = sp.CreateScope())
+        // Background poller only in --watch mode
+        if (isWatchMode)
+        {
+            services.AddHostedService<IngestionWorker>();
+        }
+    })
+    .Build();
+
+// Ensure DB is migrated
+using (var scope = host.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<Hipaa5010Context>();
     await db.Database.MigrateAsync();
 }
 
-var inputPath = args.FirstOrDefault()
-    ?? Path.GetFullPath(Path.Combine(baseDir, "Documents", "ClaimPaymentEVV.txt"));
-
-if (!File.Exists(inputPath))
+using (var scope = host.Services.CreateScope())
 {
-    Console.Error.WriteLine($"Missing EDI file: {inputPath}");
-    return 2;
+    var db = scope.ServiceProvider.GetRequiredService<Hipaa5010Context>();
+    await db.Database.MigrateAsync();
+
+    var s3Opts = scope.ServiceProvider.GetRequiredService<IOptions<S3Options>>().Value;
+    Console.WriteLine($"S3 Options -> Bucket='{s3Opts.Bucket}', Inbound='{s3Opts.InboundPrefix}', Archive='{s3Opts.ArchivePrefix}', Poll={s3Opts.PollSeconds}s");
 }
 
-Console.WriteLine($"Parsing: {inputPath}");
+if (isWatchMode)
+{
+    Console.WriteLine("Starting S3 watch mode (polling + auto-ingest). Drop files into your bucket/prefix to process.");
+    await host.RunAsync();
+    return;
+}
 
-using (var scope = sp.CreateScope())
+// One-shot mode (read arg path, else newest from S3, else local default)
+await using var input = await ResolveInputAsync(args, host.Services, config, baseDir);
+if (input == Stream.Null)
+{
+    Environment.ExitCode = 2;
+    return;
+}
+
+using (var scope = host.Services.CreateScope())
 {
     var svc = scope.ServiceProvider.GetRequiredService<IEdiIngestionService>();
-    await using var fs = File.OpenRead(inputPath);
-    var count = await svc.IngestAsync(fs);
+    var count = await svc.IngestAsync(input);
     Console.WriteLine($"Saved {count} transaction(s).");
 }
 
-return 0;
+return;
+
+// ---------- helpers ----------
+static async Task<Stream> ResolveInputAsync(string[] args, IServiceProvider sp, IConfiguration config, string baseDir)
+{
+    var argPath = args.FirstOrDefault(a => !a.StartsWith("--"));
+    if (!string.IsNullOrWhiteSpace(argPath) && File.Exists(argPath))
+    {
+        Console.WriteLine($"Parsing (local arg): {argPath}");
+        return File.OpenRead(argPath);
+    }
+
+    // newest from S3
+    var bucket = config["S3:Bucket"];
+    var prefix = config["S3:InboundPrefix"];
+    var serviceUrl = config["S3:ServiceURL"] ?? "http://localhost:4566";
+
+    if (!string.IsNullOrWhiteSpace(bucket) && !string.IsNullOrWhiteSpace(prefix))
+    {
+        try
+        {
+            var s3 = sp.GetRequiredService<IAmazonS3>();
+            var list = await s3.ListObjectsV2Async(new Amazon.S3.Model.ListObjectsV2Request
+            {
+                BucketName = bucket,
+                Prefix = prefix
+            });
+
+            var objects = list?.S3Objects ?? new List<Amazon.S3.Model.S3Object>();
+            var newest = objects
+                .Where(o => !o.Key.EndsWith("/", StringComparison.Ordinal))
+                .OrderByDescending(o => o.LastModified)
+                .FirstOrDefault();
+
+            if (newest != null)
+            {
+                Console.WriteLine($"Parsing (s3): s3://{bucket}/{newest.Key} via {serviceUrl}");
+                var obj = await s3.GetObjectAsync(bucket, newest.Key);
+                var ms = new MemoryStream();
+                await obj.ResponseStream.CopyToAsync(ms);
+                ms.Position = 0;
+                return ms;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"S3 read failed: {ex.Message}. Falling back to local file.");
+        }
+    }
+
+    // local default
+    var localDefault = Path.GetFullPath(Path.Combine(baseDir, "Documents", "ClaimPaymentEVV.txt"));
+    if (File.Exists(localDefault))
+    {
+        Console.WriteLine($"Parsing (local default): {localDefault}");
+        return File.OpenRead(localDefault);
+    }
+
+    Console.Error.WriteLine($"No input found. Checked S3 and '{localDefault}'.");
+    return Stream.Null;
+}
+
