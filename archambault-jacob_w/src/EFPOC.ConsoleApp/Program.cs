@@ -1,7 +1,9 @@
 ﻿using EFPOC.FileIO;
 using EFPOC.Application;
+using System;
+using System.Text.Json;
 
-namespace EFPOC.Console
+namespace EFPOC.ConsoleApp
 {
     class Program
     {
@@ -13,7 +15,7 @@ namespace EFPOC.Console
             Console.WriteLine("Console version using reflection (Doesn't unpack all properties yet):");
             parser.Parse(claims);
             Console.WriteLine("JSON Version: ");
-            Console.WriteLine(parser.Serialize(claims));
+            Console.WriteLine(JsonSerializer.Serialize(claims, new JsonSerializerOptions { WriteIndented = true }));
         }
     }
 }
