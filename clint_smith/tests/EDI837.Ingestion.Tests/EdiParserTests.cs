@@ -1,19 +1,22 @@
 using EDI837.Ingestion.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EDI837.Ingestion.Tests;
 
 public class EdiParserTests : TestBase
 {
+    private readonly EdiParser _parser;
+
     public EdiParserTests()
     {
-        // EnvSetup.SetEdiTokenKey();
+        _parser = new EdiParser(NullLogger<EdiParser>.Instance);
     }
 
     [Fact]
     public void TestParseEdiFileSuccess()
     {
         var file_path = "../../../samples/837-sample-file-success.edi";
-        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
+        var transactions = _parser.ParseEdiFileFromPath(file_path);
 
         Assert.NotNull(transactions);
         Assert.NotEmpty(transactions);
@@ -25,7 +28,7 @@ public class EdiParserTests : TestBase
     {
         var file_path = "../../../samples/837-sample-file-fail-no-iea.edi";
 
-        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
+        var transactions = _parser.ParseEdiFileFromPath(file_path);
 
         Assert.NotNull(transactions);
         Assert.NotEmpty(transactions);
@@ -37,7 +40,7 @@ public class EdiParserTests : TestBase
     {
         var file_path = "../../../samples/837-sample-file-empty.edi";
 
-        var transactions = EdiParser.ParseEdiFileFromPath(file_path);
+        var transactions = _parser.ParseEdiFileFromPath(file_path);
 
         Assert.Empty(transactions);
     }
