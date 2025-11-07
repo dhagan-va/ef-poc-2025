@@ -3,7 +3,7 @@ using Microsoft.Extensions.FileProviders.Internal;
 using Microsoft.Extensions.FileProviders.Physical;
 using Microsoft.Extensions.Primitives;
 
-namespace X12EDI.Core.Extensions
+namespace X12EDI.Core.FileProviders
 {
     public class PhysicalFileProvider : IFileProvider
     {
