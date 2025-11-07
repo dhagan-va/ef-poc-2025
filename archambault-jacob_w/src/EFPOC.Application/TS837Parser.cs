@@ -8,10 +8,6 @@ namespace EFPOC.Application;
 
 public sealed class TS837Parser
 {
-    public string Serialize(IEnumerable<TS837P> claims)
-    {
-        return JsonSerializer.Serialize(claims, new JsonSerializerOptions { WriteIndented = true });
-    }
     public void Parse(IEnumerable<TS837P> claims)
     {
         foreach (var ediItem in claims)
@@ -23,5 +19,10 @@ public sealed class TS837Parser
 
             Console.WriteLine();
         }
+    }
+
+    public void Seed()
+    {
+        
     }
 }

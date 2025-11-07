@@ -4,12 +4,17 @@ using EdiFabric.Templates.Hipaa5010;
 
 namespace EFPOC.FileIO;
 
-public class TS837PTxtReader
+public sealed class TS837PTxtReader
 {
     public IEnumerable<TS837P> Read()
     {
+        return Read(@"../../samples/HIPAA/ClaimPayment.txt");
+    }
+
+    public IEnumerable<TS837P> Read(string filePath)
+    {
         List<IEdiItem> ediItems;
-        using (var reader = new X12Reader(File.OpenRead(@"../../samples/HIPAA/ClaimPayment.txt"), "EdiFabric.Templates.Hipaa",
+        using (var reader = new X12Reader(File.OpenRead(filePath), "EdiFabric.Templates.Hipaa",
                                           new X12ReaderSettings { ContinueOnError = true }))
         {
             ediItems = reader.ReadToEnd().ToList();
@@ -17,4 +22,5 @@ public class TS837PTxtReader
         var claims = ediItems.OfType<TS837P>();
         return claims;
     }
+    
 }
