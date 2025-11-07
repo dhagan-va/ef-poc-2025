@@ -2,8 +2,6 @@ using EDI837.Ingestion.Gateways;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.VisualBasic;
 
 namespace EDI837.Ingestion.Services
 {

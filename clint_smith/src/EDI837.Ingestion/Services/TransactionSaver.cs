@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Xml.Serialization;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.EntityFrameworkCore;

@@ -1,10 +1,5 @@
-﻿using System.ComponentModel;
-using DotNetEnv;
-using EDI837.Ingestion.Gateways;
+﻿using EDI837.Ingestion.Gateways;
 using EDI837.Ingestion.Services;
-using EdiFabric.Templates.Hipaa5010;
-using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace EDI837.Ingestion
@@ -19,7 +14,6 @@ namespace EDI837.Ingestion
             );
 
             var settings = GetAppSettings();
-
             EdiFabric.SerialKey.Set(settings.EDI.Token);
 
             var transactionSaver = new TransactionSaver(settings);
