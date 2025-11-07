@@ -1,7 +1,7 @@
 ﻿using EFPOC.FileIO;
 using EFPOC.Application;
 
-namespace ConsoleApp
+namespace EFPOC.Console
 {
     class Program
     {
