@@ -1,0 +1,24 @@
+﻿<Project Sdk="MSTest.Sdk/3.6.4">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseVSTest>true</UseVSTest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EdiFabric" Version="10.7.5" />
+    <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\X12EDI.Abstractions\X12EDI.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\X12EDI.Core\X12EDI.Core.csproj" />
+    <ProjectReference Include="..\..\src\X12EDI.Data\X12EDI.Data.csproj" />
+  </ItemGroup>
+
+</Project>
