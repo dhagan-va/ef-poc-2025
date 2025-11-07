@@ -8,7 +8,6 @@ namespace EFPOC.Application;
 
 public sealed class TS837Parser
 {
-
     public void Parse(IEnumerable<TS837P> claims)
     {
         foreach (var ediItem in claims)
@@ -20,5 +19,10 @@ public sealed class TS837Parser
 
             Console.WriteLine();
         }
+    }
+
+    public void Seed()
+    {
+        
     }
 }
