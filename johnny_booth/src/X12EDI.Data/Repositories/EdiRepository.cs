@@ -14,14 +14,14 @@ namespace X12EDI.Data.Repositories
     {
         #region Private Fields
 
-        private readonly EdiDbContext _dbContext;
+        private readonly IEdiDbContext _dbContext;
         private readonly ILogger<EdiRepository> _logger;
 
         #endregion Private Fields
 
         #region Public Constructors
 
-        public EdiRepository(EdiDbContext dbContext, ILogger<EdiRepository> logger)
+        public EdiRepository(IEdiDbContext dbContext, ILogger<EdiRepository> logger)
         {
             _dbContext = dbContext;
             _logger = logger;

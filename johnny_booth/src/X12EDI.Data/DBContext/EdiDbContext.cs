@@ -8,7 +8,7 @@ using X12EDI.Data.Entities;
 
 namespace X12EDI.Data.DBContext
 {
-    public class EdiDbContext : DbContext
+    public class EdiDbContext : DbContext, IEdiDbContext
     {
         #region Public Constructors
 

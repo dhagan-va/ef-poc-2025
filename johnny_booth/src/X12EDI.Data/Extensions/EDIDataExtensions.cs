@@ -20,7 +20,7 @@ namespace X12EDI.Data.Extensions
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            services.AddDbContext<EdiDbContext>(options =>
+            services.AddDbContext<IEdiDbContext, EdiDbContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("EdiDb")));
 
             services.AddScoped<IEdiRepository, EdiRepository>();
