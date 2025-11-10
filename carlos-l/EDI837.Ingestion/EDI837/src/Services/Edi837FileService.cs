@@ -28,10 +28,21 @@ namespace EDI837.src.Services
             {
                
                 var fileStream = fileInfo.CreateReadStream();
+                using (StreamReader sr = new StreamReader(fileStream))
+                {
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        Console.WriteLine(line);
+                    }
+                }
 
                 //List<IEdiItem> ediItems;
                 //using (var ediReader = new X12Reader(fileStream, "EdiFabric.Templates.Hipaa"))
+                //{
                 //    ediItems = ediReader.ReadToEnd().ToList();
+                //}
+
 
                 //var transactions = ediItems.OfType<TS837P>();
 
