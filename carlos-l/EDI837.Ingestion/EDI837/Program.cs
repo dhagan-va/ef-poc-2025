@@ -21,6 +21,9 @@ builder.Services.AddDbContext<AppDataContext>( options => {
 builder.Services.AddScoped<IEdi837FileService, Edi837FileService>();
 builder.Services.AddSingleton<IFileProvider>(new PhysicalFileProvider(Directory.GetCurrentDirectory()));
 
+//Set EDI Key
+EdiFabric.SerialKey.Set(builder.Configuration["EdiFabricSerialKey"]);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

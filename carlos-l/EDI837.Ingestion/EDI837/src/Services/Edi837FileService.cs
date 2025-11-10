@@ -26,22 +26,14 @@ namespace EDI837.src.Services
             var fileInfo = this._fileProvider.GetFileInfo($"{_configuration["LocalFileFolder"]}\\{fileName}");
             if (fileInfo.Exists)
             {
-               
-                var fileStream = fileInfo.CreateReadStream();
-                using (StreamReader sr = new StreamReader(fileStream))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        Console.WriteLine(line);
-                    }
-                }
 
-                //List<IEdiItem> ediItems;
-                //using (var ediReader = new X12Reader(fileStream, "EdiFabric.Templates.Hipaa"))
-                //{
-                //    ediItems = ediReader.ReadToEnd().ToList();
-                //}
+                var fileStream = fileInfo.CreateReadStream();
+            
+                List<IEdiItem> ediItems;
+                using (var ediReader = new X12Reader(fileStream, "EdiFabric.Templates.Hipaa"))
+                {
+                    ediItems = ediReader.ReadToEnd().ToList();
+                }
 
 
                 //var transactions = ediItems.OfType<TS837P>();
