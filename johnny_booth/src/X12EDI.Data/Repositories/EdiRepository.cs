@@ -43,7 +43,7 @@ namespace X12EDI.Data.Repositories
                 IngestedAt = DateTime.UtcNow
             };
 
-            var fileAlreadyProcessed = await _dbContext.EdiFiles.AnyAsync((a) => a.Identifier == identifier);
+            var fileAlreadyProcessed = await _dbContext.EdiFiles.AnyAsync((a) => a.Identifier == identifier, cancellationToken);
             var hasNewTransactions = false;
 
             foreach (var item in items)

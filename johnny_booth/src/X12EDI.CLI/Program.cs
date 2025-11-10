@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using X12EDI.Abstractions.Services;
 using X12EDI.Core.Extensions;
-using X12EDI.Core.Services;
 using X12EDI.Data.Extensions;
 
 public class Program
 {
-    static async Task Main(string[] args)
+    static async Task Main()
     {
         // 1. Build configuration (JSON + environment variables + command line)
         var configuration = new ConfigurationBuilder()

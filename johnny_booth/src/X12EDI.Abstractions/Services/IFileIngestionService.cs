@@ -1,5 +1,4 @@
-﻿
-namespace X12EDI.Core.Services
+﻿namespace X12EDI.Abstractions.Services
 {
     public interface IFileIngestionService
     {

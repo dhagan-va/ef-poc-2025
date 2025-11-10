@@ -14,8 +14,8 @@ namespace X12EDI.Core.Services
     {
         #region Private Fields
 
-        private EdiOptions _ediOptions;
-        private ILogger<X12ParserService> _logger;
+        private readonly EdiOptions _ediOptions;
+        private readonly ILogger<X12ParserService> _logger;
 
         #endregion Private Fields
 
@@ -35,7 +35,7 @@ namespace X12EDI.Core.Services
            IEnumerable<(Stream stream, string Identifier)> sources,
            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            Func<ISA, GS, ST, TypeInfo> factory = (isa, gs, st) =>
+            static TypeInfo factory(ISA isa, GS gs, ST st)
             {
                 if (st.TransactionSetIdentifierCode_01 == "837")
                 {
@@ -49,7 +49,7 @@ namespace X12EDI.Core.Services
                 }
 
                 return default!;
-            };
+            }
 
             foreach (var (stream, identifier) in sources)
             {

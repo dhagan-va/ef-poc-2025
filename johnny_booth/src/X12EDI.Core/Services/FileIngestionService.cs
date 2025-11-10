@@ -78,7 +78,7 @@ namespace X12EDI.Core.Services
             var items = new List<object>();
 
             await foreach (var result in _parser.ParseEdiTransactionsAsync(
-                               new[] { (stream, identifier) }, cancellationToken))
+                               [(stream, identifier)], cancellationToken))
             {
                 _logger.LogInformation("Parsed {Type} from {File}",
                     result.Item.GetType().Name,

@@ -31,4 +31,8 @@
     <ProjectReference Include="..\X12EDI.Data\X12EDI.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Templates\" />
+  </ItemGroup>
+
 </Project>

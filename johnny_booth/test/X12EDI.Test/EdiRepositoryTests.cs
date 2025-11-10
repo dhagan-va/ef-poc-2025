@@ -4,7 +4,7 @@ using X12EDI.Test.Templates;
 using X12EDI.Data.DBContext;
 using X12EDI.Data.Repositories;
 
-namespace X12EDI.Tests.Repositories
+namespace X12EDI.Test
 {
     [TestClass]
     public class EdiRepositoryTests
