@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using EdiFabric.Templates.Hipaa5010;
 
 namespace EDI837.src.Models
 {
@@ -9,6 +10,6 @@ namespace EDI837.src.Models
         
         }
        
-        public DbSet<WeatherForecast> WeatherForecasts { get; set; }
+        public DbSet<TS837P> TS837Ps{ get; set; }
     }
 }
