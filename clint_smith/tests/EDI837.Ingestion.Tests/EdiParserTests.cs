@@ -24,15 +24,23 @@ public class EdiParserTests : TestBase
     }
 
     [Fact]
-    public void TestParseEdiFileFailNoIea_ShouldReturnValidTransaction()
+    public void TestParseEdiFileFailMissingBHT_NoTransactionReturned()
     {
-        var file_path = "../../../samples/837-sample-file-fail-no-iea.edi";
+        var file_path = "../../../samples/837-sample-file-fail-missing-bht.edi";
 
         var transactions = _parser.ParseEdiFileFromPath(file_path);
 
-        Assert.NotNull(transactions);
-        Assert.NotEmpty(transactions);
-        Assert.Single(transactions);
+        Assert.Empty(transactions);
+    }
+
+    [Fact]
+    public void TestParseEdiFileFailSegmentOutOfOrder_NoTransactionReturned()
+    {
+        var file_path = "../../../samples/837-sample-file-fail-segment-order.edi";
+
+        var transactions = _parser.ParseEdiFileFromPath(file_path);
+
+        Assert.Empty(transactions);
     }
 
     [Fact]

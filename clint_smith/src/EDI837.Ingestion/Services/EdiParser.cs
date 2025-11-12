@@ -1,4 +1,3 @@
-using EDI837.Ingestion.Gateways;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
@@ -9,6 +8,16 @@ namespace EDI837.Ingestion.Services
     public class EdiParser
     {
         private readonly ILogger<EdiParser> _logger;
+        private readonly ValidationSettings _validationSettings = new ValidationSettings
+        {
+            ValidationLevel = ValidationLevel.InterSegment_SNIP4,
+        };
+
+        private readonly X12ReaderSettings _x12ReaderSettings = new X12ReaderSettings
+        {
+            ContinueOnError = false,
+            NoEnvelope = false,
+        };
 
         public EdiParser(ILogger<EdiParser> logger)
         {
@@ -35,7 +44,13 @@ namespace EDI837.Ingestion.Services
         public IEnumerable<TS837P> ParseEdiStream(Stream ediStream)
         {
             List<IEdiItem> ediItems;
-            using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
+            using (
+                var ediReader = new X12Reader(
+                    ediStream,
+                    "EdiFabric.Templates.Hipaa",
+                    _x12ReaderSettings
+                )
+            )
             {
                 ediItems = [.. ediReader.ReadToEnd()];
             }
@@ -46,9 +61,9 @@ namespace EDI837.Ingestion.Services
 
             foreach (var transaction in transactions)
             {
-                transaction.IsValid(out var errorContext);
+                var isValid = transaction.IsValid(out var errorContext, _validationSettings);
 
-                if (transaction.HasErrors)
+                if (!isValid)
                 {
                     var errors = transaction.ErrorContext.Flatten().ToList();
 

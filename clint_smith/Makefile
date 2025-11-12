@@ -43,20 +43,10 @@ status:
 	docker ps -a | grep $(SQL_CONTAINER) || echo "No container named $(SQL_CONTAINER) found."
 
 test:
-	@echo "Starting moto_server..."
-	@moto_server -p $(MOTO_PORT) & \
-	MOTO_PID=$$!; \
-	sleep 2; \
-	dotnet test tests/EDI837.Ingestion.Tests; \
-	kill $$MOTO_PID
+	dotnet test tests/EDI837.Ingestion.Tests;
 
 coverage:
-	@echo "Starting moto_server..."
-	@moto_server -p $(MOTO_PORT) & \
-	MOTO_PID=$$!; \
-	sleep 2; \
 	dotnet test tests/EDI837.Ingestion.Tests --collect:"XPlat Code Coverage" -s .runsettings --verbosity minimal; \
-	kill $$MOTO_PID
 
 	# Find the most recent coverage.cobertura.xml file (sorted by modification time)
 	report_file=$$(find ./tests/EDI837.Ingestion.Tests/TestResults -name "coverage.cobertura.xml" -type f -print0 | xargs -0 ls -t | head -n 1); \

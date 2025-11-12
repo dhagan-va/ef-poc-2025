@@ -1,3 +1,4 @@
+using Amazon.S3;
 using EDI837.Ingestion.Gateways;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,18 +14,21 @@ public sealed class S3GatewayFactory : IS3GatewayFactory
 {
     private readonly AppSettings _settings;
     private readonly ILogger<S3Gateway> _logger;
+    private readonly IAmazonS3 _s3Client;
 
-    public S3GatewayFactory(IOptions<AppSettings> options, ILogger<S3Gateway> logger)
+    public S3GatewayFactory(
+        IOptions<AppSettings> options,
+        ILogger<S3Gateway> logger,
+        IAmazonS3 s3Client
+    )
     {
-        ArgumentNullException.ThrowIfNull(options);
-
-        _settings = options.Value ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger;
+        _settings = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _s3Client = s3Client ?? throw new ArgumentNullException(nameof(s3Client));
     }
 
     public S3Gateway Create()
     {
-        var serviceUri = new Uri(_settings.S3.ServiceUrl);
-        return new S3Gateway(serviceUri, _settings.S3.Bucket, _logger);
+        return new S3Gateway(_s3Client, _logger);
     }
 }

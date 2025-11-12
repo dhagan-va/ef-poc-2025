@@ -1,4 +1,5 @@
-﻿using EDI837.Ingestion.Services;
+﻿using Amazon.S3;
+using EDI837.Ingestion.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,10 +53,23 @@ namespace EDI837.Ingestion
                         );
                         services.AddTransient<TransactionSaver>();
                         services.AddTransient<EdiParser>();
-                        services.AddSingleton<S3GatewayFactory>();
 
                         if (source == "S3")
                         {
+                            services.AddSingleton<IAmazonS3>(sp =>
+                            {
+                                var appSettings = sp.GetRequiredService<
+                                    IOptions<AppSettings>
+                                >().Value;
+                                var config = new AmazonS3Config
+                                {
+                                    ServiceURL = appSettings.S3.ServiceUrl,
+                                    ForcePathStyle = true,
+                                };
+                                return new AmazonS3Client("test", "test", config);
+                            });
+
+                            services.AddSingleton<IS3GatewayFactory, S3GatewayFactory>();
                             services.AddHostedService<IngestionWorker>();
                         }
                     }
