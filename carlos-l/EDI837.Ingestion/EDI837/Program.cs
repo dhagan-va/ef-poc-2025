@@ -17,7 +17,7 @@ builder.Services.AddDbContext<AppDataContext>( options => {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// Add Depedency injected the services
+// Add Dependency injected the services
 builder.Services.AddScoped<IEdi837FileService, Edi837FileService>();
 builder.Services.AddSingleton<IFileProvider>(new PhysicalFileProvider(Directory.GetCurrentDirectory()));
 
