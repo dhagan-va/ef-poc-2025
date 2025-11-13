@@ -11,5 +11,6 @@ namespace EDI837.src.Models
         }
        
         public DbSet<TS837P> TS837Ps{ get; set; }
+        public DbSet<ProcessedClaim> ProcessedClaims { get; set; }
     }
 }

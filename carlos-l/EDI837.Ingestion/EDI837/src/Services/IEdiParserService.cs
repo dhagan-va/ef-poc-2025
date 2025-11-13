@@ -1,7 +1,10 @@
-﻿namespace EDI837.src.Services
+﻿using EdiFabric.Templates.Hipaa5010;
+
+namespace EDI837.src.Services
 {
     public interface IEdiParserService
     {
-        public Stream GetStreamByFileName(string fileName);
+        public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName);
+
     }
 }

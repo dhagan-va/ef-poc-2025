@@ -11,37 +11,34 @@ namespace EDI837.Controllers
     {
         private readonly IEdi837FileService _edi837FileService;
         private readonly IEdiParserService _ediParserService;
-        private readonly IConfiguration _configuration;
-        private readonly IFileProvider _fileProvider;
         private readonly ILogger _logger;
 
-        [ActivatorUtilitiesConstructor]
-        public EID837Controller(IEdi837FileService edi837FileService, IConfiguration configuration, IFileProvider fileProvider, ILogger<EID837Controller> logger )
+        public EID837Controller(
+            IEdi837FileService edi837FileService, 
+            ILogger<EID837Controller> logger, 
+            IEdiParserService ediParserService )
         {
             _edi837FileService = edi837FileService;
-            _configuration = configuration;
-            _fileProvider = fileProvider;
             _logger = logger;
-            _ediParserService = new EdiParserService(_configuration,_fileProvider, _logger );
+            _ediParserService = ediParserService;            
         }
 
         // GET: api/EID837/GetEdi837PTransactionsFileByName/fileName
         [HttpGet("GetEdi837PTransactionsFileByName/{fileName}")]
-        public IActionResult GetEdi837PTransactionsFileByName(string fileName)
+        public IActionResult GetEdi837PTransactionsFileByName(string fileName = "837File.edi")
         {
-            
-            var stream = this._ediParserService.GetStreamByFileName(fileName);
-            
-            var valideTransactions = this._edi837FileService.ExtractValid837PTransactions(stream);
-            return Ok(valideTransactions);
+            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName);
+            return Ok(validTransactions);
         }
 
-        //// GET: api/EID837
-        //[HttpGet]
-        //public IActionResult Parse837File()
-        //{
+        //// GET: api/EID837/SaveEdi837POriginalTransactionsAsXMLFileByName
+        [HttpGet("SaveEdi837POriginalTransactionsAsJsonFileByName/{fileName}")]
+        public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonFileByName(string fileName = "837File.edi")
+        {
+            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName);
 
-        //    return Ok("EDI837 Controller is working.");
-        //}
+            await this._edi837FileService.SaveOriginalClaim(validTransactions);
+            return Ok("EDI837 Controller is working.");
+        }
     }
 }

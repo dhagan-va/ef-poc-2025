@@ -12,6 +12,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 // Add AppDataContext to the services
 builder.Services.AddDbContext<AppDataContext>( options => {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -20,6 +21,7 @@ builder.Services.AddDbContext<AppDataContext>( options => {
 // Add Dependency injected the services
 builder.Services.AddScoped<IEdi837FileService, Edi837FileService>();
 builder.Services.AddSingleton<IFileProvider>(new PhysicalFileProvider(Directory.GetCurrentDirectory()));
+builder.Services.AddScoped<IEdiParserService, EdiParserService>();
 
 //Set EDI Key
 EdiFabric.SerialKey.Set(builder.Configuration["EdiFabricSerialKey"]);
