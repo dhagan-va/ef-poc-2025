@@ -36,9 +36,8 @@ namespace EDI837.Controllers
         public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonFileByName(string fileName = "837File.edi")
         {
             var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName);
-
-            await this._edi837FileService.SaveOriginalClaim(validTransactions);
-            return Ok("EDI837 Controller is working.");
+            var processedClaim =  await this._edi837FileService.SaveOriginalClaim(validTransactions);
+            return Ok(processedClaim);
         }
     }
 }

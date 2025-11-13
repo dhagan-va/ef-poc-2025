@@ -29,7 +29,6 @@ namespace EDI837.src.Services
             
             var validTransactions = new List<TS837P>();
 
-
             if (stream != null)
             {
                 List<IEdiItem> ediItems;
@@ -47,7 +46,7 @@ namespace EDI837.src.Services
                     {
                         //  partially parsed
                         var errors = transaction.ErrorContext.Flatten();
-                        this._logger.LogWarning(transaction.ST?.TransactionSetControlNumber_02 != null ? $"Transaction: {transaction.ST.TransactionSetControlNumber_02} has errors." : "");
+                        this._logger.LogWarning(transaction.ST?.TransactionSetControlNumber_02 != null ? $"Transaction: {transaction.ST.TransactionSetControlNumber_02} has errors." : "The Transaction has Errors");
 
                         foreach (var err in errors)
                         {
@@ -62,7 +61,7 @@ namespace EDI837.src.Services
             }
             else
             {
-                _logger.LogWarning("No valid Stream was provided.");
+                _logger.LogWarning("The File did not generate a valid Stream.");
             }
 
             _logger.LogInformation($"{validTransactions.Count} were parsed successfully.");
