@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using X12EDI.Abstractions.Services;
-using X12EDI.Core.Extensions;
+using X12EDI.Core.Config;
 
 namespace X12EDI.Core.Services
 {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using X12EDI.Blazor.API.Controllers;
 using X12EDI.Blazor.Components;
+using X12EDI.Core.Config;
 using X12EDI.Core.Extensions;
 using X12EDI.Core.FileProviders;
 using X12EDI.Data.Extensions;
@@ -23,7 +24,8 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<IFileProvider>(sp =>
 {
     var s3 = sp.GetRequiredService<IAmazonS3>();
-    return new S3FileProvider(s3, "bucket-name");
+    var bucketName = builder.Configuration["S3Options:BucketName"];
+    return new S3FileProvider(s3, string.IsNullOrEmpty(bucketName) ? "bucket-name" : bucketName);
 });
 
 builder.Services.AddX12EdiData(builder.Configuration);

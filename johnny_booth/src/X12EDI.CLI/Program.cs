@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using X12EDI.Abstractions.Services;
+using X12EDI.Core.Config;
 using X12EDI.Core.Extensions;
 using X12EDI.Data.Extensions;
 
