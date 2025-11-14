@@ -22,7 +22,7 @@ namespace EDI837.src.Services
             _logger = logger;
         }
 
-        public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName)
+        public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName, IEnumerable<string> parsingErrors)
         {
             
             Stream stream = this.GetStreamByFileName(fileName);
@@ -45,10 +45,10 @@ namespace EDI837.src.Services
                     if (transaction.HasErrors)
                     {
                         //  partially parsed
-                        var errors = transaction.ErrorContext.Flatten();
+                        parsingErrors = transaction.ErrorContext.Flatten();
                         this._logger.LogWarning(transaction.ST?.TransactionSetControlNumber_02 != null ? $"Transaction: {transaction.ST.TransactionSetControlNumber_02} has errors." : "The Transaction has Errors");
 
-                        foreach (var err in errors)
+                        foreach (var err in parsingErrors)
                         {
                             _logger.LogWarning($" {err}");
                         }

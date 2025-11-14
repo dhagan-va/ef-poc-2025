@@ -23,21 +23,40 @@ namespace EDI837.Controllers
             _ediParserService = ediParserService;            
         }
 
-        // GET: api/EID837/GetEdi837PTransactionsFileByName/fileName
-        [HttpGet("GetEdi837PTransactionsFileByName/{fileName}")]
-        public IActionResult GetEdi837PTransactionsFileByName(string fileName = "837File.edi")
+        // GET: api/EID837/GetEdi837PTransactionsByFileName/fileName
+        [HttpGet("GetEdi837PTransactionsByFileName/{fileName}")]
+        public IActionResult GetEdi837PTransactionsByFileName(string fileName = "837File.edi")
         {
-            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName);
-            return Ok(validTransactions);
+            List<string> parsingErrors = new List<string>();
+
+            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName, parsingErrors);
+
+            return Ok(parsingErrors.Count > 0 ? parsingErrors : validTransactions);
         }
 
-        //// GET: api/EID837/SaveEdi837POriginalTransactionsAsXMLFileByName
-        [HttpGet("SaveEdi837POriginalTransactionsAsJsonFileByName/{fileName}")]
-        public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonFileByName(string fileName = "837File.edi")
+        //// GET: api/EID837/SaveEdi837POriginalTransactionsAsJsonByFileName/fileName
+        [HttpGet("SaveEdi837POriginalTransactionsAsJsonByFileName/{fileName}")]
+        public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonByFileName(string fileName = "837File.edi")
         {
-            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName);
+            List<string> parsingErrors = new List<string>();
+
+            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName, parsingErrors);
             var processedClaim =  await this._edi837FileService.SaveOriginalClaim(validTransactions);
-            return Ok(processedClaim);
+            
+            return Ok(parsingErrors.Count > 0 ? parsingErrors : processedClaim);
+        }
+
+        //// GET: api/EID837/SaveEdi837PByFileName/fileName
+        [HttpGet("SaveEdi837PByFileName/{fileName}")]
+        public async Task<IActionResult> SaveEdi837PByFileName(string fileName = "837File.edi")
+        {
+            List<string> parsingErrors = new List<string>();
+
+            var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName, parsingErrors);
+            
+            var claims = await this._edi837FileService.Save837PClaims(validTransactions);
+
+            return Ok(parsingErrors.Count > 0 ? parsingErrors : claims);
         }
     }
 }
