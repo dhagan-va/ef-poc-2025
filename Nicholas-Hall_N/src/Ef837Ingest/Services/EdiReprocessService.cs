@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
-using Ef837Ingest.Data.Entities;
-using Ef837Ingest.Edi.Validator;
 using Edi837Ingestion.Data;
+using Ef837Ingest.Data.Entities;
 using EdiFabric.Templates.Hipaa5010;
+using Ef837Ingest.Edi.Validator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,86 +20,92 @@ namespace Edi837Ingestion.Services
         }
 
         public async Task<SnipResult?> Reprocess837PAsync(
-            string transactionSetControlNumber,
+            string controlNumber,
             SnipOptions? options = null,
             CancellationToken ct = default)
         {
+            // 1) Load stored TS837P
+            var raw = await _db.TS837P
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.ControlNumber == controlNumber, ct);
+
+            if (raw == null)
+            {
+                _log.LogWarning("Reprocess: No TS837P found for ControlNumber={CN}", controlNumber);
+                return null;
+            }
+
+            TS837P? msg;
+            try
+            {
+                msg = JsonSerializer.Deserialize<TS837P>(raw.RawJson);
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Failed to deserialize TS837P JSON for ControlNumber={CN}", controlNumber);
+                return null;
+            }
+
+            if (msg == null)
+            {
+                _log.LogWarning("Reprocess: Deserialized TS837P was null for ControlNumber={CN}", controlNumber);
+                return null;
+            }
+
             options ??= new SnipOptions
             {
-                Level = SnipLevel.Snip2,  // for example, more relaxed on reprocess
-                FailOnError = false,
+                Level = SnipLevel.Snip4,
+                FailOnError = false,   
                 ThrowOnNullMessage = true
             };
 
-            // Load stored TS837P JSON
-            var ts837Row = await _db.TS837P
-                .FirstOrDefaultAsync(t => t.ControlNumber == transactionSetControlNumber, ct);
+            // 2) Run SNIP validation
+            var result = SnipValidator.Validate(msg, options);
 
-            if (ts837Row == null)
+            // 3) Update TransactionStatus
+            var txStatus = await _db.TransactionStatuses
+                .FirstOrDefaultAsync(t =>
+                        t.TransactionType == "837P" &&
+                        t.TransactionSetControlNumber == controlNumber,
+                    ct);
+
+            if (txStatus != null)
             {
-                _log.LogWarning("No TS837P found for ControlNumber={CN}", transactionSetControlNumber);
-                return null;
+                txStatus.IsValid = result.IsValid;
+                txStatus.ErrorCount = result.ErrorContext?.Errors?.Count ?? 0;
+                txStatus.Status = result.IsValid ? "Validated" : "FailedValidation";
             }
 
-            var msg837 = JsonSerializer.Deserialize<TS837P>(ts837Row.RawJson);
-            if (msg837 == null)
+
+            var existingIssues = _db.ValidationIssues
+                .Where(v => v.Transaction == "837P" && v.ControlNumber == controlNumber);
+            _db.ValidationIssues.RemoveRange(existingIssues);
+
+            var segErrors = result.ErrorContext?.Errors
+                            ?? Enumerable.Empty<EdiFabric.Core.Model.Edi.ErrorContexts.SegmentErrorContext>();
+
+            foreach (var e in segErrors)
             {
-                _log.LogError("Failed to deserialize TS837P for ControlNumber={CN}", transactionSetControlNumber);
-                return null;
-            }
-
-            // Clear old validation issues for this control number
-            var oldIssues = await _db.ValidationIssues
-                .Where(v => v.ControlNumber == transactionSetControlNumber && v.Transaction == "837P")
-                .ToListAsync(ct);
-
-            _db.ValidationIssues.RemoveRange(oldIssues);
-
-            // Re-run SNIP
-            var snip = SnipValidator.Validate(msg837, options);
-
-            if (!snip.IsValid)
-            {
-                var segErrors = snip.ErrorContext?.Errors
-                                ?? Enumerable.Empty<EdiFabric.Core.Model.Edi.ErrorContexts.SegmentErrorContext>();
-
-                foreach (var e in segErrors)
+                _db.ValidationIssues.Add(new ValidationIssue
                 {
-                    _db.ValidationIssues.Add(new ValidationIssue
-                    {
-                        Transaction = "837P",
-                        ControlNumber = transactionSetControlNumber,
-                        Level = options.Level.ToString(),
-                        SegmentId = e.LoopId,
-                        Position = e.Position,
-                        Code = e.Name,
-                        Message = e?.Errors?.FirstOrDefault()?.Message ?? "Unknown error",
-                        Severity = "Error",
-                        RawContextJson = JsonSerializer.Serialize(e)
-                    });
-                }
-            }
-
-            // Update TransactionStatus
-            var status = await _db.TransactionStatuses
-                .FirstOrDefaultAsync(s => s.TransactionSetControlNumber == transactionSetControlNumber
-                                          && s.TransactionType == "837P", ct);
-
-            if (status != null)
-            {
-                status.IsValid = snip.IsValid;
-                status.ErrorCount = snip.ErrorContext?.Errors?.Count ?? 0;
-                status.Status = "Reprocessed";
+                    Transaction = "837P",
+                    ControlNumber = controlNumber,
+                    Level = options.Level.ToString(),
+                    SegmentId = e.LoopId,
+                    Position = e.Position,
+                    Code = e.Name,
+                    Message = e?.Errors?.FirstOrDefault()?.Message ?? "Unknown error",
+                    Severity = "Error",
+                    RawContextJson = JsonSerializer.Serialize(e)
+                });
             }
 
             await _db.SaveChangesAsync(ct);
 
-            _log.LogInformation("Reprocessed 837P ControlNumber={CN}, IsValid={Valid}, Errors={Errors}",
-                transactionSetControlNumber,
-                snip.IsValid,
-                snip.ErrorContext?.Errors?.Count ?? 0);
+            _log.LogInformation("Reprocess of 837P ControlNumber={CN} complete. IsValid={Valid}, Errors={Errors}.",
+                controlNumber, result.IsValid, txStatus?.ErrorCount ?? 0);
 
-            return snip;
+            return result;
         }
     }
 }

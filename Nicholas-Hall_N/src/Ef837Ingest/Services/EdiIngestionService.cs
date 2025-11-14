@@ -148,6 +148,24 @@ namespace Edi837Ingestion.Edi
                                         controlNumber, snipOptions.Level);
                                 }
 
+                                // ---------- NEW: create TransactionStatus ----------
+                                var errorCount = snip.ErrorContext?.Errors?.Count ?? 0;
+
+                                var txStatus = new TransactionStatus
+                                {
+                                    InterchangeControlNumber = currentIsa?.InterchangeControlNumber_13,
+                                    GroupControlNumber = currentGs?.GroupControlNumber_6,
+                                    TransactionSetControlNumber = controlNumber,
+                                    TransactionType = "837P",
+                                    IsValid = snip.IsValid,
+                                    ErrorCount = errorCount,
+                                    Status = snip.IsValid ? "Validated" : "FailedValidation",
+                                    IngestedAt = DateTime.UtcNow,
+                                    SourceObjectKey = null   // fill with S3 key or filename later if you want
+                                };
+
+                                _db.TransactionStatuses.Add(txStatus);
+                                // ---------------------------------------------------
 
                                 // Billing provider HL
                                 var loop2000A = msg837.Loop2000A?.FirstOrDefault();
@@ -210,6 +228,7 @@ namespace Edi837Ingestion.Edi
                                 saved++;
                                 break;
                             }
+
 
 
                         case TS850 po850:

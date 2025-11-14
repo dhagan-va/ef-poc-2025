@@ -5,6 +5,7 @@ using Edi837Ingestion.Edi;
 using Edi837Ingestion.Services;
 using Ef837Ingest.Edi;                 // your IFileSource / FileSource
 using Ef837Ingest.Edi.Models;
+using Ef837Ingest.Data.Entities;       // <-- add for ClaimEntity / Ts837pEntity
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,8 +29,9 @@ if (string.IsNullOrWhiteSpace(ediKey))
     throw new Exception("Missing EdiFabric:LicenseKey in user secrets or environment.");
 EdiFabric.SerialKey.Set(ediKey);
 
-// mode flag
+// mode flags
 var isWatchMode = args.Any(a => string.Equals(a, "--watch", StringComparison.OrdinalIgnoreCase));
+var isDemoMode = args.Any(a => string.Equals(a, "--demo", StringComparison.OrdinalIgnoreCase));
 
 var reprocessArgIndex = Array.FindIndex(args, a => string.Equals(a, "--reprocess", StringComparison.OrdinalIgnoreCase));
 string? reprocessControlNumber = null;
@@ -67,12 +69,11 @@ using var host = Host.CreateDefaultBuilder()
                 }));
 
         // App services
-        services.AddScoped<IEdiIngestionService, EdiIngestionService>(); 
-        services.AddScoped<IEdiReprocessService, EdiReprocessService>();
-
+        services.AddScoped<IEdiIngestionService, EdiIngestionService>();
+        services.AddScoped<IEdiReprocessService, EdiReprocessService>();  // <-- register via interface
 
         // File source + queue
-        services.AddSingleton<IFileSource, FileSource>();  
+        services.AddSingleton<IFileSource, FileSource>();
         services.AddSingleton<IngestionQueue>();
 
         services.Configure<S3Options>(config.GetSection("S3"));
@@ -101,6 +102,7 @@ using (var scope = host.Services.CreateScope())
     Console.WriteLine($"S3 Options -> Bucket='{s3Opts.Bucket}', Inbound='{s3Opts.InboundPrefix}', Archive='{s3Opts.ArchivePrefix}', Poll={s3Opts.PollSeconds}s");
 }
 
+// ----- modes -----
 if (isWatchMode)
 {
     Console.WriteLine("Starting S3 watch mode (polling + auto-ingest). Drop files into your bucket/prefix to process.");
@@ -111,7 +113,7 @@ if (isWatchMode)
 if (!string.IsNullOrWhiteSpace(reprocessControlNumber))
 {
     using var scope = host.Services.CreateScope();
-    var reprocess = scope.ServiceProvider.GetRequiredService<EdiReprocessService>();
+    var reprocess = scope.ServiceProvider.GetRequiredService<IEdiReprocessService>();  // <-- use interface
 
     Console.WriteLine($"Reprocessing 837P ControlNumber={reprocessControlNumber}...");
     var result = await reprocess.Reprocess837PAsync(reprocessControlNumber);
@@ -127,6 +129,12 @@ if (!string.IsNullOrWhiteSpace(reprocessControlNumber))
     return;
 }
 
+// NEW: demo mode
+if (isDemoMode)
+{
+    await RunDemoAsync(host.Services);
+    return;
+}
 
 // One-shot mode (read arg path, else newest from S3, else local default)
 await using var input = await ResolveInputAsync(args, host.Services, config, baseDir);
@@ -205,3 +213,105 @@ static async Task<Stream> ResolveInputAsync(string[] args, IServiceProvider sp, 
     return Stream.Null;
 }
 
+// ===== Demo helpers =====
+
+static async Task RunDemoAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<Hipaa5010Context>();
+
+    Console.WriteLine("=== EDI 837P Demo ===");
+    Console.WriteLine("Showing the 10 most recent claims:\n");
+
+    var claims = await db.Claims
+        .OrderByDescending(c => c.Id)
+        .Take(10)
+        .ToListAsync();
+
+    if (!claims.Any())
+    {
+        Console.WriteLine("No claims found. Run the app normally first to ingest a file.");
+        return;
+    }
+
+    Console.WriteLine(" ID  | ST02 | Patient              | DOS        | Amount    | NPI");
+    Console.WriteLine("-----+------+----------------------+------------+-----------+----------------");
+
+    foreach (var c in claims)
+    {
+        var name = $"{c.PatientLastName}, {c.PatientFirstName}".Trim(',', ' ');
+        if (name.Length > 22) name = name[..22];
+
+        var dos = c.ServiceFromDate?.ToString("yyyy-MM-dd") ?? "n/a";
+        var amt = c.TotalClaimAmount?.ToString("0.00") ?? "n/a";
+
+        Console.WriteLine(
+            $"{c.Id,4} | {c.TransactionSetControlNumber,-4} | {name,-22} | {dos,-10} | {amt,9} | {c.BillingProviderNpi}");
+    }
+
+    Console.WriteLine();
+    Console.Write("Enter a TransactionSetControlNumber (ST02) to view details (or just Enter to exit): ");
+    var st02 = Console.ReadLine();
+
+    if (string.IsNullOrWhiteSpace(st02))
+        return;
+
+    await ShowClaimDetailsAsync(db, st02.Trim());
+}
+
+static async Task ShowClaimDetailsAsync(Hipaa5010Context db, string controlNumber)
+{
+    var claim = await db.Claims
+        .FirstOrDefaultAsync(c => c.TransactionSetControlNumber == controlNumber);
+
+    if (claim == null)
+    {
+        Console.WriteLine($"No claim found for ST02='{controlNumber}'.");
+        return;
+    }
+
+    var issues = await db.ValidationIssues
+        .Where(v => v.Transaction == "837P" && v.ControlNumber == controlNumber)
+        .OrderBy(v => v.Id)
+        .ToListAsync();
+
+    var raw = await db.TS837P
+        .FirstOrDefaultAsync(t => t.ControlNumber == controlNumber);
+
+    Console.WriteLine();
+    Console.WriteLine("=== Claim Header ===");
+    Console.WriteLine($"ST02 (Control #): {claim.TransactionSetControlNumber}");
+    Console.WriteLine($"Patient Control #: {claim.PatientControlNumber}");
+    Console.WriteLine($"Patient Name     : {claim.PatientLastName}, {claim.PatientFirstName}");
+    Console.WriteLine($"Service From Date: {claim.ServiceFromDate:yyyy-MM-dd}");
+    Console.WriteLine($"Total Amount     : {claim.TotalClaimAmount:0.00}");
+    Console.WriteLine($"Billing NPI      : {claim.BillingProviderNpi}");
+    Console.WriteLine();
+
+    Console.WriteLine("=== SNIP / Validation Issues ===");
+    if (!issues.Any())
+    {
+        Console.WriteLine("No validation issues recorded for this transaction.");
+    }
+    else
+    {
+        foreach (var i in issues)
+        {
+            Console.WriteLine($"- Segment={i.SegmentId}, Pos={i.Position}, Code={i.Code}");
+            Console.WriteLine($"  Message: {i.Message}");
+        }
+    }
+
+    if (raw != null)
+    {
+        Console.WriteLine();
+        Console.Write("Show raw TS837P JSON? (y/N): ");
+        var key = Console.ReadLine();
+        if (!string.IsNullOrWhiteSpace(key) && key.Trim().Equals("y", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== Raw TS837P JSON ===");
+            Console.WriteLine(raw.RawJson);
+        }
+    }
+}
