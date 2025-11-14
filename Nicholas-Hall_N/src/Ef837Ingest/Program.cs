@@ -2,6 +2,7 @@
 using Amazon.S3;
 using Edi837Ingestion.Data;
 using Edi837Ingestion.Edi;
+using Edi837Ingestion.Services;
 using Ef837Ingest.Edi;                 // your IFileSource / FileSource
 using Ef837Ingest.Edi.Models;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,13 @@ EdiFabric.SerialKey.Set(ediKey);
 
 // mode flag
 var isWatchMode = args.Any(a => string.Equals(a, "--watch", StringComparison.OrdinalIgnoreCase));
+
+var reprocessArgIndex = Array.FindIndex(args, a => string.Equals(a, "--reprocess", StringComparison.OrdinalIgnoreCase));
+string? reprocessControlNumber = null;
+if (reprocessArgIndex >= 0 && reprocessArgIndex + 1 < args.Length)
+{
+    reprocessControlNumber = args[reprocessArgIndex + 1];
+}
 
 // Host
 using var host = Host.CreateDefaultBuilder()
@@ -59,7 +67,9 @@ using var host = Host.CreateDefaultBuilder()
                 }));
 
         // App services
-        services.AddScoped<IEdiIngestionService, EdiIngestionService>();
+        services.AddScoped<IEdiIngestionService, EdiIngestionService>(); 
+        services.AddScoped<IEdiReprocessService, EdiReprocessService>();
+
 
         // File source + queue
         services.AddSingleton<IFileSource, FileSource>();  
@@ -97,6 +107,26 @@ if (isWatchMode)
     await host.RunAsync();
     return;
 }
+
+if (!string.IsNullOrWhiteSpace(reprocessControlNumber))
+{
+    using var scope = host.Services.CreateScope();
+    var reprocess = scope.ServiceProvider.GetRequiredService<EdiReprocessService>();
+
+    Console.WriteLine($"Reprocessing 837P ControlNumber={reprocessControlNumber}...");
+    var result = await reprocess.Reprocess837PAsync(reprocessControlNumber);
+
+    if (result is null)
+    {
+        Console.WriteLine("No transaction found.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    Console.WriteLine($"Reprocess complete. IsValid={result.IsValid}, Level={result.Level}");
+    return;
+}
+
 
 // One-shot mode (read arg path, else newest from S3, else local default)
 await using var input = await ResolveInputAsync(args, host.Services, config, baseDir);

@@ -57,6 +57,9 @@ namespace Edi837Ingestion.Edi
                 },
                 new X12ReaderSettings { Split = true });
 
+            ISA? currentIsa = null;
+            GS? currentGs = null;
+
 
             int saved = 0;
             IDbContextTransaction? tx = null;
@@ -75,6 +78,7 @@ namespace Edi837Ingestion.Edi
                     switch (reader.Item)
                     {
                         case ISA isa:
+                            currentIsa = isa;
                             _db.ISA.Add(new IsaEntity
                             {
                                 InterchangeControlNumber = isa.InterchangeControlNumber_13,
@@ -85,6 +89,7 @@ namespace Edi837Ingestion.Edi
                             break;
 
                         case GS gs:
+                            currentGs = gs;
                             _db.GS.Add(new GsEntity
                             {
                                 FunctionalIdCode = gs.CodeIdentifyingInformationType_1,
@@ -108,17 +113,16 @@ namespace Edi837Ingestion.Edi
                             {
                                 var snipOptions = new SnipOptions
                                 {
-                                    Level = SnipLevel.Snip4,     
+                                    Level = SnipLevel.Snip4,
                                     FailOnError = true,
                                     ThrowOnNullMessage = true
                                 };
 
                                 var snip = SnipValidator.Validate(msg837, snipOptions);
+                                var controlNumber = msg837.ST?.TransactionSetControlNumber_02;
 
                                 if (!snip.IsValid)
                                 {
-                                    var controlNumber = msg837.ST?.TransactionSetControlNumber_02;
-
                                     var segErrors = snip.ErrorContext?.Errors
                                                     ?? Enumerable.Empty<EdiFabric.Core.Model.Edi.ErrorContexts.SegmentErrorContext>();
 
@@ -142,44 +146,66 @@ namespace Edi837Ingestion.Edi
 
                                     _log.LogError("SNIP validation failed for 837P ControlNumber={CN} (Level={Level}).",
                                         controlNumber, snipOptions.Level);
-
-
                                 }
 
-                                if (msg837.ST != null)
+
+                                // Billing provider HL
+                                var loop2000A = msg837.Loop2000A?.FirstOrDefault();
+
+                                // Subscriber HL
+                                var loop2000B = loop2000A?.Loop2000B?.FirstOrDefault();
+
+                                // First claim loop
+                                var loop2300 = loop2000B?.Loop2300?.FirstOrDefault();
+
+                                var clm = loop2300?.CLM_ClaimInformation;
+
+                                var patientControlNumber = clm?.PatientControlNumber_01;
+
+                                decimal? totalClaimAmount = null;
+                                if (decimal.TryParse(
+                                        clm?.TotalClaimChargeAmount_02,
+                                        out var amt))
                                 {
-                                    _db.ST.Add(new StEntity
-                                    {
-                                        TransactionSetId = msg837.ST.TransactionSetIdentifierCode_01,
-                                        ControlNumber = msg837.ST.TransactionSetControlNumber_02,
-                                        RawJson = JsonSerializer.Serialize(msg837.ST)
-                                    });
+                                    totalClaimAmount = amt;
                                 }
 
-                                if (msg837.SE != null)
-                                {
-                                    if (!int.TryParse(msg837.SE?.NumberofIncludedSegments_01, out var segCount) || segCount <= 0)
-                                        throw new InvalidOperationException(
-                                            $"Invalid or missing SE01 segment count. Value was: '{msg837.SE?.NumberofIncludedSegments_01}'");
+                                var loop2010BA = loop2000B?.AllNM1?.Loop2010BA;
+                                var subNm1 = loop2010BA?.NM1_SubscriberName;
 
-                                    _db.SE.Add(new SeEntity
-                                    {
-                                        SegmentCount = segCount,
-                                        ControlNumber = msg837.SE.TransactionSetControlNumber_02,
-                                        RawJson = JsonSerializer.Serialize(msg837.SE)
-                                    });
+                                string? patientLastName = subNm1?.ResponseContactLastorOrganizationName_03;
+                                string? patientFirstName = subNm1?.ResponseContactFirstName_04;
+
+                                var loop2010AA = loop2000A?.AllNM1?.Loop2010AA;
+                                var billingNm1 = loop2010AA?.NM1_BillingProviderName;
+
+                                string? billingProviderNpi = billingNm1?.ResponseContactIdentifier_09;
+
+                                DateTime? serviceFromDate = null;
+                                if (loop2300 != null)
+                                {
+                                    serviceFromDate = GetClaimHeaderDate(loop2300.AllDTP);
                                 }
 
-                                _db.TS837P.Add(new Ts837pEntity
+                                var tsEntity = new Ts837pEntity
                                 {
-                                    ControlNumber = msg837.ST?.TransactionSetControlNumber_02,
-                                    PatientControlNumber =
-                                        msg837?.Loop2000A?.FirstOrDefault()?
-                                              .Loop2000B?.FirstOrDefault()?
-                                              .Loop2300?.FirstOrDefault()?
-                                              .CLM_ClaimInformation?.PatientControlNumber_01,
+                                    ControlNumber = controlNumber,
+                                    PatientControlNumber = patientControlNumber,
                                     RawJson = JsonSerializer.Serialize(msg837)
-                                });
+                                };
+                                _db.TS837P.Add(tsEntity);
+
+                                var claim = new ClaimEntity
+                                {
+                                    TransactionSetControlNumber = controlNumber,
+                                    PatientControlNumber = patientControlNumber,
+                                    PatientLastName = patientLastName,
+                                    PatientFirstName = patientFirstName,
+                                    TotalClaimAmount = totalClaimAmount,
+                                    ServiceFromDate = serviceFromDate,
+                                    BillingProviderNpi = billingProviderNpi
+                                };
+                                _db.Claims.Add(claim);
 
                                 saved++;
                                 break;
@@ -223,6 +249,87 @@ namespace Edi837Ingestion.Edi
                 _log.LogError(ex, "Failed to ingest EDI file.");
                 throw;
             }
+        }
+        private static DateTime? TryParseDtpDate(string? format, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(format) || string.IsNullOrWhiteSpace(value))
+                return null;
+
+            try
+            {
+                switch (format)
+                {
+                    case "D8": // single date
+                        if (DateTime.TryParseExact(value, "yyyyMMdd",
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.None,
+                                out var d8))
+                            return d8;
+                        break;
+
+                    case "RD8": // date range: yyyyMMdd-yyyMMdd
+                        var parts = value.Split('-');
+                        if (parts.Length >= 1 &&
+                            DateTime.TryParseExact(parts[0], "yyyyMMdd",
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.None,
+                                out var from))
+                            return from;
+                        break;
+                }
+            }
+            catch
+            {
+                // ignore and fall through
+            }
+
+            return null;
+        }
+        private static DateTime? GetClaimHeaderDate(All_DTP_837P_2? allDtp)
+        {
+            if (allDtp == null) return null;
+
+            var candidates = new List<object?>
+            {
+                allDtp.DTP_Date_OnsetofCurrentIllnessorSymptom,
+                allDtp.DTP_Date_InitialTreatmentDate,
+                allDtp.DTP_Date_LastSeenDate,
+                allDtp.DTP_Date_Accident,
+                allDtp.DTP_Date_Admission,
+                allDtp.DTP_Date_Discharge,
+                allDtp.DTP_Date_DisabilityDates,
+                allDtp.DTP_Date_LastWorked,
+                allDtp.DTP_Date_AuthorizedReturntoWork,
+                allDtp.DTP_PropertyandCasualtyDateofFirstContact,
+                allDtp.DTP_Date_RepricerReceivedDate
+            };
+
+            if (allDtp.DTP_Date_AssumedandRelinquishedCareDates != null)
+                candidates.AddRange(allDtp.DTP_Date_AssumedandRelinquishedCareDates);
+
+            foreach (var candidate in candidates)
+            {
+                var dt = TryGetDtpDate(candidate);
+                if (dt.HasValue)
+                    return dt.Value;
+            }
+
+            return null;
+        }
+
+        private static DateTime? TryGetDtpDate(object? dtpSegment)
+        {
+            if (dtpSegment == null) return null;
+
+            var type = dtpSegment.GetType();
+
+            var format = type.GetProperty("DateTimePeriodFormatQualifier_02")
+                ?.GetValue(dtpSegment) as string;
+
+            var value = type.GetProperty("DateTimePeriod_03")
+                ?.GetValue(dtpSegment) as string;
+
+            return TryParseDtpDate(format, value);
         }
     }
 }

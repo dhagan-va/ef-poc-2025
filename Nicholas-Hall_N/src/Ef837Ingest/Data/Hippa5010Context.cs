@@ -12,7 +12,11 @@ public class Hipaa5010Context(DbContextOptions<Hipaa5010Context> options) : DbCo
 
     public DbSet<Ts837pEntity> TS837P => Set<Ts837pEntity>();
     public DbSet<Ts850Entity> TS850 => Set<Ts850Entity>();
-    public DbSet<ValidationIssue> ValidationIssues => Set<ValidationIssue>();
+    public DbSet<ValidationIssue> ValidationIssues => Set<ValidationIssue>(); 
+    public DbSet<TransactionStatus> TransactionStatuses { get; set; } = null!; 
+    public DbSet<ClaimEntity> Claims { get; set; } = null!;
+
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
