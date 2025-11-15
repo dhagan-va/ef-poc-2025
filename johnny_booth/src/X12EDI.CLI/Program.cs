@@ -37,6 +37,13 @@ public class Program
             options.FolderPath = configuration["EdiOptions:FolderPath"];
         });
 
+        // Register the S3 services, pointing the IAmazonS3 client to the local Blazor API.
+        services.AddS3(options =>
+        {
+            configuration.GetSection("S3Options").Bind(options);
+            options.ForcePathStyle = true;
+        });
+
         // 5. Database context registration from .Data
         services.AddX12EdiData(configuration);
 

@@ -1,84 +1,113 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.Runtime;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.IO;
+using Amazon;
+using EdiFabric.Templates.Hipaa5010;
 
 namespace X12EDI.Core.FileProviders
 {
     public class S3FileProvider : IFileProvider
     {
-        #region Private Fields
-
         private readonly string _bucketName;
-        private readonly IAmazonS3 _s3;
+        private readonly IAmazonS3 _s3Client;
 
-        #endregion Private Fields
-
-        #region Public Constructors
-
-        public S3FileProvider(IAmazonS3 s3, string bucketName)
+        // 1. DI-FRIENDLY CONSTRUCTOR (Server-side/ASP.NET Core)
+        // IAmazonS3 is expected to be registered and configured in Program.cs
+        public S3FileProvider(IAmazonS3 s3Client, string bucketName)
         {
-            _s3 = s3;
+            _s3Client = s3Client;
             _bucketName = bucketName;
         }
 
-        // Constructor for client-side (self-contained)
-        public S3FileProvider(string accessKey, string secretKey, string bucketName, string uRL, bool forcePathStyle = true)
+        // 2. CLIENT-SIDE/STANDALONE FACTORY METHOD
+        // Use this for command-line apps or testing with a mock endpoint (like Moto.py)
+        public static S3FileProvider CreateStandalone(
+            string accessKey,
+            string secretKey,
+            string bucketName,
+            string serviceURL,
+            IServiceProvider serviceProvider,
+            bool forcePathStyle = true)
         {
             var config = new AmazonS3Config
             {
-                ServiceURL = uRL, // "https://localhost:5001", // Blazor endpoint
-                ForcePathStyle = forcePathStyle                  // use /bucket/key style
+                ServiceURL = serviceURL,
+                ForcePathStyle = forcePathStyle,
+                HttpClientFactory = new CustomS3ClientFactory(serviceProvider),
             };
 
-            _s3 = new AmazonS3Client(accessKey, secretKey, config);
-            _bucketName = bucketName;
+            var credentials = new BasicAWSCredentials(accessKey, secretKey);
+
+            var s3Client = new AmazonS3Client(credentials, config);
+
+            // Use the main constructor for initialization
+            return new S3FileProvider(s3Client, bucketName);
         }
 
-        #endregion Public Constructors
-
-        #region Public Methods
+        // --- IFileProvider Implementation ---
 
         public IDirectoryContents GetDirectoryContents(string subpath)
         {
-            // Normalize prefix (S3 uses keys, not real directories)
             string prefix = string.IsNullOrEmpty(subpath) ? string.Empty : subpath.TrimStart('/');
+            if (!prefix.EndsWith("/") && !string.IsNullOrEmpty(prefix))
+            {
+                prefix += "/"; // Append slash for directory search
+            }
 
             var request = new ListObjectsV2Request
             {
                 BucketName = _bucketName,
                 Prefix = prefix,
-                Delimiter = "/" // optional: treat "/" as directory separator
+                Delimiter = "/" // Used to get only top-level files/folders
             };
 
-            // Use Awaiter to avoid deadlock
-            var response = _s3.ListObjectsV2Async(request)
-                .GetAwaiter()
-                .GetResult();
-
-            if (response.S3Objects == null || response.S3Objects.Count == 0)
+            try
             {
-                return NotFoundDirectoryContents.Singleton;
+                // Blocking asynchronous call for synchronous contract compliance (common for IFileProvider)
+                var response = _s3Client.ListObjectsV2Async(request).GetAwaiter().GetResult();
+
+                var filesAndFolders = new List<IFileInfo>();
+
+                // Map files (S3Objects)
+                if (response.S3Objects != null)
+                {
+                    filesAndFolders.AddRange(response.S3Objects
+                        // Exclude the folder object itself if it exists (e.g., prefix/)
+                        .Where(o => o.Key != prefix)
+                        .Select(o => new S3FileInfo(_s3Client, _bucketName, o)));
+                }
+
+                // Map folders (CommonPrefixes)
+                if (response.CommonPrefixes != null)
+                {
+                    filesAndFolders.AddRange(response.CommonPrefixes
+                        .Select(p => new S3DirectoryInfo(p)));
+                }
+
+                return new S3DirectoryContents(filesAndFolders);
             }
+            catch { /* Log error */ }
 
-            var files = response.S3Objects
-                .Select(o => new S3FileInfo(_s3, _bucketName, o.Key))
-                .Cast<IFileInfo>()
-                .ToList();
-
-            return new S3DirectoryContents(files);
+            return NotFoundDirectoryContents.Singleton;
         }
 
         public IFileInfo GetFileInfo(string subpath)
         {
-            return new S3FileInfo(_s3, _bucketName, subpath);
+            // Note: We don't call S3 here. The metadata check (HEAD request) 
+            // is deferred to the S3FileInfo.Exists property.
+            return new S3FileInfo(_s3Client, _bucketName, subpath);
         }
 
         public IChangeToken Watch(string filter)
         {
+            // S3 does not have a native change notification system
             return NullChangeToken.Singleton;
         }
-
-        #endregion Public Methods
     }
 }

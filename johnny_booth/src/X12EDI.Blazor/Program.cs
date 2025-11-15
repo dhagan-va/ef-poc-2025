@@ -1,11 +1,6 @@
-using Amazon.S3;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
-using X12EDI.Blazor.API.Controllers;
 using X12EDI.Blazor.Components;
 using X12EDI.Core.Config;
 using X12EDI.Core.Extensions;
-using X12EDI.Core.FileProviders;
 using X12EDI.Data.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,19 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddEDIServices((options) => 
+builder.Services.AddEDIServices((options) =>
 {
     options.SerialKey = Environment.GetEnvironmentVariable("EDIKEY");
     options.FolderPath = builder.Configuration["EdiOptions:FolderPath"];
 });
 
 builder.Services.AddControllers();
-builder.Services.AddSingleton<IFileProvider>(sp =>
-{
-    var s3 = sp.GetRequiredService<IAmazonS3>();
-    var bucketName = builder.Configuration["S3Options:BucketName"];
-    return new S3FileProvider(s3, string.IsNullOrEmpty(bucketName) ? "bucket-name" : bucketName);
-});
 
 builder.Services.AddX12EdiData(builder.Configuration);
 
@@ -36,7 +25,6 @@ builder.Services.AddLogging(config =>
     config.SetMinimumLevel(LogLevel.Information);
 });
 
-
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -44,8 +32,6 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 // Verify serial key
 var ediOptions = app.Services.GetRequiredService<EdiOptions>();
 logger.LogInformation($"EdiFabric serial key {(string.IsNullOrEmpty(ediOptions.SerialKey) ? "not" : "is")} set.");
-
-
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -57,6 +43,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.MapControllers();
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
