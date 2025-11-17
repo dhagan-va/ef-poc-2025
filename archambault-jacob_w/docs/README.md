@@ -7,6 +7,16 @@ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
    -d \
    mcr.microsoft.com/mssql/server:latest
 ```
+
+## Install .NET:
+### Install the latest .NET SDK:
+```
+curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 9.0.100 --install-dir $HOME/.dotnet
+export PATH="$HOME/.dotnet:$PATH"
+```
+### Install Entity Framework:
+`dotnet tool install --global dotnet-ef`
+
 ##  Run EF migration:
 `cd <project location>/ef-poc-2025/archambault-jacob_w/src/EFPOC.DB`
 `dotnet ef database update`
@@ -50,6 +60,7 @@ Podman is a rootless, daemonless alternative to Docker that comes pre-installed 
 
 ## Run entity framework migrations
 This project uses entity framework migrations for its database setup and updates. [Entity framework](https://learn.microsoft.com/en-us/ef/core/get-started/overview/first-app?tabs=netcore-cli) is an object relational mapper that maps SQL Server relations (tables) to C# classes. This allows SQL Server data to be converted into C# objects and manipulated in memory accordingly, and conversely allows instances of C# classes to be persisted as SQL data.
+
 ### About entity framework migrations
 Entity framework migrations are a [code first](https://learn.microsoft.com/en-us/ef/ef6/modeling/code-first/workflows/new-database) technique for building and updating databases from schemata defined in code. A code first approach is contrasted with a database first approach, which sets up database schema independently and prior to building applications that must interface with it. By using entity framework migrations, we can automatically seed a database from the schemata that we define via C# classes, and update SQL Server tables simply by updating our corresponding model class definitions and running a migration.
 
