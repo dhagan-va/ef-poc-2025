@@ -1,0 +1,21 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Edi837Ingester", "src\Edi837Ingester\Edi837Ingester.csproj", "{1E28562E-B4A5-41D8-AF63-2BFDB6AE984A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BFFE8CC5-8077-4848-BC01-7A279A78DD28}"
+	ProjectSection(SolutionItems) = preProject
+		compose.yaml = compose.yaml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1E28562E-B4A5-41D8-AF63-2BFDB6AE984A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E28562E-B4A5-41D8-AF63-2BFDB6AE984A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E28562E-B4A5-41D8-AF63-2BFDB6AE984A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E28562E-B4A5-41D8-AF63-2BFDB6AE984A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
