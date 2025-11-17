@@ -1,5 +1,10 @@
 # Quick start
 
+## Create a .env file in archambault-jacob_w/src
+```
+echo -e "ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=<Your password here>" > .env
+```
+
 ## Run SQL Server:
 ```
 docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
