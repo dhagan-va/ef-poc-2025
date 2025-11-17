@@ -17,8 +17,9 @@ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
 ### Install the latest .NET SDK:
 ```
 curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 9.0.100 --install-dir $HOME/.dotnet
-export PATH="$HOME/.dotnet:$PATH"
+[[ ":$PATH:" != *":$HOME/.dotnet:"* ]] && export PATH="$PATH:$HOME/.dotnet"
 ```
+
 ### Install Entity Framework:
 `dotnet tool install --global dotnet-ef`
 
