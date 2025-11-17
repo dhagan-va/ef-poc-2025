@@ -7,13 +7,14 @@ echo -e "ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=<Your password here>" > .env
 ```
 
 ## Start a SQL Server instance:
+`docker compose up`
+or more verbosely:
 ```
 docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
    -p 1433:1433 --name sql1 \
    -d \
    mcr.microsoft.com/mssql/server:latest
 ```
-
 ## Install .NET:
 ### Install the .NET 9 SDK:
 ```
