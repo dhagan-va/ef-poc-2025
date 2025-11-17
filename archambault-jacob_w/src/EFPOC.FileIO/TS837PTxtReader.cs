@@ -1,10 +1,11 @@
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
+using EFPOC.Application.Interfaces;
 
 namespace EFPOC.FileIO;
 
-public sealed class TS837PTxtReader
+public sealed class TS837PTxtReader: ITS837PReader
 {
     public IEnumerable<TS837P> Read()
     {

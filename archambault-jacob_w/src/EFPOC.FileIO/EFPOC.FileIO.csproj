@@ -11,4 +11,8 @@
     <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\EFPOC.Application\EFPOC.Application.csproj" />
+  </ItemGroup>
+
 </Project>
