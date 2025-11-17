@@ -2,10 +2,11 @@
 
 ## Create a .env file in archambault-jacob_w/src
 ```
+cd <project location>/ef-poc-2025/archambault-jacob_w/src
 echo -e "ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=<Your password here>" > .env
 ```
 
-## Run SQL Server:
+## Start a SQL Server instance:
 ```
 docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<password>" \
    -p 1433:1433 --name sql1 \
