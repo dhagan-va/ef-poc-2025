@@ -1,25 +1,31 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using Edi837Ingester.Data;
+using Edi837Ingester.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
 
-var services = new ServiceCollection();
-ConfigureServices(services);
-var serviceProvider = services.BuildServiceProvider();
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
+    {
+        // Get connection string from appsettings.json (automatically loaded by CreateDefaultBuilder)
+        string? connectionString = context.Configuration.GetConnectionString("DefaultConnection");
 
-var parser = serviceProvider.GetRequiredService<Edi837Ingester.Services.EdiParser>();
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(connectionString)); // Use your provider
 
-void ConfigureServices(ServiceCollection serviceCollection)
+        // Register other services/classes that will use the DbContext
+        services.AddTransient<EdiParser>();
+    })
+    .Build();
+
+using (var scope = host.Services.CreateScope())
 {
-    // get appsttings from appsettings.json
-    serviceCollection.AddOptions();
-    serviceCollection.AddLogging();
-    serviceCollection.AddDbContext<Edi837Ingester.Data.AppDbContext>(options =>
-        options.UseSqlServer("DefaultConnection"));
-    serviceCollection.AddTransient<Edi837Ingester.Services.EdiParser>();
+    var parser = scope.ServiceProvider.GetRequiredService<Edi837Ingester.Services.EdiParser>();
 }
-
 
 Console.WriteLine("Hello, World!");

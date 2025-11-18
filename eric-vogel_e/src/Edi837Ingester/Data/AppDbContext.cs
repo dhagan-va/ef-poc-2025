@@ -1,9 +1,9 @@
-using Edi837Ingester.Data.Entities;
+using EdiFabric.Templates.Hipaa5010;
 using Microsoft.EntityFrameworkCore;
 
 namespace Edi837Ingester.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public DbSet<Edi837Document> Edi837Documents { get; set; }
+    public DbSet<TS837P> TS837P { get; set; }
 }
