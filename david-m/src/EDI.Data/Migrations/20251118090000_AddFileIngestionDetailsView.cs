@@ -3,19 +3,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-#nullable disable
-
 namespace EDI.Data.Migrations
 {
     /// <inheritdoc />
     [DbContext(typeof(EdiDbContext))]
-    [Migration("20251117090500_AddFileIngestionView")]
-    public partial class AddFileIngestionView : Migration
+    [Migration("20251118090000_AddFileIngestionDetailsView")]
+    public partial class AddFileIngestionDetailsView : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(SqlScripts.EdiFileIngestionView);
+            migrationBuilder.Sql(SqlScripts.EdiFileIngestionDetailsView);
         }
 
         /// <inheritdoc />
@@ -23,8 +21,8 @@ namespace EDI.Data.Migrations
         {
             migrationBuilder.Sql(
                 """
-                IF OBJECT_ID('dbo.vw_EdiFileIngestion', 'V') IS NOT NULL
-                    DROP VIEW dbo.vw_EdiFileIngestion;
+                IF OBJECT_ID('dbo.vw_EdiFileIngestionDetails', 'V') IS NOT NULL
+                    DROP VIEW dbo.vw_EdiFileIngestionDetails;
                 """);
         }
 
