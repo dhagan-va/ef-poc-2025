@@ -22,6 +22,12 @@ namespace EDI837.src.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Method extracts the claim's transactions by using the file name as identifier. 
+        /// </summary>
+        /// <param name="fileName">File name of the claim to process.</param>
+        /// <param name="parsingErrors">Collection of parsing errors passed by reference.</param>
+        /// <returns>The collection of transactions in the claim.</returns>
         public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName, IEnumerable<string> parsingErrors)
         {
             
@@ -68,6 +74,11 @@ namespace EDI837.src.Services
             return validTransactions;
         }
 
+        /// <summary>
+        /// Method creates a Stream based on the file name and the location of the file.
+        /// </summary>
+        /// <param name="fileName">Name of the file to be processed.</param>
+        /// <returns>Readable Stream or a Null stream if the file does not exists.</returns>
         private Stream GetStreamByFileName(string fileName)
         {
             var fileInfo = this._fileProvider.GetFileInfo($"{_configuration["LocalFileFolder"]}\\{fileName}");

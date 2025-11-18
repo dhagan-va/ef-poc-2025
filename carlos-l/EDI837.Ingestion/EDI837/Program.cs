@@ -1,7 +1,6 @@
 using EDI837.src.Models;
 using EDI837.src.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);

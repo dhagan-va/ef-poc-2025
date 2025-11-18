@@ -1,6 +1,4 @@
 ﻿using EDI837.src.Models;
-using EdiFabric.Core.Model.Edi;
-using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Templates.Hipaa5010;
 using System.Text.Json;
 
@@ -19,6 +17,12 @@ namespace EDI837.src.Services
             this._logger = logger;
         }
 
+        /// <summary>
+        /// Method saves the original claim in a JSON format to the database. 
+        /// </summary>
+        /// <param name="transactions">Parsed collection of transactions.</param>
+        /// <returns>The JSON Object saved in the database.</returns>
+        /// <exception cref="Exception">Get logged to the selected media.</exception>
         public async Task<IEnumerable<ProcessedClaim>> SaveOriginalClaim(IEnumerable<TS837P> transactions)
         {
             _logger.LogInformation("The transactions collection was null");
@@ -61,6 +65,12 @@ namespace EDI837.src.Services
             return result;
         }
 
+        /// <summary>
+        /// Method saves the transaction to the TS837 defined structure in the database.
+        /// </summary>
+        /// <param name="transactions">Parsed collection of transactions.</param>
+        /// <returns>The JSON Object saved in the database.</returns>
+        /// <exception cref="Exception">Get logged to the selected media.</exception>
         public async Task<IEnumerable<TS837P>> Save837PClaims(IEnumerable<TS837P> transactions)
         {
             _logger.LogInformation("The transactions collection was null");
@@ -86,6 +96,14 @@ namespace EDI837.src.Services
             
             return result;
         }
+
+        /// <summary>
+        /// Method ensures the claim is unique and a copy of it has not been stored in the database.
+        /// </summary>
+        /// <param name="claimControlNumber">Claim control number from the claim claim's header.</param>
+        /// <param name="claimConventionReference">Claim conversion reference from the claim's header.</param>
+        /// <param name="claimIdentifier">Claim identifier from the claim's header.</param>
+        /// <returns>The JSON Object saved in the database.</returns>
         private bool IsClaimDuplicate(string claimControlNumber, string claimConventionReference, string claimIdentifier)
         {
             var record = this._context.ProcessedClaims.FirstOrDefault(

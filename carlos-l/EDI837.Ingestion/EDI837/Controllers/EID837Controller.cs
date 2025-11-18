@@ -1,7 +1,5 @@
 ﻿using EDI837.src.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.FileProviders;
 
 namespace EDI837.Controllers
 {
@@ -51,7 +49,6 @@ namespace EDI837.Controllers
         public async Task<IActionResult> SaveEdi837PByFileName(string fileName = "837File.edi")
         {
             List<string> parsingErrors = new List<string>();
-
             var validTransactions = this._ediParserService.ExtractValid837PTransactions(fileName, parsingErrors);
             
             var claims = await this._edi837FileService.Save837PClaims(validTransactions);

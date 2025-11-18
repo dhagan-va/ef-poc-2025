@@ -1,24 +1,35 @@
-using EDI837.src.Services;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Logging;
-using Moq;
-
 namespace EDI837.Tests;
 
 [TestFixture]
-public class Edi837FileServiceTests
-{
-    [SetUp]
-    public void Setup()
+public class Edi837FileServiceTests : BaseTests
+{    
+    [Test]
+    public async Task SaveOriginalClaim_ShouldReturnAConfirmation()
     {
-        //_configurationMock = new Mock<IConfiguration>();
-        //_configurationMock.Setup(c => c["LocalFileFolder"]).Returns("samples\\");
-        //_configurationMock.Setup(c => c["EdiFabricSerialKey"]).Returns("c417cb9dd9d54297a55c032a74c87996");
+        //Arrange
+        var fileName = "837File.edi";
+        List<string> errors = new List<string>();
 
-        //_loggerMock = new Mock<ILogger<EdiParserService>>();
-        //_parserService = new EdiParserService(_configurationMock.Object, new PhysicalFileProvider("C:\\Users\\CarlosLadino\\source\\repos\\ef-poc-2025\\carlos-l\\EDI837.Ingestion\\EDI837\\"), _loggerMock.Object);
+        //Act 
+        var transactions = this._parserService.ExtractValid837PTransactions(fileName, errors);
+        var savedClaims =  await this._edi837Fileservice.SaveOriginalClaim(transactions);
 
-        ////Set EDI Key
-        //EdiFabric.SerialKey.Set(_configurationMock.Object["EdiFabricSerialKey"]);
+        //Assert
+        Assert.IsTrue(savedClaims.Count() >= 1);
+    }
+
+    [Test]
+    public async Task Save837PClaims_ShouldReturnAConfirmation()
+    {
+        //Arrange
+        var fileName = "837File.edi";
+        List<string> errors = new List<string>();
+
+        //Act 
+        var transactions = this._parserService.ExtractValid837PTransactions(fileName, errors);
+        var savedTransactions = await  this._edi837Fileservice.Save837PClaims(transactions);
+        
+        //Assert
+        Assert.IsTrue(savedTransactions.Count() >= 1);
     }
 }
