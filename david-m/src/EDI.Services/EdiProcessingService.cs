@@ -3,6 +3,7 @@ using EdiFabric;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Amazon.S3;
 using Amazon.S3.Model;
 using System.Text;
@@ -14,13 +15,17 @@ namespace EDI.Services
     {
         private readonly EdiDbContext _dbContext;
         private readonly IEdiValidationService _validationService;
+        private readonly ILogger<EdiProcessingService> _logger;
+        private readonly AmazonS3Client _s3Client;
         private static bool _serialKeyInitialized;
         private static readonly object _serialKeyLock = new();
 
-        public EdiProcessingService(EdiDbContext dbContext, IEdiValidationService validationService)
+        public EdiProcessingService(EdiDbContext dbContext, IEdiValidationService validationService, ILogger<EdiProcessingService> logger)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _s3Client = CreateS3Client();
             EnsureSerialKey();
         }
 
@@ -39,7 +44,7 @@ namespace EDI.Services
                 }
 
                 var serialKey = Environment.GetEnvironmentVariable("EDIFABRIC_SERIAL_KEY")
-                                ?? "c417cb9dd9d54297a55c032a74c87996";
+                                ?? throw new InvalidOperationException("EDIFABRIC_SERIAL_KEY environment variable is required");
                 SerialKey.Set(serialKey, true);
                 _serialKeyInitialized = true;
             }
@@ -90,14 +95,14 @@ namespace EDI.Services
 
         public async Task ProcessEdiDocumentAsync(string ediContent)
         {
-            // Implement business logic for processing EDI documents
-            // This could include validation, transformation, routing, etc.
-            await Task.CompletedTask; // Placeholder
+            // Process the EDI document content
+            // This could include additional business logic like document validation, transformation, routing, etc.
+            await ProcessEdiAsync(ediContent);
         }
 
         public async Task ProcessT837DAsync(string ediContent)
         {
-            var transactions = Parse837D(ediContent);
+            var transactions = ParseEdi<TS837D>(ediContent);
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
@@ -108,7 +113,7 @@ namespace EDI.Services
 
         public async Task ProcessT837IAsync(string ediContent)
         {
-            var transactions = Parse837I(ediContent);
+            var transactions = ParseEdi<TS837I>(ediContent);
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
@@ -119,7 +124,7 @@ namespace EDI.Services
 
         public async Task ProcessT837PAsync(string ediContent)
         {
-            var transactions = Parse837P(ediContent);
+            var transactions = ParseEdi<TS837P>(ediContent);
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
@@ -130,7 +135,7 @@ namespace EDI.Services
 
         public async Task ProcessT835Async(string ediContent)
         {
-            var transactions = Parse835(ediContent);
+            var transactions = ParseEdi<TS835>(ediContent);
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
@@ -139,54 +144,23 @@ namespace EDI.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        private IEnumerable<TS837D> Parse837D(string ediContent)
+        private IEnumerable<TTransaction> ParseEdi<TTransaction>(string ediContent)
         {
-            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(ediContent)))
-            {
-                var ediItems = new X12Reader(memoryStream, "EdiFabric.Templates.Hipaa").ReadToEnd().ToList();
-                return ediItems.OfType<TS837D>();
-            }
-        }
-
-        private IEnumerable<TS837I> Parse837I(string ediContent)
-        {
-            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(ediContent)))
-            {
-                var ediItems = new X12Reader(memoryStream, "EdiFabric.Templates.Hipaa").ReadToEnd().ToList();
-                return ediItems.OfType<TS837I>();
-            }
-        }
-
-        private IEnumerable<TS837P> Parse837P(string ediContent)
-        {
-            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(ediContent)))
-            {
-                var ediItems = new X12Reader(memoryStream, "EdiFabric.Templates.Hipaa").ReadToEnd().ToList();
-                return ediItems.OfType<TS837P>();
-            }
-        }
-
-        private IEnumerable<TS835> Parse835(string ediContent)
-        {
-            using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(ediContent)))
-            {
-                var ediItems = new X12Reader(memoryStream, "EdiFabric.Templates.Hipaa").ReadToEnd().ToList();
-                return ediItems.OfType<TS835>();
-            }
+            using var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(ediContent));
+            var ediItems = new X12Reader(memoryStream, "EdiFabric.Templates.Hipaa").ReadToEnd().ToList();
+            return ediItems.OfType<TTransaction>();
         }
 
         public async Task<List<string>> GetEdiFilesFromS3Async(string bucketName)
         {
-            var s3Client = GetS3Client();
             var request = new ListObjectsV2Request { BucketName = bucketName };
-            var response = await s3Client.ListObjectsV2Async(request);
+            var response = await _s3Client.ListObjectsV2Async(request);
             return response.S3Objects.Select(o => o.Key).ToList();
         }
 
         public async Task ProcessEdiFilesFromS3Async(string bucketName)
         {
             var files = await GetEdiFilesFromS3Async(bucketName);
-            var s3Client = GetS3Client();
 
             foreach (var file in files)
             {
@@ -194,18 +168,19 @@ namespace EDI.Services
                 if (file.StartsWith("success/") || file.StartsWith("failed/")) continue;
 
                 var request = new GetObjectRequest { BucketName = bucketName, Key = file };
-                using var response = await s3Client.GetObjectAsync(request);
+                using var response = await _s3Client.GetObjectAsync(request);
                 using var reader = new StreamReader(response.ResponseStream);
                 var ediContent = await reader.ReadToEndAsync();
 
                 try
                 {
                     await ProcessEdiAsync(ediContent);
-                    await MoveObjectAsync(s3Client, bucketName, file, $"success/{Path.GetFileName(file)}");
+                    await MoveObjectAsync(_s3Client, bucketName, file, $"success/{Path.GetFileName(file)}");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    await MoveObjectAsync(s3Client, bucketName, file, $"failed/{Path.GetFileName(file)}");
+                    _logger.LogError(ex, "Failed to process EDI file {File}", file);
+                    await MoveObjectAsync(_s3Client, bucketName, file, $"failed/{Path.GetFileName(file)}");
                 }
             }
         }
@@ -228,7 +203,7 @@ namespace EDI.Services
             await s3Client.DeleteObjectAsync(deleteRequest);
         }
 
-        private AmazonS3Client GetS3Client()
+        private static AmazonS3Client CreateS3Client()
         {
             var config = new AmazonS3Config
             {
