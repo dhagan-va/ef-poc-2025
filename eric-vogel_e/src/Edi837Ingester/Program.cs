@@ -20,12 +20,14 @@ var host = Host.CreateDefaultBuilder(args)
 
         // Register other services/classes that will use the DbContext
         services.AddTransient<EdiParser>();
+        services.AddTransient<EdiSaverService>();
     })
     .Build();
 
 using (var scope = host.Services.CreateScope())
 {
     var parser = scope.ServiceProvider.GetRequiredService<Edi837Ingester.Services.EdiParser>();
+    var saver = scope.ServiceProvider.GetRequiredService<EdiSaverService>();
 }
 
 Console.WriteLine("Hello, World!");
