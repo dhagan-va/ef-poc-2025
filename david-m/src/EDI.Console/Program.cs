@@ -207,7 +207,8 @@ using (var scope = host.Services.CreateScope())
         LEFT JOIN CLP_ClaimPaymentInformation AS clp ON clp.Id = t.CLP_ClaimPaymentInformationId;
         """);
 
-    EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
+    // Set required environment variable for EdiFabric
+    Environment.SetEnvironmentVariable("EDIFABRIC_SERIAL_KEY", "c417cb9dd9d54297a55c032a74c87996");
 
     // Set environment variable for AWS service URL (moto server)
     Environment.SetEnvironmentVariable("AWS_SERVICE_URL", "http://localhost:5000");
