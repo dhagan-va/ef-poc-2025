@@ -40,6 +40,7 @@ namespace X12EDI.Core.FileProviders
                 ServiceURL = serviceURL,
                 ForcePathStyle = forcePathStyle,
                 HttpClientFactory = new CustomS3ClientFactory(serviceProvider),
+                UseHttp = true
             };
 
             var credentials = new BasicAWSCredentials(accessKey, secretKey);

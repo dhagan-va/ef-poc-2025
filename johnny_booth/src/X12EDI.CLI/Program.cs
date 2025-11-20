@@ -32,7 +32,7 @@ public class Program
         services.AddEDIServices(options =>
         {
             // pull from config first, fall back to environment variable
-            options.SerialKey = string.IsNullOrEmpty(configuration["EdiOptions:SerialKey"]) ? Environment.GetEnvironmentVariable("EDIKEY") : null;
+            options.SerialKey = string.IsNullOrEmpty(configuration["EdiOptions:SerialKey"]) ? Environment.GetEnvironmentVariable("EDIKEY") : configuration["EdiOptions:SerialKey"];
 
             options.FolderPath = configuration["EdiOptions:FolderPath"];
         });
