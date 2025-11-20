@@ -19,15 +19,28 @@ var host = Host.CreateDefaultBuilder(args)
             options.UseSqlServer(connectionString)); // Use your provider
 
         // Register other services/classes that will use the DbContext
-        services.AddTransient<EdiParser>();
-        services.AddTransient<EdiSaverService>();
+        services.AddTransient<IEdiParser, EdiParser>();
+        services.AddTransient<IEdiSaverService, EdiSaverService>();
     })
     .Build();
 
-using (var scope = host.Services.CreateScope())
+string? path = string.Empty;
+
+Console.WriteLine("Enter the path to the EDI 837 file:");
+path = Console.ReadLine();
+
+if(string.IsNullOrWhiteSpace(path))
 {
-    var parser = scope.ServiceProvider.GetRequiredService<Edi837Ingester.Services.EdiParser>();
-    var saver = scope.ServiceProvider.GetRequiredService<EdiSaverService>();
+    Console.WriteLine("Path cannot be empty or whitespace. Exiting.");
+    return;
 }
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine($"Parsing EDI 837 file: {path}");
+
+using (var scope = host.Services.CreateScope())
+{
+    var parser = scope.ServiceProvider.GetRequiredService<IEdiParser>();
+    await parser.Parse(path);
+}
+
+Console.WriteLine("Done parsing the EDI 837 file.");
