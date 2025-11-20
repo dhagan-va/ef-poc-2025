@@ -24,10 +24,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-string? path = string.Empty;
-
 Console.WriteLine("Enter the path to the EDI 837 file:");
-path = Console.ReadLine();
+var path = Console.ReadLine();
 
 if(string.IsNullOrWhiteSpace(path))
 {
@@ -39,8 +37,15 @@ Console.WriteLine($"Parsing EDI 837 file: {path}");
 
 using (var scope = host.Services.CreateScope())
 {
-    var parser = scope.ServiceProvider.GetRequiredService<IEdiParser>();
-    await parser.Parse(path);
+    try
+    {
+        var parser = scope.ServiceProvider.GetRequiredService<IEdiParser>();
+        await parser.Parse(path);
+    } catch(Exception ex)
+    {
+        Console.WriteLine($"An error occurred while parsing the EDI 837 file: {ex.Message}");
+        return;
+    }
 }
 
 Console.WriteLine("Done parsing the EDI 837 file.");
