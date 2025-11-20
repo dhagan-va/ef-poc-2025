@@ -17,11 +17,26 @@ if (File.Exists(envPath))
     Console.WriteLine("✓ Loaded configuration from .env file");
 }
 
-var editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
+string? editSerialKey = null;
+
+// Check if --license argument is provided
+for (int i = 0; i < args.Length; i++)
+{
+    if (args[i] == "--license" && i + 1 < args.Length)
+    {
+        editSerialKey = args[i + 1];
+        break;
+    }
+}
+
+if (string.IsNullOrWhiteSpace(editSerialKey))
+{
+    editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
+}
 
 if(string.IsNullOrWhiteSpace(editSerialKey))
 {
-    Console.WriteLine("EDI Fabric serial key is not set. Please set the TRIAL_EDIFABRIC_LICENSE environment variable.");
+    Console.WriteLine("EDI Fabric serial key is not set. Please set the TRIAL_EDIFABRIC_LICENSE environment variable or use --license command.");
     return;
 }
 
@@ -42,8 +57,23 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-Console.WriteLine("Enter the path to the EDI 837 file:");
-var path = Console.ReadLine();
+string? path = null;
+
+// Check if --file argument is provided
+for (int i = 0; i < args.Length; i++)
+{
+    if (args[i] == "--file" && i + 1 < args.Length)
+    {
+        path = args[i + 1];
+        break;
+    }
+}
+
+if (string.IsNullOrWhiteSpace(path))
+{
+    Console.WriteLine("Enter the path to the EDI 837 file:");
+    path = Console.ReadLine();
+}
 
 if(string.IsNullOrWhiteSpace(path))
 {
