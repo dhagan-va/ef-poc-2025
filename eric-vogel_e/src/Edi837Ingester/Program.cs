@@ -21,7 +21,8 @@ var editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
 
 if(string.IsNullOrWhiteSpace(editSerialKey))
 {
-    editSerialKey = "c417cb9dd9d54297a55c032a74c87996";
+    Console.WriteLine("EDI Fabric serial key is not set. Please set the TRIAL_EDIFABRIC_LICENSE environment variable.");
+    return;
 }
 
 EdiFabric.SerialKey.Set(editSerialKey);
