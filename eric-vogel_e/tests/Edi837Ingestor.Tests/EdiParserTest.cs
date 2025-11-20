@@ -29,4 +29,24 @@ public class EdiParserTest
         await _ediParser.Parse(path);
         _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837P>>()), Times.Once);
     }
+    
+    [Test]
+    public async Task Parse_ValidDentalFile_SavesClaims()
+    {
+        // get file in root solution samples folder
+        var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
+            "../../../../../", "samples", "DentalClaim.edi"));
+        await _ediParser.Parse(path);
+        _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837D>>()), Times.Once);
+    }
+    
+    [Test]
+    public async Task Parse_ValidInstituionFile_SavesClaims()
+    {
+        // get file in root solution samples folder
+        var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
+            "../../../../../", "samples", "InstitutionalClaim.edi"));
+        await _ediParser.Parse(path);
+        _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
+    }
 }
