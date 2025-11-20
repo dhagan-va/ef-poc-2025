@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using DotNetEnv;
 using Edi837Ingester.Services;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
@@ -8,13 +9,14 @@ namespace Edi837Ingestor.Tests;
 
 public class EdiParserTest
 {
-    private readonly EdiParser _ediParser;
-    private readonly Mock<ILogger<EdiParser>> _logger;
-    private readonly Mock<IEdiSaverService> _ediSaverService;
+    private EdiParser _ediParser;
+    private Mock<ILogger<EdiParser>> _logger;
+    private Mock<IEdiSaverService> _ediSaverService;
 
-    public EdiParserTest()
+    [SetUp]
+    public void Setup()
     {
-        EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
+        LoadEnvironment();
         _logger = new Mock<ILogger<EdiParser>>();
         _ediSaverService = new Mock<IEdiSaverService>();
         _ediParser = new EdiParser(_ediSaverService.Object, _logger.Object);
@@ -48,5 +50,26 @@ public class EdiParserTest
             "../../../../../", "samples", "InstitutionalClaim.edi"));
         await _ediParser.Parse(path);
         _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
+    }
+    
+    private void LoadEnvironment()
+    {
+        // Load environment variables from .env file
+        // Load .env file if it exists
+        var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        if (File.Exists(envPath))
+        {
+            Env.Load(envPath);
+            Console.WriteLine("✓ Loaded configuration from .env file");
+        }
+
+        var editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
+
+        if(string.IsNullOrWhiteSpace(editSerialKey))
+        {
+            editSerialKey = "c417cb9dd9d54297a55c032a74c87996";
+        }
+
+        EdiFabric.SerialKey.Set(editSerialKey);
     }
 }

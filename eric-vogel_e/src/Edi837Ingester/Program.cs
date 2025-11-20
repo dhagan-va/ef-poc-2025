@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using DotNetEnv;
 using Edi837Ingester.Data;
 using Edi837Ingester.Services;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,23 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
+// Load environment variables from .env file
+// Load .env file if it exists
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envPath))
+{
+    Env.Load(envPath);
+    Console.WriteLine("✓ Loaded configuration from .env file");
+}
+
+var editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
+
+if(string.IsNullOrWhiteSpace(editSerialKey))
+{
+    editSerialKey = "c417cb9dd9d54297a55c032a74c87996";
+}
+
+EdiFabric.SerialKey.Set(editSerialKey);
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
