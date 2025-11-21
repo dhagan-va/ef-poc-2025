@@ -1,27 +1,42 @@
+using System.Globalization;
 using System.Reflection;
-
+using System.Runtime.CompilerServices;
+using System.Threading;
 using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
-
 using H2.EdiIngestor.Data;
+using Microsoft.Extensions.Logging;
 
 namespace H2.EdiIngestor;
 
 public sealed class X12N837Parser : IX12N837Parser
 {
     private const string DateTimeFormat = "yyyyMMdd";
+    private readonly ILogger<X12N837Parser> _logger;
+
+    public X12N837Parser(ILogger<X12N837Parser> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
     public async IAsyncEnumerable<Claim> ReadFile(string fileName)
     {
-        await foreach (var flattenedClaimFile in GetFlattenedClaimFiles(fileName))
+        await foreach (var flattenedClaimFile in GetFlattenedClaimFiles(fileName, CancellationToken.None))
         {
             yield return MapClaimFile(flattenedClaimFile);
         }
     }
 
+
     public static Claim MapClaimFile(FlattenedClaimFile flattenedClaimFile)
     {
+        return MapClaimFile(flattenedClaimFile, PopulateClaimWith2300Loop);
+    }
+
+    public static Claim MapClaimFile(FlattenedClaimFile flattenedClaimFile, Action<Claim, Loop_2300_837P?>? populate2300 = null)
+    {
+        ArgumentNullException.ThrowIfNull(populate2300);
         var result = new Claim();
         result.BillingProviderName = GetName(flattenedClaimFile?.Loop2000A?.AllNM1.Loop2010AA.NM1_BillingProviderName);
         result.BillingProviderNpi = flattenedClaimFile?.Loop2000A?.AllNM1.Loop2010AA.NM1_BillingProviderName.ResponseContactIdentifier_09 ?? string.Empty;
@@ -34,43 +49,75 @@ public sealed class X12N837Parser : IX12N837Parser
         else
             result.PatientName = GetName(flattenedClaimFile?.Loop2000B?.AllNM1.Loop2010BA.NM1_SubscriberName);
 
-        Process2300Loop(flattenedClaimFile?.Loop2300);
-
-        void Process2300Loop(Loop_2300_837P? loop2300)
-        {
-            if (loop2300 is null)
-                throw new ArgumentNullException("loop2300");
-            result.ClaimId = loop2300.CLM_ClaimInformation.PatientControlNumber_01;
-
-            if (loop2300.AllNM1?.Loop2310B is not null)
-            {
-                result.RenderingProviderName = GetName(loop2300.AllNM1.Loop2310B.NM1_RenderingProviderName);
-                result.RenderingProviderNpi = loop2300.AllNM1.Loop2310B.NM1_RenderingProviderName.ResponseContactIdentifier_09;
-            }
-
-            var services = new List<Service>();
-            foreach (var loop2400 in loop2300.Loop2400)
-            {
-                var service = new Service();
-                service.ProcedureCode = loop2400.SV1_ProfessionalService.CompositeMedicalProcedureIdentifier_01.ProcedureCode_02;
-                service.StartDate = GetDate(loop2400.AllDTP.DTP_Date_ServiceDate);
-                service.ChargeAmount = decimal.Parse(loop2400.SV1_ProfessionalService.LineItemChargeAmount_02);
-                service.Quantity = int.Parse(loop2400.SV1_ProfessionalService.ServiceUnitCount_04);
-                service.UnitOrBasisForMeasurementCode = loop2400.SV1_ProfessionalService.UnitorBasisforMeasurementCode_03;
-                service.DiagnosisCode1 = GetDiag(1, loop2300.AllHI.HI_HealthCareDiagnosisCode, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
-                service.DiagnosisCode2 = GetDiag(2, loop2300.AllHI.HI_HealthCareDiagnosisCode, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
-                service.DiagnosisCode3 = GetDiag(3, loop2300.AllHI.HI_HealthCareDiagnosisCode, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
-                service.DiagnosisCode4 = GetDiag(4, loop2300.AllHI.HI_HealthCareDiagnosisCode, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
-                services.Add(service);
-            }
-            result.Services = services;
-        }
+        // If a custom populator is provided (e.g. from a test), use it; otherwise use the
+        // existing PopulateClaimWith2300Loop to keep current behaviour.
+        var populator = populate2300 ?? PopulateClaimWith2300Loop;
+        populator(result, flattenedClaimFile?.Loop2300);
 
         return result;
     }
-
-    public static string? GetDiag(int requestedPointer, HI_DependentHealthCareDiagnosisCode_2 claimDiagnosisCodes, C004_CompositeDiagnosisCodePointer diagnosisPointers)
+    public static void PopulateClaimWith2300Loop(Claim result, Loop_2300_837P? loop2300)
     {
+        ArgumentNullException.ThrowIfNull(loop2300);
+        PopulateClaimWith2300Loop(result, loop2300, MapService);
+    }
+
+    public static void PopulateClaimWith2300Loop(Claim result, Loop_2300_837P loop2300, Func<Loop_2400_837P, HI_DependentHealthCareDiagnosisCode_2, Service>? mapService = null)
+    {
+        ArgumentNullException.ThrowIfNull(loop2300);
+        ArgumentNullException.ThrowIfNull(mapService);
+
+        result.ClaimId = loop2300.CLM_ClaimInformation.PatientControlNumber_01;
+        if (loop2300.AllNM1?.Loop2310B is not null)
+        {
+            result.RenderingProviderName = GetName(loop2300.AllNM1.Loop2310B.NM1_RenderingProviderName);
+            result.RenderingProviderNpi = loop2300.AllNM1.Loop2310B.NM1_RenderingProviderName.ResponseContactIdentifier_09;
+        }
+
+        var services = new List<Service>();
+        foreach (var loop2400 in loop2300.Loop2400)
+            mapService(loop2400, loop2300.AllHI.HI_HealthCareDiagnosisCode);
+        result.Services = services;
+    }
+
+    public static Service MapService(Loop_2400_837P loop2400, HI_DependentHealthCareDiagnosisCode_2 hiSegment)
+    {
+        var result = new Service();
+        result.ProcedureCode = loop2400.SV1_ProfessionalService.CompositeMedicalProcedureIdentifier_01.ProcedureCode_02;
+        result.StartDate = GetDate(loop2400.AllDTP.DTP_Date_ServiceDate);
+
+        if (!decimal.TryParse(loop2400.SV1_ProfessionalService.LineItemChargeAmount_02, NumberStyles.Number, CultureInfo.InvariantCulture, out var chargeAmount))
+        {
+            chargeAmount = 0m;
+        }
+        result.ChargeAmount = chargeAmount;
+
+        if (!int.TryParse(loop2400.SV1_ProfessionalService.ServiceUnitCount_04, NumberStyles.Integer, CultureInfo.InvariantCulture, out var quantity))
+        {
+            quantity = 0;
+        }
+        result.Quantity = quantity;
+        result.UnitOrBasisForMeasurementCode = loop2400.SV1_ProfessionalService.UnitorBasisforMeasurementCode_03;
+        result.DiagnosisCode1 = GetDiag(1, hiSegment, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
+        result.DiagnosisCode2 = GetDiag(2, hiSegment, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
+        result.DiagnosisCode3 = GetDiag(3, hiSegment, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
+        result.DiagnosisCode4 = GetDiag(4, hiSegment, loop2400.SV1_ProfessionalService.CompositeDiagnosisCodePointer_07);
+        return result;
+    }
+
+    public static string? GetDiag(int requestedPointer,
+        HI_DependentHealthCareDiagnosisCode_2 claimDiagnosisCodes,
+        C004_CompositeDiagnosisCodePointer diagnosisPointers)
+    {
+        return GetDiag(requestedPointer, claimDiagnosisCodes, diagnosisPointers, GetDiag);
+    }
+
+    public static string? GetDiag(int requestedPointer,
+        HI_DependentHealthCareDiagnosisCode_2 claimDiagnosisCodes,
+        C004_CompositeDiagnosisCodePointer diagnosisPointers,
+        Func<string, HI_DependentHealthCareDiagnosisCode_2, string?>? getDiag = null)
+    {
+        ArgumentNullException.ThrowIfNull(getDiag);
         return requestedPointer switch
         {
             1 => GetDiag(diagnosisPointers.DiagnosisCodePointer_01, claimDiagnosisCodes),
@@ -118,13 +165,26 @@ public sealed class X12N837Parser : IX12N837Parser
         return $"{nameSegment.ResponseContactFirstName_04} {nameSegment.ResponseContactLastorOrganizationName_03}";
     }
 
-    public async IAsyncEnumerable<FlattenedClaimFile> GetFlattenedClaimFiles(string fileName)
+    public async IAsyncEnumerable<Claim> ReadFile(string fileName, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using Stream edi = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.None, bufferSize: 4096, useAsync: true);
+        await foreach (var flattenedClaimFile in GetFlattenedClaimFiles(fileName, cancellationToken))
+        {
+            yield return MapClaimFile(flattenedClaimFile);
+        }
+    }
+
+    public async IAsyncEnumerable<FlattenedClaimFile> GetFlattenedClaimFiles(string fileName, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using Stream edi = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 8192, useAsync: true);
         using var ediReader = new X12Reader(edi, TypeFactory);
 
-        while (await ediReader.ReadAsync())
+        while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = await ediReader.ReadAsync();
+            if (!read)
+                break;
+
             var readerErrorContext = ediReader.Item as ReaderErrorContext;
             if (readerErrorContext != null)
                 throw new InvalidX12NFileException(
@@ -145,9 +205,11 @@ public sealed class X12N837Parser : IX12N837Parser
             claimTemplate.Loop1000B = claimFile.AllNM1.Loop1000B;
             foreach (var loop2000A in claimFile.Loop2000A)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 claimTemplate.Loop2000A = loop2000A;
                 foreach (var loop2000B in loop2000A.Loop2000B)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     claimTemplate.Loop2000B = loop2000B;
 
                     if (loop2000B.Loop2000C.IsEmpty())
@@ -159,6 +221,7 @@ public sealed class X12N837Parser : IX12N837Parser
                     {
                         foreach (var loop2000C in loop2000B.Loop2000C)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             claimTemplate.Loop2000C = loop2000C;
                             foreach (var result in Process23000Loop(loop2000C.Loop2300))
                                 yield return result;
@@ -174,7 +237,6 @@ public sealed class X12N837Parser : IX12N837Parser
                             yield return claimTemplate.ShallowCopy();
                         }
                     }
-                    ;
                 }
             }
         }

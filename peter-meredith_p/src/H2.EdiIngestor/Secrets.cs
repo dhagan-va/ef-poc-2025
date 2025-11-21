@@ -4,5 +4,8 @@ public class Secrets
 {
     public Secrets() { }
 
-    public string ConnectionString = "The connection string wasn't obtained";
+    /// <summary>
+    /// Database connection string. Bind from configuration or user-secrets.
+    /// </summary>
+    public string ConnectionString { get; init; } = string.Empty;
 }

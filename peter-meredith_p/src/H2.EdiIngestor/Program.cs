@@ -7,8 +7,6 @@ if (args.Length == 0 || string.IsNullOrEmpty(args[0]) || args[0].ToLower() == "-
     Console.WriteLine("dotnet run <837 filename>");
 }
 
-EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
-
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Configuration
@@ -21,19 +19,31 @@ builder.Configuration
     )
     .AddEnvironmentVariables();
 
+// Configure secrets and options
 builder.Services.Configure<Secrets>(builder.Configuration.GetSection(nameof(Secrets)));
+
+// Read and set EdiFabric serial key from configuration if present (do not hard-code secrets)
+var serialKey = builder.Configuration["EdiFabric:SerialKey"];
+if (!string.IsNullOrEmpty(serialKey))
+{
+    EdiFabric.SerialKey.Set(serialKey);
+}
 
 builder.Services.AddDbContext<EdiIngestorDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("EdiIngestor"));
 });
 
-// builder.Services.AddDbContext<EdiFabric.Templates.Hipaa5010.>(options =>
-// {
-//     options.UseSqlServer(builder.Configuration.GetConnectionString("EdiTest"));
-// });
+// Register parser and options using the options pattern
+builder.Services.AddScoped<IX12N837Parser, X12N837Parser>();
+builder.Services.Configure<EdiTestOptions>(options =>
+{
+    if (args == null || args.Length == 0)
+        throw new InvalidOptionsException("A file argument is required");
+    options.FileName = args[0];
+});
 
-builder.Services.AddSingleton(new EdiTestOptions(args)).AddHostedService<Worker>();
+builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
 host.Run();
