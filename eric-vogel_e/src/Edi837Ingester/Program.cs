@@ -1,6 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using Amazon.S3;
 using DotNetEnv;
+using Edi837Ingester.Configuration;
 using Edi837Ingester.Data;
 using Edi837Ingester.Data.Repositories;
 using Edi837Ingester.Services;
@@ -8,6 +10,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+
+string? s3bucket = null;
+
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
@@ -21,6 +27,21 @@ var host = Host.CreateDefaultBuilder(args)
         // Register other services/classes that will use the DbContext
         services.AddTransient<IEdiParserService, EdiParserService>();
         services.AddTransient<IEdiRepository, EdiRepository>();
+        services.AddTransient<IS3Service, S3Service>();
+
+        var s3Configuration = context.Configuration.GetRequiredSection("S3")
+            .Get<S3Configuration>();
+        s3bucket = s3Configuration?.Bucket;
+
+        services.AddSingleton<IAmazonS3>(sp =>
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = s3Configuration?.ServiceUrl,
+                ForcePathStyle = true,
+            };
+            return new AmazonS3Client("test", "test", config);
+        });
     })
     .Build();
 
@@ -58,6 +79,17 @@ if(string.IsNullOrWhiteSpace(editSerialKey))
 
 EdiFabric.SerialKey.Set(editSerialKey);
 
+// get S3 path from command line arguments
+string? s3Path = null;
+for (int i = 0; i < args.Length; i++)
+{
+    if (args[i] == "--s3" && i + 1 < args.Length)
+    {
+        s3Path = args[i + 1];
+        break;
+    }
+}
+
 string? path = null;
 
 // Check if --file argument is provided
@@ -70,26 +102,62 @@ for (int i = 0; i < args.Length; i++)
     }
 }
 
-if (string.IsNullOrWhiteSpace(path))
+if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(s3Path))
 {
-    Console.WriteLine("Enter the path to the EDI 837 file:");
-    path = Console.ReadLine();
+    Console.WriteLine("Would you like to load an EDI from S3? (y/n)");
+    var response = Console.ReadLine();
+    if (response != null && response.ToLower() == "y")
+    {
+        Console.WriteLine("Enter the S3 path to the EDI 837 file:");
+        s3Path = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(s3Path))
+        {
+            Console.WriteLine("S3 path cannot be empty or whitespace. Exiting.");
+            return;
+        }
+    }
+    else if (response != null && response.ToLower() == "n")
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            Console.WriteLine("Enter the path to the EDI 837 file:");
+            path = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Console.WriteLine("Path cannot be empty or whitespace. Exiting.");
+                return;
+            }
+        }
+    }
+    else
+    {
+        Console.WriteLine("Invalid response. Exiting.");
+        return;
+    }
 }
-
-if(string.IsNullOrWhiteSpace(path))
-{
-    Console.WriteLine("Path cannot be empty or whitespace. Exiting.");
-    return;
-}
-
-Console.WriteLine($"Parsing EDI 837 file: {path}");
 
 using (var scope = host.Services.CreateScope())
 {
     try
     {
-        var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
-        await parser.Parse(path);
+        if (!string.IsNullOrWhiteSpace(s3Path))
+        {
+            Console.WriteLine("Downloading EDI 837 file from S3...");
+            var s3Service = scope.ServiceProvider.GetService<IS3Service>();
+            var file = await s3Service.DownloadFileAsync(s3bucket, s3Path);
+            if (file != null)
+            {
+                Console.WriteLine($"Parsing EDI 837 file: {s3Path}");
+                var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
+                await parser.Parse(file);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(path))
+        {
+            Console.WriteLine($"Parsing EDI 837 file: {path}");
+            var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
+            await parser.Parse(path);
+        }
     } catch(Exception ex)
     {
         Console.WriteLine($"An error occurred while parsing the EDI 837 file: {ex.Message}");

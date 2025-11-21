@@ -7,30 +7,24 @@ using Microsoft.Extensions.Logging;
 
 namespace Edi837Ingester.Services;
 
-public class EdiParserService(IEdiRepository ediRepository, ILogger<EdiParserService> logger) : IEdiParserService
+public class EdiParserService(IEdiRepository ediRepository,
+    ILogger<EdiParserService> logger) : IEdiParserService
 {
-    public async Task Parse(string filePath)
+    public async Task Parse(Stream stream)
     {
-        if (!File.Exists(filePath))
-        {
-            throw new FileNotFoundException($"File not found at {filePath}");
-        }
-
-        using var ediStream = File.OpenRead(filePath);
-
         var professionalClaims = new List<TS837P>();
         var institutionalClaims = new List<TS837I>();
         var dentalClaims = new List<TS837D>();
 
         // Point the reader to the assembly containing the 5010 templates (P, I, D)
-        using var reader = new X12Reader(ediStream, _ => typeof(TS837P).Assembly);
+        using var reader = new X12Reader(stream, _ => typeof(TS837P).Assembly);
 
         var ediItems = (await reader.ReadToEndAsync()).ToList();
 
         // Separate by type
         if (!ediItems.Any())
         {
-            logger.LogWarning("No EDI transactions found in file {FilePath}", filePath);
+            logger.LogWarning("No EDI transactions found in file");
             return;
         }
 
@@ -63,9 +57,20 @@ public class EdiParserService(IEdiRepository ediRepository, ILogger<EdiParserSer
                 await ediRepository.Save(dentalClaims);
                 break;
             case "Unknown":
-                logger.LogWarning("No recognized 837 claim transactions found in file {FilePath}", filePath);
+                logger.LogWarning("No recognized 837 claim transactions found in file");
                 return;
         }
+    }
+
+    public async Task Parse(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"File not found at {filePath}");
+        }
+
+        using var stream = File.OpenRead(filePath);
+        await Parse(stream);
     }
 
     private void LogCount(IEnumerable<EdiMessage> items, string claimType)
