@@ -36,12 +36,17 @@ builder.Services.AddDbContext<EdiIngestorDbContext>(options =>
 
 // Register parser and options using the options pattern
 builder.Services.AddScoped<IX12N837Parser, X12N837Parser>();
-builder.Services.Configure<EdiTestOptions>(options =>
-{
-    if (args == null || args.Length == 0)
-        throw new InvalidOptionsException("A file argument is required");
-    options.FileName = args[0];
-});
+builder.Services
+    .AddOptions<EdiTestOptions>()
+    .Configure(options =>
+    {
+        if (args == null || args.Length == 0)
+            throw new InvalidOptionsException("A file argument is required");
+        options.FileName = args[0];
+    })
+    .Validate(opts => !string.IsNullOrWhiteSpace(opts.FileName), "A file argument is required");
+
+builder.Services.AddScoped<IX12NFlattener, X12NFlattener>();
 
 builder.Services.AddHostedService<Worker>();
 

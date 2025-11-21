@@ -1,13 +1,10 @@
 namespace H2.EdiIngestor;
 
-/// <summary>
-/// Options used for test runs / single-file ingestion scenarios.
-/// Bind this from configuration or configure at startup.
-/// </summary>
+using System.ComponentModel.DataAnnotations;
+
 public class EdiTestOptions
 {
-    /// <summary>
-    /// Path to the 837 file to ingest.
-    /// </summary>
+    [Required]
+    [MinLength(1)]
     public string FileName { get; set; } = string.Empty;
 }
