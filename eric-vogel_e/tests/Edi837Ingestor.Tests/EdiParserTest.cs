@@ -12,15 +12,15 @@ public class EdiParserTest
 {
     private EdiParserService _ediParser;
     private Mock<ILogger<EdiParserService>> _logger;
-    private Mock<IEdiRepository> _ediSaverService;
+    private Mock<IEdiRepository> _ediRepository;
 
     [SetUp]
     public void Setup()
     {
         LoadEnvironment();
         _logger = new Mock<ILogger<EdiParserService>>();
-        _ediSaverService = new Mock<IEdiRepository>();
-        _ediParser = new EdiParserService(_ediSaverService.Object, _logger.Object);
+        _ediRepository = new Mock<IEdiRepository>();
+        _ediParser = new EdiParserService(_ediRepository.Object, _logger.Object);
     }
 
     [Test]
@@ -30,7 +30,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "ClaimPayment.edi"));
         await _ediParser.Parse(path);
-        _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837P>>()), Times.Once);
+        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837P>>()), Times.Once);
     }
     
     [Test]
@@ -40,7 +40,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "DentalClaim.edi"));
         await _ediParser.Parse(path);
-        _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837D>>()), Times.Once);
+        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837D>>()), Times.Once);
     }
     
     [Test]
@@ -50,7 +50,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "InstitutionalClaim.edi"));
         await _ediParser.Parse(path);
-        _ediSaverService.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
+        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
     }
     
     private void LoadEnvironment()
