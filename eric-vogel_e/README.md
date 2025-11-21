@@ -139,7 +139,7 @@ eric-vogel_e/
 │   └── InstitutionalClaim.edi   # Sample 837I EDI file
 ├── tests/
 │   └── Edi837Ingestor.Tests/
-│       ├── EdiParserTest.cs     # EdiParser unit tests
+│       ├── EdiParserTest.cs     # EdiParserService unit tests
 └── README.md
 ```
 
