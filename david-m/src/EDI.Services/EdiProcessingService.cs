@@ -106,7 +106,7 @@ namespace EDI.Services
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
-                _dbContext.T837DTransactions?.Add(transaction);
+                _dbContext.T837DTransactions.Add(transaction);
             }
             await _dbContext.SaveChangesAsync();
         }
@@ -117,7 +117,7 @@ namespace EDI.Services
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
-                _dbContext.T837ITransactions?.Add(transaction);
+                _dbContext.T837ITransactions.Add(transaction);
             }
             await _dbContext.SaveChangesAsync();
         }
@@ -128,7 +128,7 @@ namespace EDI.Services
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
-                _dbContext.T837PTransactions?.Add(transaction);
+                _dbContext.T837PTransactions.Add(transaction);
             }
             await _dbContext.SaveChangesAsync();
         }
@@ -139,7 +139,7 @@ namespace EDI.Services
             foreach (var transaction in transactions)
             {
                 _validationService.Validate(transaction);
-                _dbContext.T835Transactions?.Add(transaction);
+                _dbContext.T835Transactions.Add(transaction);
             }
             await _dbContext.SaveChangesAsync();
         }

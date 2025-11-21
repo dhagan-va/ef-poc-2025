@@ -29,19 +29,6 @@ namespace EDI.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<EdiClaim>(entity =>
-            {
-                entity.Property(e => e.TotalClaimChargeAmount)
-                      .HasColumnType("decimal(18,2)");
-            });
-
-            modelBuilder.Entity<EdiService>(entity =>
-            {
-                entity.Property(e => e.LineItemChargeAmount)
-                      .HasColumnType("decimal(18,2)");
-                entity.Property(e => e.Quantity)
-                      .HasColumnType("decimal(18,2)");
-            });
         }
     }
 }
