@@ -1,9 +1,9 @@
 using Edi837Ingester.Data;
 using EdiFabric.Templates.Hipaa5010;
 
-namespace Edi837Ingester.Services;
+namespace Edi837Ingester.Data.Repositories;
 
-public class EdiSaverService(AppDbContext dbContext) : IEdiSaverService
+public class EdiRepository(AppDbContext dbContext) : IEdiRepository
 {
     public async Task Save(List<TS837P> ts837Ps)
     {

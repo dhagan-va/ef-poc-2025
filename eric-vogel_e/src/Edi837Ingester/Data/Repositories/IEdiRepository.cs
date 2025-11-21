@@ -1,8 +1,8 @@
 using EdiFabric.Templates.Hipaa5010;
 
-namespace Edi837Ingester.Services;
+namespace Edi837Ingester.Data.Repositories;
 
-public interface IEdiSaverService
+public interface IEdiRepository
 {
     Task Save(List<TS837P> ts837Ps);
     Task Save(List<TS837I> institutionalClaims);

@@ -2,6 +2,7 @@
 
 using DotNetEnv;
 using Edi837Ingester.Data;
+using Edi837Ingester.Data.Repositories;
 using Edi837Ingester.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,8 +19,8 @@ var host = Host.CreateDefaultBuilder(args)
             options.UseSqlServer(connectionString)); // Use your provider
 
         // Register other services/classes that will use the DbContext
-        services.AddTransient<IEdiParser, EdiParser>();
-        services.AddTransient<IEdiSaverService, EdiSaverService>();
+        services.AddTransient<IEdiParserService, EdiParserService>();
+        services.AddTransient<IEdiRepository, EdiRepository>();
     })
     .Build();
 
@@ -87,7 +88,7 @@ using (var scope = host.Services.CreateScope())
 {
     try
     {
-        var parser = scope.ServiceProvider.GetRequiredService<IEdiParser>();
+        var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
         await parser.Parse(path);
     } catch(Exception ex)
     {

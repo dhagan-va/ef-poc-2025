@@ -1,3 +1,4 @@
+using Edi837Ingester.Data.Repositories;
 using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
@@ -5,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Edi837Ingester.Services;
 
-public class EdiParser(IEdiSaverService saverService, ILogger<EdiParser> logger) : IEdiParser
+public class EdiParserService(IEdiRepository ediRepository, ILogger<EdiParserService> logger) : IEdiParserService
 {
     public async Task Parse(string filePath)
     {
@@ -30,23 +31,47 @@ public class EdiParser(IEdiSaverService saverService, ILogger<EdiParser> logger)
 
         if (professionalItems.Any())
         {
+            // check for errors
+            var errors = professionalItems.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors);
+            foreach (var error in errors)
+            {
+                logger.LogError("Error parsing Professional claim: {Errors}", string.Join(", ",
+                    error.ErrorContext.Errors.Select(e => e.Message)));
+            }
+
             logger.LogInformation("Found {Count} Professional claims", professionalItems.Count());
             professionalClaims.AddRange(professionalItems);
-            await saverService.Save(professionalClaims);
+            await ediRepository.Save(professionalClaims);
         }
 
         if (institutionalItems.Any())
         {
+            // check for errors
+            var errors = institutionalItems.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors);
+            foreach (var error in errors)
+            {
+                logger.LogError("Error parsing Institutional claim: {Errors}", string.Join(", ",
+                    error.ErrorContext.Errors.Select(e => e.Message)));
+            }
+
             logger.LogInformation("Found {Count} Institutional claims", institutionalItems.Count());
             institutionalClaims.AddRange(institutionalItems);
-            await saverService.Save(institutionalClaims);
+            await ediRepository.Save(institutionalClaims);
         }
 
         if (dentalItems.Any())
         {
+            // check for errors
+            var errors = dentalItems.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors);
+            foreach (var error in errors)
+            {
+                logger.LogError("Error parsing Dental claim: {Errors}", string.Join(", ",
+                    error.ErrorContext.Errors.Select(e => e.Message)));
+            }
+
             logger.LogInformation("Found {Count} Dental claims", dentalItems.Count());
             dentalClaims.AddRange(dentalItems);
-            await saverService.Save(dentalClaims);
+            await ediRepository.Save(dentalClaims);
         }
     }
 }

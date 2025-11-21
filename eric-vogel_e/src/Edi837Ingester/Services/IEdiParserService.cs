@@ -1,6 +1,6 @@
 namespace Edi837Ingester.Services;
 
-public interface IEdiParser
+public interface IEdiParserService
 {
     Task Parse(string filePath);
 }

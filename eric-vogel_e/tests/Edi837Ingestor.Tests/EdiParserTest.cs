@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using DotNetEnv;
+using Edi837Ingester.Data.Repositories;
 using Edi837Ingester.Services;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
@@ -9,17 +10,17 @@ namespace Edi837Ingestor.Tests;
 
 public class EdiParserTest
 {
-    private EdiParser _ediParser;
-    private Mock<ILogger<EdiParser>> _logger;
-    private Mock<IEdiSaverService> _ediSaverService;
+    private EdiParserService _ediParser;
+    private Mock<ILogger<EdiParserService>> _logger;
+    private Mock<IEdiRepository> _ediSaverService;
 
     [SetUp]
     public void Setup()
     {
         LoadEnvironment();
-        _logger = new Mock<ILogger<EdiParser>>();
-        _ediSaverService = new Mock<IEdiSaverService>();
-        _ediParser = new EdiParser(_ediSaverService.Object, _logger.Object);
+        _logger = new Mock<ILogger<EdiParserService>>();
+        _ediSaverService = new Mock<IEdiRepository>();
+        _ediParser = new EdiParserService(_ediSaverService.Object, _logger.Object);
     }
 
     [Test]
