@@ -124,13 +124,14 @@ eric-vogel_e/
 │   └── Edi837Ingester/
 │       ├── Data/
 │       │   └── AppDbContext.cs          # EF Core database context
+│       │   ├── Repositories/
+│       │   │   ├── IEdiRepository.cs    # EDI repository interface
+│       │   │   └── EdiRepository.cs     # EDI repository implementation
 │       ├── Migrations/                  # EF Core migrations
 │       ├── Services/
-│       │   ├── EdiParser.cs             # EdiFabric parser, also saves data using EdiSaver
-│       │   └── EditSaverService.cs      # Saves EDI data to SQL Server 
-│       │   ├── IEdiParser.cs             # EdiParser interface
-│       │   └── IEditSaverService.cs      # EdiSaverService interface
-│       ├── Program.cs                    # CLI entry point
+│       │   ├── IEdiParserService.cs     # EdiParser interface
+│       │   └── EdiParserService.cs      # EdiParser implementation
+│       ├── Program.cs                   # CLI entry point
 │       └── Edi837Ingester.csproj
 ├── samples/
 │   └── ClaimPayment.edi         # Sample 837P EDI file
