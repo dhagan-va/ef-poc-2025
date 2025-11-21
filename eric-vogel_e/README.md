@@ -72,6 +72,20 @@ dotnet run
 Enter EDI file path when prompted.
 ```
 
+### Command line arguments
+
+Parse an EDI 837 file:
+
+```bash
+dotnet run --file "C:\path\to\your\file.edi"
+```
+
+Parse an EDI 837 file with license key:
+
+```bash
+dotnet run --file "C:\path\to\your\file.edi" --license "YOUR_LICENSE_KEY"
+```
+
 ### Using Environment Variable
 
 ```bash
@@ -84,8 +98,7 @@ $env:EDIFABRIC_LICENSE="YOUR_LICENSE_KEY"
 The tool produces:
 
 1. **Console Summary** - Overview of parsed data
-2. **Extracted Attachments** - Binary files saved to output directory
-3. **JSON Export** (optional) - Complete parsed data in JSON format
+
 
 ### Example Output
 
@@ -132,11 +145,9 @@ eric-vogel_e/
 ## How It Works
 
 1. **Read EDI File** - Uses EdiFabric's X12Reader to parse the file
-2. **Extract Segments** - Identifies ISA, GS, ST, NM1, PWK, and BIN segments
-3. **Parse Metadata** - Extracts patient info and attachment metadata
-4. **Decode Attachments** - Decodes Base64 binary data from BIN segments
-5. **Save Files** - Writes attachments to the output directory
-6. **Generate Report** - Displays summary and optionally exports JSON
+2. **Save Data to Database** - Saves parsed EDI data to SQL Server using Entity Framework Core
+3. **Outputs processed transactions count** - Displays number of transactions processed to console
+
 
 ## Troubleshooting
 
