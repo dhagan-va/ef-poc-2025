@@ -8,6 +8,21 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
+    {
+        // Get connection string from appsettings.json (automatically loaded by CreateDefaultBuilder)
+        string? connectionString = context.Configuration.GetConnectionString("DefaultConnection");
+
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(connectionString)); // Use your provider
+
+        // Register other services/classes that will use the DbContext
+        services.AddTransient<IEdiParser, EdiParser>();
+        services.AddTransient<IEdiSaverService, EdiSaverService>();
+    })
+    .Build();
+
 // Load environment variables from .env file
 // Load .env file if it exists
 var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
@@ -41,21 +56,6 @@ if(string.IsNullOrWhiteSpace(editSerialKey))
 }
 
 EdiFabric.SerialKey.Set(editSerialKey);
-
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((context, services) =>
-    {
-        // Get connection string from appsettings.json (automatically loaded by CreateDefaultBuilder)
-        string? connectionString = context.Configuration.GetConnectionString("DefaultConnection");
-
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(connectionString)); // Use your provider
-
-        // Register other services/classes that will use the DbContext
-        services.AddTransient<IEdiParser, EdiParser>();
-        services.AddTransient<IEdiSaverService, EdiSaverService>();
-    })
-    .Build();
 
 string? path = null;
 
