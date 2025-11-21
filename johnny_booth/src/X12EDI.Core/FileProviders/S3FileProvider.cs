@@ -9,49 +9,36 @@ using System.Threading.Tasks;
 using System.IO;
 using Amazon;
 using EdiFabric.Templates.Hipaa5010;
+using X12EDI.Core.Config;
+using Amazon.Runtime.Internal.Util;
+using Microsoft.Extensions.Logging;
 
 namespace X12EDI.Core.FileProviders
 {
     public class S3FileProvider : IFileProvider
     {
+        #region Private Fields
+
         private readonly string _bucketName;
+        private readonly ILogger<S3FileProvider> _logger;
         private readonly IAmazonS3 _s3Client;
 
-        // 1. DI-FRIENDLY CONSTRUCTOR (Server-side/ASP.NET Core)
-        // IAmazonS3 is expected to be registered and configured in Program.cs
-        public S3FileProvider(IAmazonS3 s3Client, string bucketName)
+        #endregion Private Fields
+
+        #region Public Constructors
+
+        public S3FileProvider(ILogger<S3FileProvider> logger, IAmazonS3 s3Client, S3Options s3Options)
         {
             _s3Client = s3Client;
-            _bucketName = bucketName;
+            _bucketName = s3Options.BucketName;
+            _logger = logger;
         }
 
-        // 2. CLIENT-SIDE/STANDALONE FACTORY METHOD
-        // Use this for command-line apps or testing with a mock endpoint (like Moto.py)
-        public static S3FileProvider CreateStandalone(
-            string accessKey,
-            string secretKey,
-            string bucketName,
-            string serviceURL,
-            IServiceProvider serviceProvider,
-            bool forcePathStyle = true)
-        {
-            var config = new AmazonS3Config
-            {
-                ServiceURL = serviceURL,
-                ForcePathStyle = forcePathStyle,
-                HttpClientFactory = new CustomS3ClientFactory(serviceProvider),
-                UseHttp = true
-            };
-
-            var credentials = new BasicAWSCredentials(accessKey, secretKey);
-
-            var s3Client = new AmazonS3Client(credentials, config);
-
-            // Use the main constructor for initialization
-            return new S3FileProvider(s3Client, bucketName);
-        }
+        #endregion Public Constructors
 
         // --- IFileProvider Implementation ---
+
+        #region Public Methods
 
         public IDirectoryContents GetDirectoryContents(string subpath)
         {
@@ -93,14 +80,17 @@ namespace X12EDI.Core.FileProviders
 
                 return new S3DirectoryContents(filesAndFolders);
             }
-            catch { /* Log error */ }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error GetDirectoryContents: {ex.Message}");
+            }
 
             return NotFoundDirectoryContents.Singleton;
         }
 
         public IFileInfo GetFileInfo(string subpath)
         {
-            // Note: We don't call S3 here. The metadata check (HEAD request) 
+            // Note: We don't call S3 here. The metadata check (HEAD request)
             // is deferred to the S3FileInfo.Exists property.
             return new S3FileInfo(_s3Client, _bucketName, subpath);
         }
@@ -110,5 +100,7 @@ namespace X12EDI.Core.FileProviders
             // S3 does not have a native change notification system
             return NullChangeToken.Singleton;
         }
+
+        #endregion Public Methods
     }
 }

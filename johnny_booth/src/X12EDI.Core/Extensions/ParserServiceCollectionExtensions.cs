@@ -1,4 +1,5 @@
-﻿using Amazon.S3;
+﻿using Amazon.Runtime;
+using Amazon.S3;
 using EdiFabric;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -68,15 +69,18 @@ namespace X12EDI.Core.Extensions
                 // Create configuration object
                 var config = new AmazonS3Config
                 {
+                    RegionEndpoint = string.IsNullOrEmpty(options.Region) ? Amazon.RegionEndpoint.USEast1 : Amazon.RegionEndpoint.GetBySystemName(options.Region),
                     ServiceURL = options.ServiceURL,
                     ForcePathStyle = options.ForcePathStyle,
-                    RegionEndpoint = string.IsNullOrEmpty(options.Region) ? Amazon.RegionEndpoint.USEast1 : Amazon.RegionEndpoint.GetBySystemName(options.Region)
+                    UseHttp = new Uri(options.ServiceURL).Scheme == "http",
                 };
 
                 // Create and return the AmazonS3Client
                 if (!string.IsNullOrEmpty(options.AccessKey) && !string.IsNullOrEmpty(options.SecretKey))
                 {
-                    return new AmazonS3Client(options.AccessKey, options.SecretKey, config);
+                    var credentials = new BasicAWSCredentials(options.AccessKey, options.SecretKey);
+
+                    return new AmazonS3Client(credentials, config);
                 }
 
                 // Fallback: Use default credential chain (IAM roles, profiles, etc.)
@@ -84,14 +88,9 @@ namespace X12EDI.Core.Extensions
             });
 
             // 3. Register the IFileProvider using the configured IAmazonS3 client
-            services.AddTransient<IFileProvider, S3FileProvider>(serviceProvider =>
-            {
-                // Retrieve the IAmazonS3 client created above from the container
-                var s3Client = serviceProvider.GetRequiredService<IAmazonS3>();
+            services.AddTransient<IFileProvider, S3FileProvider>();
 
-                // Instantiate custom S3FileProvider using the factory method in S3FileProvider
-                return S3FileProvider.CreateStandalone(options.AccessKey, options.SecretKey, options.BucketName, options.ServiceURL, serviceProvider, options.ForcePathStyle);
-            });
+            services.AddSingleton<S3Options>(options);
 
             // Add the S3 logging handler to be able to see request URLs
             services.AddTransient<S3LoggingHandler>();
