@@ -32,4 +32,8 @@
     
   </Target>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command=" powershell.exe -ExecutionPolicy Bypass -File &quot;$(ProjectDir)StartUp.ps1&quot;&#xD;&#xA;" />
+  </Target>
+
 </Project>
