@@ -10,15 +10,18 @@ namespace EDI837.Controllers
         private readonly IEdi837FileService _edi837FileService;
         private readonly IEdiParserService _ediParserService;
         private readonly ILogger _logger;
+        private readonly IS3FileService _s3FileService;
 
         public EID837Controller(
             IEdi837FileService edi837FileService, 
-            ILogger<EID837Controller> logger, 
-            IEdiParserService ediParserService )
+            ILogger<EID837Controller> logger,
+            IEdiParserService ediParserService,
+            IS3FileService s3FileService)
         {
             _edi837FileService = edi837FileService;
             _logger = logger;
-            _ediParserService = ediParserService;            
+            _ediParserService = ediParserService;
+            _s3FileService = s3FileService;
         }
 
         // GET: api/EID837/GetEdi837PTransactionsByFileName/fileName
@@ -54,6 +57,15 @@ namespace EDI837.Controllers
             var claims = await this._edi837FileService.Save837PClaims(validTransactions);
 
             return Ok(parsingErrors.Count > 0 ? parsingErrors : claims);
+        }
+
+        //// GET: api/EID837/SaveEdi837PByFileName/fileName
+        [HttpGet("S3IdeBucketExistsByBucketName/{bucketName}")]
+        public async Task<IActionResult> S3IdeBucketExistsByBucketName(string bucketName = "edi-bucket")
+        {
+            var result = await this._s3FileService.BucketExists(bucketName);
+
+            return Ok(result);
         }
     }
 }
