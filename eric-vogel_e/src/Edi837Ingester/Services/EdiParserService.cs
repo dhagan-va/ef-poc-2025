@@ -1,11 +1,8 @@
 using Edi837Ingester.Data.Repositories;
 using EdiFabric.Core.Model.Edi;
-using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Edi837Ingester.Services;
 
