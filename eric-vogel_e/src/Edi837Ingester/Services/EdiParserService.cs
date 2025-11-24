@@ -4,6 +4,8 @@ using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Edi837Ingester.Services;
 
@@ -39,21 +41,21 @@ public class EdiParserService(IEdiRepository ediRepository,
         switch(claimType)
         {
             case "Professional":
-                ReportErrors(professionalItems, claimType);
+                var invalidItemsP = await ValidateItems(professionalItems, claimType);
                 LogCount(professionalItems, claimType);
-                professionalClaims.AddRange(professionalItems);
+                professionalClaims.AddRange(professionalItems.Except(invalidItemsP));
                 await ediRepository.Save(professionalClaims);
                 break;
             case "Institutional":
-                ReportErrors(institutionalItems, claimType);
+                var invalidItemsI = await ValidateItems(institutionalItems, claimType);
                 LogCount(institutionalItems, claimType);
-                institutionalClaims.AddRange(institutionalItems);
+                institutionalClaims.AddRange(institutionalItems.Except(invalidItemsI));
                 await ediRepository.Save(institutionalClaims);
                 break;
             case "Dental":
-                ReportErrors(dentalItems, claimType);
+                var invalidItemsD = await ValidateItems(dentalItems, claimType);
                 LogCount(dentalItems, claimType);
-                dentalClaims.AddRange(dentalItems);
+                dentalClaims.AddRange(dentalItems.Except(invalidItemsD));
                 await ediRepository.Save(dentalClaims);
                 break;
             case "Unknown":
@@ -78,13 +80,45 @@ public class EdiParserService(IEdiRepository ediRepository,
         logger.LogInformation("Found {Count} {ClaimType} claims", items.Count(), claimType);
     }
 
-    private void ReportErrors(IEnumerable<EdiMessage> items, string claimType)
+    // ValidateItems now returns the subset of items that have validation errors.
+    // Returns distinct items that either have ErrorContext errors or fail IsValidAsync().
+    private async Task<IEnumerable<T>> ValidateItems<T>(IEnumerable<T> items, string claimType) where T : EdiMessage
     {
-        var errors = items.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors);
-        foreach (var error in errors)
+        var erroredItems = new List<T>();
+
+        // SNIP Level 1 validation (pre-parsing errors surfaced by the reader)
+        var level1Errors = items.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors).ToList();
+        foreach (var error in level1Errors)
         {
+            erroredItems.Add(error);
             logger.LogError("Error parsing {ClaimType} claim: {Errors}", claimType, string.Join(", ",
                 error.ErrorContext.Errors.Select(e => e.Message)));
         }
+
+        // Perform higher-level validation per item (IsValidAsync). Avoid re-checking items already captured.
+        var toValidate = items.Except(erroredItems).ToList();
+        foreach (var item in toValidate)
+        {
+            try
+            {
+                var (valid, errorContext) = await item.IsValidAsync();
+                if (!valid)
+                {
+                    erroredItems.Add(item);
+                    var controlNumber = errorContext?.ControlNumber ?? "<unknown>";
+                    var messages = errorContext?.Errors?.Select(e => e.Message) ?? Enumerable.Empty<string>();
+                    logger.LogError("Error parsing transaction with control #: {ControlNumber}: {Errors}", controlNumber, string.Join(", ", messages));
+                }
+            }
+            catch (Exception ex)
+            {
+                // If IsValidAsync throws, treat as validation error for this item and log exception details.
+                erroredItems.Add(item);
+                logger.LogError(ex, "Validation routine threw for {ClaimType} transaction. Item will be considered invalid.", claimType);
+            }
+        }
+
+        // Return distinct errored items (reference equality is fine for EdiMessage instances)
+        return [.. erroredItems.Distinct()];
     }
 }
