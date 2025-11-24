@@ -68,7 +68,7 @@ public class EdiParserTest
 
         if(string.IsNullOrWhiteSpace(editSerialKey))
         {
-            editSerialKey = "c417cb9dd9d54297a55c032a74c87996";
+            throw new Exception("EdiFabric license key not found in environment variables.");
         }
 
         EdiFabric.SerialKey.Set(editSerialKey);
