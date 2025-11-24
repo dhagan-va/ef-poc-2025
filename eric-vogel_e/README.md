@@ -86,6 +86,26 @@ Parse an EDI 837 file with license key:
 dotnet run --file "C:\path\to\your\file.edi" --license "YOUR_LICENSE_KEY"
 ```
 
+Parse an EDI 837 file from S3:
+
+```bash
+dotnet run --s3 "file.edi"
+```
+
+### Moto.py S3
+
+Run S3 Server with Moto.py:
+
+```bash
+python start_moto.py
+```
+
+Upload sample files to Moto.py S3 server:
+
+```bash
+python uploadFile.py
+```
+
 ### Using Environment Variable
 
 ```bash
