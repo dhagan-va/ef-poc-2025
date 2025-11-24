@@ -28,6 +28,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IEdiParserService, EdiParserService>();
         services.AddTransient<IEdiRepository, EdiRepository>();
         services.AddTransient<IS3Service, S3Service>();
+        services.AddTransient<IS3EdiParserService, S3EdiParserService>();
 
         var s3Configuration = context.Configuration.GetRequiredSection("S3")
             .Get<S3Configuration>();
@@ -143,14 +144,8 @@ using (var scope = host.Services.CreateScope())
         if (!string.IsNullOrWhiteSpace(s3Path))
         {
             Console.WriteLine("Downloading EDI 837 file from S3...");
-            var s3Service = scope.ServiceProvider.GetService<IS3Service>();
-            var file = await s3Service.DownloadFileAsync(s3bucket, s3Path);
-            if (file != null)
-            {
-                Console.WriteLine($"Parsing EDI 837 file: {s3Path}");
-                var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
-                await parser.Parse(file);
-            }
+            var s3Service = scope.ServiceProvider.GetRequiredService<IS3EdiParserService>();
+            await s3Service.ParseFromS3Async(s3bucket!, s3Path);
         }
         else if (!string.IsNullOrWhiteSpace(path))
         {

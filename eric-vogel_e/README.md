@@ -131,8 +131,15 @@ eric-vogel_e/
 │       ├── Services/
 │       │   ├── IEdiParserService.cs     # EdiParser interface
 │       │   └── EdiParserService.cs      # EdiParser implementation
+│       │   └── IS3EdiParserService.cs   # S3EdiParser interface
+│       │   └── S3EdiParserService.cs    # S3EdiParser implementation
+│       │   └── IS3Service.cs            # S3Service interface
+│       │   └── S3Service.cs             # S3Service implementation
 │       ├── Program.cs                   # CLI entry point
 │       └── Edi837Ingester.csproj
+│   └── S3Integration/
+│       └── start_moto.py 			  # Script to start local S3 server with Moto
+│       └── uploadFile.py 			  # Script to upload files to local S3 server with Moto
 ├── samples/
 │   └── ClaimPayment.edi         # Sample 837P EDI file
 │   └── DentalClaim.edi          # Sample 837D EDI file
