@@ -10,6 +10,11 @@ namespace Edi837Ingester.Services;
 public class EdiParserService(IEdiRepository ediRepository,
     ILogger<EdiParserService> logger) : IEdiParserService
 {
+    /// <summary>
+    /// Read and parse the EDI 837 file from the provided stream.
+    /// </summary>
+    /// <param name="stream">Stream containing the EDI 837 file data.</param>
+    /// <returns></returns>
     public async Task Parse(Stream stream)
     {
         // Point the reader to the assembly containing the 5010 templates (P, I, D)
@@ -58,6 +63,12 @@ public class EdiParserService(IEdiRepository ediRepository,
         await ediRepository.Save(claims);
     }
 
+    /// <summary>
+    /// Read and parse the EDI 837 file from the provided file path.
+    /// </summary>
+    /// <param name="filePath">Path to the EDI file to parse.</param>
+    /// <returns></returns>
+    /// <exception cref="FileNotFoundException"></exception>
     public async Task Parse(string filePath)
     {
         if (!File.Exists(filePath))

@@ -8,6 +8,13 @@ namespace Edi837Ingester.Services
 {
     public class S3EdiParserService(IS3Service s3Service, IEdiParserService ediParserService) : IS3EdiParserService
     {
+        /// <summary>
+        /// Read and parse the EDI 837 file from S3 bucket/key.
+        /// </summary>
+        /// <param name="bucketName">The name of the S3 bucket.</param>
+        /// <param name="fileName">The filename in the S3 bucket.</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public async Task ParseFromS3Async(string bucketName, string fileName)
         {
             if (string.IsNullOrWhiteSpace(bucketName))
