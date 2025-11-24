@@ -1,3 +1,4 @@
+using Edi837Ingester.Data;
 using Edi837Ingester.Data.Repositories;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
@@ -11,16 +12,11 @@ public class EdiParserService(IEdiRepository ediRepository,
 {
     public async Task Parse(Stream stream)
     {
-        var professionalClaims = new List<TS837P>();
-        var institutionalClaims = new List<TS837I>();
-        var dentalClaims = new List<TS837D>();
-
         // Point the reader to the assembly containing the 5010 templates (P, I, D)
         using var reader = new X12Reader(stream, _ => typeof(TS837P).Assembly);
 
         var ediItems = (await reader.ReadToEndAsync()).ToList();
 
-        // Separate by type
         if (!ediItems.Any())
         {
             logger.LogWarning("No EDI transactions found in file");
@@ -31,34 +27,35 @@ public class EdiParserService(IEdiRepository ediRepository,
         var institutionalItems = ediItems.OfType<TS837I>();
         var dentalItems = ediItems.OfType<TS837D>();
 
-        var claimType = professionalItems.Any() ? "Professional" :
-            institutionalItems.Any() ? "Institutional" :
-            dentalItems.Any() ? "Dental" : "Unknown";
+        var claimType = professionalItems.Any() ? ClaimTypeEnum.Professional :
+            institutionalItems.Any() ? ClaimTypeEnum.Institutional :
+            dentalItems.Any() ? ClaimTypeEnum.Dental : ClaimTypeEnum.Unknown;
 
         switch(claimType)
         {
-            case "Professional":
-                var invalidItemsP = await ValidateItems(professionalItems, claimType);
-                LogCount(professionalItems, claimType);
-                professionalClaims.AddRange(professionalItems.Except(invalidItemsP));
-                await ediRepository.Save(professionalClaims);
+            case ClaimTypeEnum.Professional:
+                await ParseItems(professionalItems, claimType);
                 break;
-            case "Institutional":
-                var invalidItemsI = await ValidateItems(institutionalItems, claimType);
-                LogCount(institutionalItems, claimType);
-                institutionalClaims.AddRange(institutionalItems.Except(invalidItemsI));
-                await ediRepository.Save(institutionalClaims);
+            case ClaimTypeEnum.Institutional:
+                await ParseItems(institutionalItems, claimType);
                 break;
-            case "Dental":
-                var invalidItemsD = await ValidateItems(dentalItems, claimType);
-                LogCount(dentalItems, claimType);
-                dentalClaims.AddRange(dentalItems.Except(invalidItemsD));
-                await ediRepository.Save(dentalClaims);
+            case ClaimTypeEnum.Dental:
+                await ParseItems(dentalItems, claimType);
                 break;
-            case "Unknown":
+            default:
                 logger.LogWarning("No recognized 837 claim transactions found in file");
                 return;
         }
+    }
+
+    private async Task ParseItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType)
+        where T : EdiMessage
+    {
+        var invalidItems = await ValidateItems(items, claimType);
+        LogCount(items, claimType);
+        var claims = new List<T>();
+        claims.AddRange(items.Except(invalidItems));
+        await ediRepository.Save(claims);
     }
 
     public async Task Parse(string filePath)
@@ -72,14 +69,14 @@ public class EdiParserService(IEdiRepository ediRepository,
         await Parse(stream);
     }
 
-    private void LogCount(IEnumerable<EdiMessage> items, string claimType)
+    private void LogCount(IEnumerable<EdiMessage> items, ClaimTypeEnum claimType)
     {
         logger.LogInformation("Found {Count} {ClaimType} claims", items.Count(), claimType);
     }
 
     // ValidateItems now returns the subset of items that have validation errors.
     // Returns distinct items that either have ErrorContext errors or fail IsValidAsync().
-    private async Task<IEnumerable<T>> ValidateItems<T>(IEnumerable<T> items, string claimType) where T : EdiMessage
+    private async Task<IEnumerable<T>> ValidateItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType) where T : EdiMessage
     {
         var erroredItems = new List<T>();
 
@@ -103,7 +100,7 @@ public class EdiParserService(IEdiRepository ediRepository,
                 {
                     erroredItems.Add(item);
                     var controlNumber = errorContext?.ControlNumber ?? "<unknown>";
-                    var messages = errorContext?.Errors?.Select(e => e.Message) ?? Enumerable.Empty<string>();
+                    var messages = errorContext?.Errors?.Select(e => e.Name) ?? Enumerable.Empty<string>();
                     logger.LogError("Error parsing transaction with control #: {ControlNumber}: {Errors}", controlNumber, string.Join(", ", messages));
                 }
             }

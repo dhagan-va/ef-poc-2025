@@ -48,7 +48,7 @@ public class EdiParserTest
     {
         // get file in root solution samples folder
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
-            "../../../../../", "samples", "InstitutionalClaim.edi"));
+            "../../../../../", "samples", "837I-all-fields.edi"));
         await _ediParser.Parse(path);
         _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
     }
