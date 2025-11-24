@@ -1,5 +1,7 @@
 ﻿using Amazon.S3;
+using Amazon.S3.Model;
 using EdiFabric.Templates.Hipaa5010;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace EDI837.src.Services
 {
@@ -28,6 +30,58 @@ namespace EDI837.src.Services
             {
                 return false;
             }           
+        }
+
+        /// <summary>
+        /// Method creates a Stream based on the file name and the location of the file.
+        /// </summary>
+        /// <param name="bucketName">AWS S3 Bucket Name.</param>
+        /// <param name="fileName">Name of the file to be processed.</param>
+        /// <returns>Readable Stream or a Null stream if the file does not exists.</returns>
+        public async Task<Stream> GetStreamByFileName(string bucketName, string fileName)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(nameof(bucketName));
+            ArgumentException.ThrowIfNullOrEmpty(nameof(fileName));
+
+            try
+            {
+                var response = await _amazonS3.GetObjectAsync(bucketName, fileName);
+
+                if (response.ResponseStream != null)
+                {
+                    this._logger.LogInformation("The Claim was successfully extracted form the bucket.");
+                    return response.ResponseStream;
+                }
+
+                this._logger.LogWarning("The Claim was not successfully extracted form the bucket.");
+                return Stream.Null;
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                throw;
+            }                          
+        }
+
+        public async Task<IEnumerable<S3Object>> ProcessClaimsByBucketName(string bucketName, string prefix)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(nameof(bucketName));
+            ArgumentException.ThrowIfNullOrEmpty(nameof(prefix));
+
+            try
+            {
+                var response = await _amazonS3.ListObjectsV2Async(
+                new ListObjectsV2Request { BucketName = bucketName, Prefix = prefix }
+            );
+
+                return response.S3Objects ?? [];
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                throw;
+            }
+            
         }
     }
 }

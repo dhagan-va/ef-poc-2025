@@ -28,10 +28,10 @@ namespace EDI837.src.Services
         /// <param name="fileName">File name of the claim to process.</param>
         /// <param name="parsingErrors">Collection of parsing errors passed by reference.</param>
         /// <returns>The collection of transactions in the claim.</returns>
-        public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName, IEnumerable<string> parsingErrors)
+        public IEnumerable<TS837P> ExtractValid837PTransactions(Stream stream, IEnumerable<string> parsingErrors)
         {
             
-            Stream stream = this.GetStreamByFileName(fileName);
+            //Stream stream = this.GetStreamByFileName(fileName);
             
             var validTransactions = new List<TS837P>();
 
@@ -79,7 +79,7 @@ namespace EDI837.src.Services
         /// </summary>
         /// <param name="fileName">Name of the file to be processed.</param>
         /// <returns>Readable Stream or a Null stream if the file does not exists.</returns>
-        private Stream GetStreamByFileName(string fileName)
+        public Stream GetStreamByFileName(string fileName)
         {
             var fileInfo = this._fileProvider.GetFileInfo($"{_configuration["LocalFileFolder"]}\\{fileName}");
             this._logger.LogInformation(fileInfo.Exists ? $"{fileInfo.Name} does exist." : $"{fileInfo.Name} does not exist.");

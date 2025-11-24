@@ -4,7 +4,7 @@ namespace EDI837.src.Services
 {
     public interface IEdiParserService
     {
-        public IEnumerable<TS837P> ExtractValid837PTransactions(string fileName, IEnumerable<string> parsingErrors);
-
+        public IEnumerable<TS837P> ExtractValid837PTransactions(Stream stream, IEnumerable<string> parsingErrors);
+        public Stream GetStreamByFileName(string fileName);
     }
 }
