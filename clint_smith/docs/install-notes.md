@@ -60,7 +60,7 @@ docker pull mcr.microsoft.com/mssql/server:2022-latest
 docker run -e "ACCEPT_EULA=Y" \
            -e "SA_PASSWORD=YourStrongPassword!" \
            -p 1433:1433 \
-           --name sqlserver \
+           --name sql2022 \
            -d mcr.microsoft.com/mssql/server:2022-latest
 
 docker start sql2022

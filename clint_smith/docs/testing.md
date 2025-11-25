@@ -32,9 +32,7 @@ tests/EDI837.Ingestion.Tests/TestResults/CoverageReport/index.html
 
 ## Run a Specific Test
 
-~~You can target one test or class:~~
-
-Currently not working due to EDI Token key loading issue
+You can target one test or class:
 
 ```bash
 dotnet test --filter "EdiParserTests"

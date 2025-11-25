@@ -15,7 +15,8 @@ public class S3GatewayTests : TestBase
     public S3GatewayTests()
     {
         _gateway = new S3Gateway(_mockS3.Object, NullLogger<S3Gateway>.Instance);
-        _bucket = Configuration["S3:Bucket"]
+        _bucket =
+            Configuration["S3:Bucket"]
             ?? throw new InvalidOperationException("Missing S3 bucket in test settings.");
     }
 
@@ -25,7 +26,7 @@ public class S3GatewayTests : TestBase
         var expectedObjects = new List<S3Object>
         {
             new() { Key = "incoming/test1.edi" },
-            new() { Key = "incoming/test2.edi" }
+            new() { Key = "incoming/test2.edi" },
         };
 
         _mockS3
@@ -54,7 +55,7 @@ public class S3GatewayTests : TestBase
         const string payload = "EDI DATA";
         var response = new GetObjectResponse
         {
-            ResponseStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(payload))
+            ResponseStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(payload)),
         };
 
         _mockS3
@@ -112,9 +113,7 @@ public class S3GatewayTests : TestBase
         _mockS3
             .Setup(s =>
                 s.DeleteObjectAsync(
-                    It.Is<DeleteObjectRequest>(r =>
-                        r.BucketName == _bucket && r.Key == key
-                    ),
+                    It.Is<DeleteObjectRequest>(r => r.BucketName == _bucket && r.Key == key),
                     It.IsAny<CancellationToken>()
                 )
             )

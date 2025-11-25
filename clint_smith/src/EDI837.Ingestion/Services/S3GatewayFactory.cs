@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Amazon.S3;
 using EDI837.Ingestion.Gateways;
 using Microsoft.Extensions.Logging;
@@ -7,7 +8,7 @@ namespace EDI837.Ingestion.Services;
 
 public interface IS3GatewayFactory
 {
-    S3Gateway Create();
+    Task<S3Gateway> CreateAsync(string bucketName);
 }
 
 public sealed class S3GatewayFactory : IS3GatewayFactory
@@ -27,8 +28,10 @@ public sealed class S3GatewayFactory : IS3GatewayFactory
         _s3Client = s3Client ?? throw new ArgumentNullException(nameof(s3Client));
     }
 
-    public S3Gateway Create()
+    public async Task<S3Gateway> CreateAsync(string bucketName)
     {
-        return new S3Gateway(_s3Client, _logger);
+        var s3Gateway = new S3Gateway(_s3Client, _logger);
+        await s3Gateway.EnsureBucketExistsAsync(bucketName);
+        return s3Gateway;
     }
 }
