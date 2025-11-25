@@ -90,7 +90,7 @@ namespace EDI837.Controllers
         [HttpGet("S3IdeBucketExistsByBucketName/{bucketName}")]
         public async Task<IActionResult> S3IdeBucketExistsByBucketName(string bucketName = "edi-bucket")
         {
-            var result = await this._s3FileService.BucketExists(bucketName);
+            var result = await this._s3FileService.BucketExistsAsync(bucketName);
 
             return Ok(result);
         }
@@ -100,7 +100,7 @@ namespace EDI837.Controllers
         public async Task<IActionResult> S3SaveEdiFileByBucketAndFileName(string bucketName = "edi-bucket",string fileName = "837File.edi")
         {
             List<string> parsingErrors = new List<string>();
-            Stream stream = await this._s3FileService.GetStreamByFileName(bucketName, fileName);
+            Stream stream = await this._s3FileService.GetClaimStreamByFileNameAsync(bucketName, fileName);
             if (stream != null)
             {
                 var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors);
@@ -113,6 +113,32 @@ namespace EDI837.Controllers
                 return Ok($"Unable to get Transactions {errors}");
             }
                
+        }
+
+        //// GET: api/EID837/S3ProcessFilesByBucketAndPrefix/bucketName/prefix
+        [HttpGet("S3ProcessFilesByBucketAndPrefix/{bucketName}/{prefix}")]
+        public async Task<IActionResult> S3ProcessFilesByBucketAndPrefix(string bucketName = "edi-bucket", string prefix = "837")
+        {
+            List<string> parsingErrors = new List<string>();
+            var streamsResults = await this._s3FileService.GetClaimStreamsByBucketNameAndPrefixAsync(bucketName, prefix);
+            if (streamsResults.Count() >= 1)
+            {
+                foreach (var streamResult in streamsResults)
+                {
+                    var validTransactions = this._ediParserService.ExtractValid837PTransactions(streamResult.FileStream, parsingErrors);
+                    var claims = await this._edi837FileService.Save837PClaims(validTransactions);
+                    await this._s3FileService.DeleteFileAsync(bucketName, streamResult.FileName);
+                }
+
+                string processedFiles = string.Join(", ", streamsResults.Select(s => s.FileName));
+                return Ok(parsingErrors.Count > 0 ? string.Join(", ", parsingErrors) : $"Processed Files: {processedFiles}");
+            }
+            else
+            {
+                var errors = string.Join(", ", parsingErrors);
+                return Ok($"Unable to get Transactions {errors}");
+            }
+
         }
     }
 }

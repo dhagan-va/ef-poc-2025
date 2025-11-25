@@ -15,7 +15,7 @@ namespace EDI837.Tests
             //Arrange
             var bucketName = "edi-bucket";
             //Act
-           var result = await this._s3FileService.BucketExists(bucketName);
+           var result = await this._s3FileService.BucketExistsAsync(bucketName);
             //Assert
             Assert.IsTrue(result);
         }
