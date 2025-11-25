@@ -25,6 +25,7 @@ namespace EDI837.Controllers
             _s3FileService = s3FileService;
         }
 
+        #region Local files processing
         // GET: api/EID837/GetEdi837PTransactionsByFileName/fileName
         [HttpGet("GetEdi837PTransactionsByFileName/{fileName}")]
         public IActionResult GetEdi837PTransactionsByFileName(string fileName = "837File.edi")
@@ -85,7 +86,9 @@ namespace EDI837.Controllers
             }
             
         }
-
+        #endregion
+        
+        #region Moto AWS S3
         //// GET: api/EID837/SaveEdi837PByFileName/bucketName
         [HttpGet("S3IdeBucketExistsByBucketName/{bucketName}")]
         public async Task<IActionResult> S3IdeBucketExistsByBucketName(string bucketName = "edi-bucket")
@@ -126,6 +129,7 @@ namespace EDI837.Controllers
                 foreach (var streamResult in streamsResults)
                 {
                     var validTransactions = this._ediParserService.ExtractValid837PTransactions(streamResult.FileStream, parsingErrors);
+                    await this._edi837FileService.SaveOriginalClaim(validTransactions);
                     var claims = await this._edi837FileService.Save837PClaims(validTransactions);
                     await this._s3FileService.DeleteFileAsync(bucketName, streamResult.FileName);
                 }
@@ -140,5 +144,6 @@ namespace EDI837.Controllers
             }
 
         }
+        #endregion
     }
 }
