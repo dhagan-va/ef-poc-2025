@@ -5,7 +5,7 @@ namespace EDI837.Tests
     public class EdiParserServiceTests : BaseTests
     {
         [Test]
-        public void ExtractValid837PTransactions_NonExistentFie()
+        public void ExtractValid837PTransactions_NonExistentFie_ShouldReturnEmpty()
         {
             //Arrange
             var fileName = "837FileNonExistent.edi";
@@ -20,7 +20,7 @@ namespace EDI837.Tests
         }
 
         [Test]
-        public void ExtractValid837PTransactions_ExistentFie()
+        public void ExtractValid837PTransactions_ExistentFie_ShouldReturnTrue()
         {
             //Arrange
             var fileName = "837File.edi";

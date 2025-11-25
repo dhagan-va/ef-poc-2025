@@ -4,7 +4,7 @@ namespace EDI837.Tests;
 public class Edi837FileServiceTests : BaseTests
 {
     [Test]
-    public async Task SaveOriginalClaim_ShouldReturnAConfirmation()
+    public async Task SaveOriginalClaim_ValidClaim_ShouldReturnTrue()
     {
         //Arrange
         var fileName = "837File.edi";
@@ -20,7 +20,7 @@ public class Edi837FileServiceTests : BaseTests
     }
 
     [Test]
-    public async Task Save837PClaims_ShouldReturnAConfirmation()
+    public async Task Save837PClaims_ValidClaim_ShouldReturnTrue()
     {
         //Arrange
         var fileName = "837File.edi";

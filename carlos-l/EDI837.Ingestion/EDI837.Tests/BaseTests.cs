@@ -31,8 +31,9 @@ public class BaseTests
               .Options;
         _appDataContext = new AppDataContext(options);
 
-        // Set the current directory to the folder where the files reside.
-        string currentDirectory = "C:\\Users\\CarlosLadino\\source\\repos\\ef-poc-2025\\carlos-l\\EDI837.Ingestion\\EDI837.Tests\\";
+        // Set the current directory to the folder where the files reside. BaseDirectory points to where the exe. To get the 
+        // current directory adjust to three levels back.        
+        string currentDirectory = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\"));
         
         //Mock the needed parts of the appsettings.json
         _configurationMock = new Mock<IConfiguration>();
