@@ -3,6 +3,7 @@ using Edi837Ingester.Data.Repositories;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
+using EdiFabric.Templates.X12004010;
 using Microsoft.Extensions.Logging;
 
 namespace Edi837Ingester.Services;
@@ -70,7 +71,21 @@ public class EdiParserService(IEdiRepository ediRepository,
         LogCount(items, claimType);
         var claims = new List<T>();
         claims.AddRange(items.Except(invalidItems));
-        await ediRepository.Save(claims);
+        if (invalidItems.Any())
+        {
+            logger.LogInformation("Excluding {Count} invalid {ClaimType} claims from save operation",
+                invalidItems.Count(), claimType);
+        }
+
+        if (claims.Any())
+        {
+            logger.LogInformation("Saving {Count} valid {ClaimType} claims", claims.Count, claimType);
+            await ediRepository.Save(claims);
+        }
+        else
+        {
+            logger.LogWarning("No valid {ClaimType} claims to save after validation", claimType);
+        }
     }
 
     /// <summary>

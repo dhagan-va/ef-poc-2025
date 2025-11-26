@@ -89,35 +89,46 @@ for (int i = 0; i < args.Length; i++)
 EdiFabric.SerialKey.Set(editSerialKey);
 
 // Default validation level
-ValidationLevel validationLevel = ValidationLevel.SyntaxOnly_SNIP1;
+ValidationLevel? validationLevel = null;
 
 // Parse validation level from command line arguments --validation or --validation-level <value>
-// Accepts enum names (case-insensitive) or integer values
+// Accepts enum names (case-insensitive) or integer values; maps user-friendly 1..4 -> SNIP1..SNIP4
 for (int i = 0; i < args.Length; i++)
 {
     if ((args[i].Equals("--validation", StringComparison.OrdinalIgnoreCase) ||
          args[i].Equals("--validation-level", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
     {
         var val = args[i + 1];
+
+        // Try parse enum name first (case-insensitive)
         if (Enum.TryParse<ValidationLevel>(val, ignoreCase: true, out var parsed))
         {
             validationLevel = parsed;
             Console.WriteLine($"Using validation level: {validationLevel}");
         }
-        else if (int.TryParse(val, out var intVal) && Enum.IsDefined(typeof(ValidationLevel), intVal))
+        else if (int.TryParse(val, out var intVal))
         {
-            validationLevel = (ValidationLevel)intVal;
-            Console.WriteLine($"Using validation level (numeric): {validationLevel}");
+            // Support user-friendly 1..4 mapping -> enum values 0..3
+            if (intVal >= 1 && intVal <= 4)
+            {
+                validationLevel = (ValidationLevel)(intVal - 1);
+                Console.WriteLine($"Using validation level (1-4 mapping): {validationLevel}");
+            }
+            else
+            {
+                Console.WriteLine($"Warning invalid validation level integer '{val}', you will need to enter the validation level manually later.");
+            }
         }
         else
         {
-            Console.WriteLine($"Warning: Unknown validation level '{val}'. Falling back to default: {validationLevel}");
+            Console.WriteLine($"Warning: Unknown validation level '{val}', you will need to enter the validation level manually later.");
         }
+
         break;
     }
 }
 
-var validationLevelLocal = validationLevel; // capture for closures if needed
+ValidationLevel? validationLevelLocal = validationLevel; // capture for closures if needed
 
 // get S3 path from command line arguments
 string? s3Path = null;
@@ -180,18 +191,45 @@ using (var scope = host.Services.CreateScope())
 {
     try
     {
+        ValidationLevel useLevel;
+
+        if (validationLevelLocal == null)
+        {
+            Console.WriteLine("Enter validation level (1=SNIP1, 2=SNIP2, 3=SNIP3, 4=SNIP4) or press Enter for default (SNIP1):");
+            var input = Console.ReadLine();
+            if (input == null)
+            {
+                useLevel = ValidationLevel.SyntaxOnly_SNIP1;
+            }
+            else if (int.TryParse(input, out var intVal) && intVal >= 1 && intVal <= 4)
+            {
+                useLevel = (ValidationLevel)(intVal - 1);
+            }
+            else
+            {
+                useLevel = ValidationLevel.SyntaxOnly_SNIP1;
+            }
+            Console.WriteLine($"Using validation level: {useLevel}");
+        }
+        else
+        {
+            useLevel = validationLevelLocal.Value;
+        }
+
+
         if (!string.IsNullOrWhiteSpace(s3Path))
         {
             Console.WriteLine("Downloading EDI 837 file from S3...");
             var s3Service = scope.ServiceProvider.GetRequiredService<IS3EdiParserService>();
-            await s3Service.ParseFromS3Async(s3bucket!, s3Path, validationLevelLocal);
+            await s3Service.ParseFromS3Async(s3bucket!, s3Path, useLevel);
         }
         else if (!string.IsNullOrWhiteSpace(path))
         {
             Console.WriteLine($"Parsing EDI 837 file: {path}");
             var parser = scope.ServiceProvider.GetRequiredService<IEdiParserService>();
-            await parser.Parse(path, validationLevelLocal);
+            await parser.Parse(path, useLevel);
         }
+
     } catch(Exception ex)
     {
         Console.WriteLine($"An error occurred while parsing the EDI 837 file: {ex.Message}");

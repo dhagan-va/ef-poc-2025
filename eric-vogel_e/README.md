@@ -88,6 +88,12 @@ Parse an EDI 837 file:
 dotnet run --file "C:\path\to\your\file.edi"
 ```
 
+Parse an EDI 837 file with setting SNIP level:
+
+```bash
+dotnet run --file "C:\path\to\your\file.edi" --validation 1
+```
+
 Parse an EDI 837 file with license key:
 
 ```bash
