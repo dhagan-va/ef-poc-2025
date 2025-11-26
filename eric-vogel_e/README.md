@@ -28,7 +28,7 @@ EdiFabric requires a valid license key to function.
 
 **Option 1: Using .env file** (Recommended):
 
-1. Copy `.env.example` to `.env`:
+1. Copy `env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
