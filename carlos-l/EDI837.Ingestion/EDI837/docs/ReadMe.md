@@ -54,3 +54,17 @@ variables as follows:
 -  Install the following packages: 
 	1. AWSSDK.Core
 	2. AWSSDK.Extensions.NETCore.Setup
+
+# Instructions On How to Run the projects.
+- There are two files with extension .cmd at the root of the project.
+	- MotoStartup has two functions as follows:
+		1. Kills and instance of Moto_server.
+		2. Starts a new instance of Moto_server.
+
+	- S3Startup has two functions as follows:
+		1. Creates the "edi-bucket".
+		2. Adds the three files under the samples folder to the edi-bucket.
+- There is a PowerShell file, StartUp.ps1 that runs the two cmd files above. The PowerShell
+file is executed by the Build Event of the project in the pre-build section. When the project builds,
+it creates a AWS Mocking environment with all the necessary elements to execute the API calls and 
+the Unit testing. 

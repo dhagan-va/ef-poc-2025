@@ -18,6 +18,11 @@ namespace EDI837.src.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Methods returns a boolean value determined by the existence of the bucket
+        /// </summary>
+        /// <param name="bucketName">bucket name</param>
+        /// <returns>boolean value</returns>
         public async Task<bool> BucketExistsAsync(string bucketName)
         { 
             ArgumentException.ThrowIfNullOrEmpty(nameof(bucketName));
@@ -65,6 +70,12 @@ namespace EDI837.src.Services
             }                          
         }
 
+        /// <summary>
+        /// Method gets a list of StramResult (File Name and Stream) based on a bucket name and start characters of the file names. 
+        /// </summary>
+        /// <param name="bucketName">Bucket Name</param>
+        /// <param name="prefix">First characters of the Files. </param>
+        /// <returns>StreamResult (File Name and Stream)</returns>
         public async Task<IEnumerable<StreamResult>> GetClaimStreamsByBucketNameAndPrefixAsync(string bucketName, string prefix)
         {
             ArgumentException.ThrowIfNullOrEmpty(nameof(bucketName));
@@ -95,6 +106,12 @@ namespace EDI837.src.Services
             }
         }
 
+        /// <summary>
+        /// Method Deletes a file from a specific bucket.
+        /// </summary>
+        /// <param name="bucketName">Bucket Name</param>
+        /// <param name="fileName">File Name</param>
+        /// <returns>No Return</returns>
         public async Task DeleteFileAsync(string bucketName, string fileName)
         {
             try
