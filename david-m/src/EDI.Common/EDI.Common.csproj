@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="EdiFabric">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\EdiFabric\lib\net9.0\EdiFabric.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

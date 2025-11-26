@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.11.3" />
+    <Reference Include="EdiFabric.Templates.Hipaa">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\Hipaa\lib\net6.0\EdiFabric.Templates.Hipaa.dll</HintPath>
+    </Reference>
+    <Reference Include="EdiFabric">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\EdiFabric\lib\net9.0\EdiFabric.dll</HintPath>
+    </Reference>
+    <Reference Include="EdiFabric.Framework">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\EdiFabric\lib\net9.0\EdiFabric.dll</HintPath>
+    </Reference>
+    <ProjectReference Include="..\EDI.Common\EDI.Common.csproj" />
+    <ProjectReference Include="..\EDI.Data\EDI.Data.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
