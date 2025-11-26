@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Sprache;
 
 string? s3bucket = null;
 
@@ -101,23 +102,10 @@ for (int i = 0; i < args.Length; i++)
         var val = args[i + 1];
 
         // Try parse enum name first (case-insensitive)
-        if (Enum.TryParse<ValidationLevel>(val, ignoreCase: true, out var parsed))
+        if (int.TryParse(val, out var intVal) && intVal >= 1 && intVal <= 4)
         {
-            validationLevel = parsed;
+            validationLevel = (ValidationLevel)(intVal - 1);
             Console.WriteLine($"Using validation level: {validationLevel}");
-        }
-        else if (int.TryParse(val, out var intVal))
-        {
-            // Support user-friendly 1..4 mapping -> enum values 0..3
-            if (intVal >= 1 && intVal <= 4)
-            {
-                validationLevel = (ValidationLevel)(intVal - 1);
-                Console.WriteLine($"Using validation level (1-4 mapping): {validationLevel}");
-            }
-            else
-            {
-                Console.WriteLine($"Warning invalid validation level integer '{val}', you will need to enter the validation level manually later.");
-            }
         }
         else
         {
@@ -137,6 +125,7 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--s3" && i + 1 < args.Length)
     {
         s3Path = args[i + 1];
+        Console.WriteLine($"Using S3 path: {s3Path}");
         break;
     }
 }
@@ -153,7 +142,7 @@ for (int i = 0; i < args.Length; i++)
     }
 }
 
-if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(s3Path))
+if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(s3Path))
 {
     Console.WriteLine("Would you like to load an EDI from S3? (y/n)");
     var response = Console.ReadLine();
