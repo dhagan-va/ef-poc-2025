@@ -158,6 +158,7 @@ eric-vogel_e/
 │   └── Edi837Ingester/
 │       ├── Data/
 │       │   └── AppDbContext.cs          # EF Core database context
+│       │   └── ClaimTypeEnum.cs         # Enum for claim types
 │       │   ├── Repositories/
 │       │   │   ├── IEdiRepository.cs    # EDI repository interface
 │       │   │   └── EdiRepository.cs     # EDI repository implementation
