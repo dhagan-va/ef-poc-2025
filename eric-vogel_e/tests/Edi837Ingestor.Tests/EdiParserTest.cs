@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using DotNetEnv;
 using Edi837Ingester.Data.Repositories;
 using Edi837Ingester.Services;
+using EdiFabric.Core.Model.Edi;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -13,6 +14,7 @@ public class EdiParserTest
     private EdiParserService _ediParser;
     private Mock<ILogger<EdiParserService>> _logger;
     private Mock<IEdiRepository> _ediRepository;
+    private ValidationLevel _validationLevel = ValidationLevel.SyntaxOnly_SNIP1;
 
     [SetUp]
     public void Setup()
@@ -29,7 +31,7 @@ public class EdiParserTest
         // get file in root solution samples folder
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "ClaimPayment.edi"));
-        await _ediParser.Parse(path);
+        await _ediParser.Parse(path, _validationLevel);
         _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837P>>()), Times.Once);
     }
     
@@ -39,7 +41,7 @@ public class EdiParserTest
         // get file in root solution samples folder
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "DentalClaim.edi"));
-        await _ediParser.Parse(path);
+        await _ediParser.Parse(path, _validationLevel);
         _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837D>>()), Times.Once);
     }
     
@@ -48,8 +50,8 @@ public class EdiParserTest
     {
         // get file in root solution samples folder
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
-            "../../../../../", "samples", "InstitutionalClaim.txt"));
-        await _ediParser.Parse(path);
+            "../../../../../", "samples", "InstitutionalClaim.edi"));
+        await _ediParser.Parse(path, _validationLevel);
         _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
     }
     

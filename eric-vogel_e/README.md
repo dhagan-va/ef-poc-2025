@@ -33,9 +33,11 @@ EdiFabric requires a valid license key to function.
    cp .env.example .env
    ```
 
-2. Edit `.env` and add your license key:
+2. Edit `.env` and add your license key and S3 credentials:
    ```
    TRIAL_EDIFABRIC_LICENSE=your-license-key-here
+   S3_ACCESS_KEY_ID=your-access-key-id-here
+   S3_SECRET_ACCESS_KEY=your-secret-access-key-here
    ```
 
 The application automatically loads the `.env` file at startup.
@@ -45,12 +47,18 @@ The application automatically loads the `.env` file at startup.
 ```powershell
 # Windows PowerShell
 $env:TRIAL_EDIFABRIC_LICENSE = "your-license-key-here"
+$env:S3_ACCESS_KEY_ID = "your-access-key-id-here"
+$env:S3_SECRET_ACCESS_KEY = "your-secret-access-key-here"
 
 # Windows CMD
 set TRIAL_EDIFABRIC_LICENSE=your-license-key-here
+set S3_ACCESS_KEY_ID=your-access-key-id-here
+set S3_SECRET_ACCESS_KEY=your-secret-access-key-here
 
 # Linux/Mac
 export TRIAL_EDIFABRIC_LICENSE="your-license-key-here"
+export S3_ACCESS_KEY_ID="your-access-key-id-here"
+export S3_SECRET_ACCESS_KEY="your-secret-access-key-here"
 ```
 
 ## Installation

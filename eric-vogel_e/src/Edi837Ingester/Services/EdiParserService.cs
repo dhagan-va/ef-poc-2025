@@ -14,8 +14,9 @@ public class EdiParserService(IEdiRepository ediRepository,
     /// Read and parse the EDI 837 file from the provided stream.
     /// </summary>
     /// <param name="stream">Stream containing the EDI 837 file data.</param>
+    /// <param name="validationLevel">The SNIP level of validation to apply during parsing.</param>
     /// <returns></returns>
-    public async Task Parse(Stream stream)
+    public async Task Parse(Stream stream, ValidationLevel validationLevel)
     {
         // Point the reader to the assembly containing the 5010 templates (P, I, D)
         using var reader = new X12Reader(stream, _ => typeof(TS837P).Assembly);
@@ -39,13 +40,13 @@ public class EdiParserService(IEdiRepository ediRepository,
         switch(claimType)
         {
             case ClaimTypeEnum.Professional:
-                await ParseItems(professionalItems, claimType);
+                await ParseItems(professionalItems, claimType, validationLevel);
                 break;
             case ClaimTypeEnum.Institutional:
-                await ParseItems(institutionalItems, claimType);
+                await ParseItems(institutionalItems, claimType, validationLevel);
                 break;
             case ClaimTypeEnum.Dental:
-                await ParseItems(dentalItems, claimType);
+                await ParseItems(dentalItems, claimType, validationLevel);
                 break;
             default:
                 logger.LogWarning("No recognized 837 claim transactions found in file");
@@ -53,10 +54,19 @@ public class EdiParserService(IEdiRepository ediRepository,
         }
     }
 
-    private async Task ParseItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType)
+    /// <summary>
+    /// Parse and save the provided EDI items after validation.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="items">Transactions</param>
+    /// <param name="claimType">Claim type - Professional, Institutional, or Dental</param>
+    /// <param name="validationLevel"></param>
+    /// <returns></returns>
+    private async Task ParseItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType,
+        ValidationLevel validationLevel = ValidationLevel.SyntaxOnly_SNIP1)
         where T : EdiMessage
     {
-        var invalidItems = await ValidateItems(items, claimType);
+        var invalidItems = await ValidateItems(items, claimType, validationLevel);
         LogCount(items, claimType);
         var claims = new List<T>();
         claims.AddRange(items.Except(invalidItems));
@@ -67,9 +77,10 @@ public class EdiParserService(IEdiRepository ediRepository,
     /// Read and parse the EDI 837 file from the provided file path.
     /// </summary>
     /// <param name="filePath">Path to the EDI file to parse.</param>
+    /// <param name="validationLevel">The SNIP level of validation to apply during parsing.</param>
     /// <returns></returns>
     /// <exception cref="FileNotFoundException"></exception>
-    public async Task Parse(string filePath)
+    public async Task Parse(string filePath, ValidationLevel validationLevel)
     {
         if (!File.Exists(filePath))
         {
@@ -77,7 +88,7 @@ public class EdiParserService(IEdiRepository ediRepository,
         }
 
         using var stream = File.OpenRead(filePath);
-        await Parse(stream);
+        await Parse(stream, validationLevel);
     }
 
     private void LogCount(IEnumerable<EdiMessage> items, ClaimTypeEnum claimType)
@@ -87,7 +98,8 @@ public class EdiParserService(IEdiRepository ediRepository,
 
     // ValidateItems now returns the subset of items that have validation errors.
     // Returns distinct items that either have ErrorContext errors or fail IsValidAsync().
-    private async Task<IEnumerable<T>> ValidateItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType) where T : EdiMessage
+    private async Task<IEnumerable<T>> ValidateItems<T>(IEnumerable<T> items, ClaimTypeEnum claimType,
+        ValidationLevel validationLevel = ValidationLevel.SyntaxOnly_SNIP1) where T : EdiMessage
     {
         var erroredItems = new List<T>();
 
@@ -106,7 +118,7 @@ public class EdiParserService(IEdiRepository ediRepository,
         {
             try
             {
-                var (valid, errorContext) = await item.IsValidAsync();
+                var (valid, errorContext) = await item.IsValidAsync(new ValidationSettings() { ValidationLevel = validationLevel });
                 if (!valid)
                 {
                     erroredItems.Add(item);
