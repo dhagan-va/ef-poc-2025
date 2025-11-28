@@ -1,0 +1,13 @@
+﻿{
+	"$schema": "https://json.schemastore.org/launchsettings.json",
+	"profiles": {
+		"H2.EdiIngestor": {
+			"commandName": "Project",
+			"dotnetRunMessages": true,
+			"environmentVariables": {
+				"DOTNET_ENVIRONMENT": "Development"
+			},
+			"commandLineArgs": "C:\\Users\\live\\Documents\\Code\\Clearwater\\peter-meredith_p\\samples\\Sample837p.edi"
+		}
+	}
+}
