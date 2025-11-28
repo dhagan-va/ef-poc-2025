@@ -26,15 +26,15 @@ namespace EDI837.Controllers
         }
 
         #region Local files processing
-        // GET: api/EID837/GetEdi837PTransactionsByFileName/fileName
-        [HttpGet("GetEdi837PTransactionsByFileName/{fileName}")]
-        public IActionResult GetEdi837PTransactionsByFileName(string fileName = "837File.edi")
+        // GET: api/EID837/GetEdi837PTransactionsByFileName/fileName/snipLevel
+        [HttpGet("GetEdi837PTransactionsByFileName/{fileName}/{snipLevel}")]
+        public IActionResult GetEdi837PTransactionsByFileName(string fileName = "837File.edi", int snipLevel = 0)
         {
             List<string> parsingErrors = new List<string>();
             Stream stream = this._ediParserService.GetStreamByFileName(fileName);
             if (stream != null)
             {
-                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors);
+                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors, snipLevel);
                 return Ok(parsingErrors.Count > 0 ? parsingErrors : validTransactions);
             }
             else
@@ -45,16 +45,16 @@ namespace EDI837.Controllers
            
         }
 
-        //// GET: api/EID837/SaveEdi837POriginalTransactionsAsJsonByFileName/fileName
-        [HttpGet("SaveEdi837POriginalTransactionsAsJsonByFileName/{fileName}")]
-        public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonByFileName(string fileName = "837File.edi")
+        //// GET: api/EID837/SaveEdi837POriginalTransactionsAsJsonByFileName/fileName/snipLevel
+        [HttpGet("SaveEdi837POriginalTransactionsAsJsonByFileName/{fileName}/{snipLevel}")]
+        public async Task<IActionResult> SaveEdi837POriginalTransactionsAsJsonByFileName(string fileName = "837File.edi", int snipLevel = 0)
         {
             List<string> parsingErrors = new List<string>();
             Stream stream = this._ediParserService.GetStreamByFileName(fileName);
 
             if (stream != null)
             {
-                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors);
+                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors,snipLevel);
                 var processedClaim = await this._edi837FileService.SaveOriginalClaim(validTransactions);
 
                 return Ok(parsingErrors.Count > 0 ? parsingErrors : processedClaim);
@@ -67,15 +67,15 @@ namespace EDI837.Controllers
                
         }
 
-        //// GET: api/EID837/SaveEdi837PByFileName/fileName
-        [HttpGet("SaveEdi837PByFileName/{fileName}")]
-        public async Task<IActionResult> SaveEdi837PByFileName(string fileName = "837File.edi")
+        //// GET: api/EID837/SaveEdi837PByFileName/fileName/snipLevel
+        [HttpGet("SaveEdi837PByFileName/{fileName}/{snipLelevel}")]
+        public async Task<IActionResult> SaveEdi837PByFileName(string fileName = "837File.edi", int snipLevel = 0)
         {
             List<string> parsingErrors = new List<string>();
             Stream stream = this._ediParserService.GetStreamByFileName(fileName);
             if (stream != null)
             {
-                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors);
+                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors, snipLevel);
                 var claims = await this._edi837FileService.Save837PClaims(validTransactions);
                 return Ok(parsingErrors.Count > 0 ? parsingErrors : claims);
             }
@@ -98,15 +98,15 @@ namespace EDI837.Controllers
             return Ok(result);
         }
 
-        //// GET: api/EID837/S3SaveEdiFileByBucketAndFileName/bucketName/fileName
-        [HttpGet("S3SaveEdiFileByBucketAndFileName/{bucketName}/{fileName}")]
-        public async Task<IActionResult> S3SaveEdiFileByBucketAndFileName(string bucketName = "edi-bucket",string fileName = "837File.edi")
+        //// GET: api/EID837/S3SaveEdiFileByBucketAndFileName/bucketName/fileName/snipLevel
+        [HttpGet("S3SaveEdiFileByBucketAndFileName/{bucketName}/{fileName}/{snipLevel}")]
+        public async Task<IActionResult> S3SaveEdiFileByBucketAndFileName(string bucketName = "edi-bucket",string fileName = "837File.edi", int snipLevel = 0)
         {
             List<string> parsingErrors = new List<string>();
             Stream stream = await this._s3FileService.GetClaimStreamByFileNameAsync(bucketName, fileName);
             if (stream != null)
             {
-                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors);
+                var validTransactions = this._ediParserService.ExtractValid837PTransactions(stream, parsingErrors, snipLevel);
                 var claims = await this._edi837FileService.Save837PClaims(validTransactions);
                 return Ok(parsingErrors.Count > 0 ? parsingErrors : claims);
             }
@@ -118,9 +118,9 @@ namespace EDI837.Controllers
                
         }
 
-        //// GET: api/EID837/S3ProcessFilesByBucketAndPrefix/bucketName/prefix
-        [HttpGet("S3ProcessFilesByBucketAndPrefix/{bucketName}/{prefix}")]
-        public async Task<IActionResult> S3ProcessFilesByBucketAndPrefix(string bucketName = "edi-bucket", string prefix = "837")
+        //// GET: api/EID837/S3ProcessFilesByBucketAndPrefix/bucketName/prefix/snipLevel
+        [HttpGet("S3ProcessFilesByBucketAndPrefix/{bucketName}/{prefix}/{snipLevel}")]
+        public async Task<IActionResult> S3ProcessFilesByBucketAndPrefix(string bucketName = "edi-bucket", string prefix = "837", int snipLevel = 0)
         {
             List<string> parsingErrors = new List<string>();
             var streamsResults = await this._s3FileService.GetClaimStreamsByBucketNameAndPrefixAsync(bucketName, prefix);
@@ -128,7 +128,7 @@ namespace EDI837.Controllers
             {
                 foreach (var streamResult in streamsResults)
                 {
-                    var validTransactions = this._ediParserService.ExtractValid837PTransactions(streamResult.FileStream, parsingErrors);
+                    var validTransactions = this._ediParserService.ExtractValid837PTransactions(streamResult.FileStream, parsingErrors, snipLevel);
                     await this._edi837FileService.SaveOriginalClaim(validTransactions);
                     var claims = await this._edi837FileService.Save837PClaims(validTransactions);
                     await this._s3FileService.DeleteFileAsync(bucketName, streamResult.FileName);

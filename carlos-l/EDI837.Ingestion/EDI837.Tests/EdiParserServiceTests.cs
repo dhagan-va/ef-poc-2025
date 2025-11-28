@@ -10,17 +10,21 @@ namespace EDI837.Tests
             //Arrange
             var fileName = "837FileNonExistent.edi";
             List<string> errors = new List<string>();
+            var snipLevel = 3; // The enum os Zero based. 3 == SNIP validation level 4.   
 
             //Act 
             Stream stream = this._parserService.GetStreamByFileName(fileName);
-            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors);
+            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors, snipLevel);
 
             //Assert
             Assert.IsEmpty(transactions);
         }
 
-        [Test]
-        public void ExtractValid837PTransactions_ExistentFie_ShouldReturnTrue()
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void ExtractValid837PTransactions_ExistentFie_ShouldReturnTrue(int snipLevel)
         {
             //Arrange
             var fileName = "837File.edi";
@@ -28,7 +32,7 @@ namespace EDI837.Tests
 
             //Act 
             Stream stream = this._parserService.GetStreamByFileName(fileName);
-            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors);
+            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors, snipLevel);
 
             //Assert
             Assert.IsTrue(transactions.Count() >= 1);

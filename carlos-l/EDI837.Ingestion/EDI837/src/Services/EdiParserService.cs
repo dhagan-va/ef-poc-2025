@@ -3,6 +3,7 @@ using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using Microsoft.Extensions.FileProviders;
 using EdiFabric.Templates.Hipaa5010;
+using EdiFabric.Core.Model.Edi.ErrorContexts;
 
 namespace EDI837.src.Services
 {
@@ -28,11 +29,14 @@ namespace EDI837.src.Services
         /// <param name="fileName">File name of the claim to process.</param>
         /// <param name="parsingErrors">Collection of parsing errors passed by reference.</param>
         /// <returns>The collection of transactions in the claim.</returns>
-        public IEnumerable<TS837P> ExtractValid837PTransactions(Stream stream, IEnumerable<string> parsingErrors)
+        public IEnumerable<TS837P> ExtractValid837PTransactions(Stream stream, IEnumerable<string> parsingErrors, int validationLevel)
         {
-            
-            //Stream stream = this.GetStreamByFileName(fileName);
-            
+
+            ValidationSettings validationSettings = new ValidationSettings()
+            {
+                ValidationLevel = (ValidationLevel)validationLevel
+            }; 
+
             var validTransactions = new List<TS837P>();
 
             if (stream != null)
@@ -48,11 +52,16 @@ namespace EDI837.src.Services
 
                 foreach (var transaction in transactions)
                 {
-                    if (transaction.HasErrors)
+                    MessageErrorContext validationErrors;
+                    var isTransactionValid = transaction.IsValid(out validationErrors , validationSettings);
+                    
+                    if (!isTransactionValid)
                     {
                         //  partially parsed
-                        parsingErrors = transaction.ErrorContext.Flatten();
-                        this._logger.LogWarning(transaction.ST?.TransactionSetControlNumber_02 != null ? $"Transaction: {transaction.ST.TransactionSetControlNumber_02} has errors." : "The Transaction has Errors");
+                        parsingErrors = validationErrors.Flatten();
+                        this._logger.LogWarning(transaction.ST?.TransactionSetControlNumber_02 != null ? 
+                            $"{Enum.GetName(typeof(ValidationLevel),validationLevel)} - Transaction: {transaction.ST.TransactionSetControlNumber_02} has errors." 
+                            : "The Transaction has Errors");
 
                         foreach (var err in parsingErrors)
                         {
