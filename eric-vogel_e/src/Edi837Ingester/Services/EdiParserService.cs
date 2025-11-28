@@ -138,7 +138,7 @@ public class EdiParserService(IEdiRepository ediRepository,
                 {
                     erroredItems.Add(item);
                     var controlNumber = errorContext?.ControlNumber ?? "<unknown>";
-                    var messages = errorContext?.Errors?.Select(e => e.Name) ?? Enumerable.Empty<string>();
+                    var messages = errorContext?.Errors?.Select(e => e.Name + " " + string.Join(", ", e.Errors.Select(err => err.Message))) ?? Enumerable.Empty<string>();
                     logger.LogError("Error parsing transaction with control #: {ControlNumber}: {Errors}", controlNumber, string.Join(", ", messages));
                 }
             }
