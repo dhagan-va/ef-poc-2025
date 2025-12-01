@@ -106,6 +106,12 @@ Parse an EDI 837 file from S3:
 dotnet run --s3 "file.edi"
 ```
 
+Parse an EDI 837 file from S3 and setting S3 bucket:
+
+```bash
+dotnet run --s3 "file.edi" --s3-bucket "your-bucket-name"
+```
+
 ### Moto.py S3
 
 Run S3 Server with Moto.py:
