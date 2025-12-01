@@ -29,6 +29,18 @@ string? editSerialKey = null;
 string? s3AccessKeyId = null;
 string? s3SecretAccessKey = null;
 
+// Allow overriding bucket via command line --s3-bucket <bucket>
+string? s3BucketArg = null;
+for (int i = 0; i < args.Length; i++)
+{
+    if (args[i].Equals("--s3-bucket", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+    {
+        s3BucketArg = args[i + 1];
+        Console.WriteLine($"S3 bucket provided on command line: {s3BucketArg}");
+        break;
+    }
+}
+
 editSerialKey = Env.GetString("TRIAL_EDIFABRIC_LICENSE");
 s3AccessKeyId = Env.GetString("S3_ACCESS_KEY_ID");
 s3SecretAccessKey = Env.GetString("S3_SECRET_ACCESS_KEY");

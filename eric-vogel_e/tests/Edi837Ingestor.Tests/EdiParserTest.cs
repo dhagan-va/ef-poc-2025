@@ -32,7 +32,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "ClaimPayment.edi"));
         await _ediParser.Parse(path, _validationLevel);
-        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837P>>()), Times.Once);
+        _ediRepository.Verify(x => x.SaveClaims(It.IsAny<List<TS837P>>()), Times.Once);
     }
     
     [Test]
@@ -42,7 +42,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "DentalClaim.edi"));
         await _ediParser.Parse(path, _validationLevel);
-        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837D>>()), Times.Once);
+        _ediRepository.Verify(x => x.SaveClaims(It.IsAny<List<TS837D>>()), Times.Once);
     }
     
     [Test]
@@ -52,7 +52,7 @@ public class EdiParserTest
         var path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),
             "../../../../../", "samples", "InstitutionalClaim.edi"));
         await _ediParser.Parse(path, _validationLevel);
-        _ediRepository.Verify(x => x.Save(It.IsAny<List<TS837I>>()), Times.Once);
+        _ediRepository.Verify(x => x.SaveClaims(It.IsAny<List<TS837I>>()), Times.Once);
     }
     
     private void LoadEnvironment()

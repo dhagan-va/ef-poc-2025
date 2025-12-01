@@ -1,10 +1,12 @@
 using Edi837Ingester.Data;
+using Edi837Ingester.Data.Entities;
 using Edi837Ingester.Data.Repositories;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
-using EdiFabric.Templates.X12004010;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Xml.Serialization;
 
 namespace Edi837Ingester.Services;
 
@@ -80,7 +82,39 @@ public class EdiParserService(IEdiRepository ediRepository,
         if (claims.Any())
         {
             logger.LogInformation("Saving {Count} valid {ClaimType} claims", claims.Count, claimType);
-            await ediRepository.Save(claims);
+            await ediRepository.SaveClaims(claims);
+            var processedClaims = new List<ProcessedClaim>();
+            switch(claimType)
+            {
+                case ClaimTypeEnum.Professional:
+                    processedClaims.AddRange(claims.Cast<TS837P>().Select(c => new ProcessedClaim
+                    {
+                        ClaimControlNumber = c.ST.TransactionSetControlNumber_02,
+                        ClaimXml = SerializeEdiMessageToXml(c),
+                        ClaimTypeId = (int)ClaimTypeEnum.Professional,
+                        ProcessedOn = DateTime.UtcNow
+                    }));
+                    break;
+                case ClaimTypeEnum.Institutional:
+                    processedClaims.AddRange(claims.Cast<TS837I>().Select(c => new ProcessedClaim
+                    {
+                        ClaimControlNumber = c.ST.TransactionSetControlNumber_02,
+                        ClaimXml = SerializeEdiMessageToXml(c),
+                        ClaimTypeId = (int)ClaimTypeEnum.Institutional,
+                        ProcessedOn = DateTime.UtcNow
+                    }));
+                    break;
+                case ClaimTypeEnum.Dental:
+                    processedClaims.AddRange(claims.Cast<TS837D>().Select(c => new ProcessedClaim
+                    {
+                        ClaimControlNumber = c.ST.TransactionSetControlNumber_02,
+                        ClaimXml = SerializeEdiMessageToXml(c),
+                        ClaimTypeId = (int)ClaimTypeEnum.Dental,
+                        ProcessedOn = DateTime.UtcNow
+                    }));
+                    break;
+            }
+            await ediRepository.SaveProcessedClaims(processedClaims);
         }
         else
         {
@@ -118,6 +152,38 @@ public class EdiParserService(IEdiRepository ediRepository,
     {
         var erroredItems = new List<T>();
 
+        // check if claims have already been processed
+        var processedItems = await ediRepository.GetProcessedClaims(claimType) ?? Enumerable.Empty<ProcessedClaim>();
+
+        var duplicateItems = new List<T>();
+
+        switch(claimType)
+        {
+            case ClaimTypeEnum.Professional:
+                duplicateItems.AddRange(items.Cast<TS837P>()
+                    .Where(i => processedItems.Any(p => p.ClaimControlNumber == i.ST.TransactionSetControlNumber_02))
+                    .Cast<T>());
+                break;
+            case ClaimTypeEnum.Institutional:
+                duplicateItems.AddRange(items.Cast<TS837I>()
+                    .Where(i => processedItems.Any(p => p.ClaimControlNumber == i.ST.TransactionSetControlNumber_02))
+                    .Cast<T>());
+                break;
+            case ClaimTypeEnum.Dental:
+                duplicateItems.AddRange(items.Cast<TS837D>()
+                    .Where(i => processedItems.Any(p => p.ClaimControlNumber == i.ST.TransactionSetControlNumber_02))
+                    .Cast<T>());
+                break;
+        }
+
+        if (duplicateItems.Any())
+        {
+            logger.LogWarning("Excluding {Count} duplicate {ClaimType} claims that have already been processed",
+                                duplicateItems.Count, claimType);
+
+            erroredItems.AddRange(duplicateItems);
+        }
+
         // SNIP Level 1 validation (pre-parsing errors surfaced by the reader)
         var level1Errors = items.Where(x => x.ErrorContext != null && x.ErrorContext.HasErrors).ToList();
         foreach (var error in level1Errors)
@@ -152,5 +218,20 @@ public class EdiParserService(IEdiRepository ediRepository,
 
         // Return distinct errored items (reference equality is fine for EdiMessage instances)
         return [.. erroredItems.Distinct()];
+    }
+
+    /// <summary>
+    /// Serialize the EDI message to XML format.
+    /// </summary>
+    /// <param name="message">EDI message to serialize</param>
+    /// <returns>XML representation of the EDI message</returns>
+    /// <exception cref="ArgumentNullException"></exception>
+    private static string SerializeEdiMessageToXml(EdiMessage message)
+    {
+        if (message == null) throw new ArgumentNullException(nameof(message));
+        var serializer = new XmlSerializer(message.GetType());
+        using var stringWriter = new StringWriter();
+        serializer.Serialize(stringWriter, message);
+        return stringWriter.ToString();
     }
 }
