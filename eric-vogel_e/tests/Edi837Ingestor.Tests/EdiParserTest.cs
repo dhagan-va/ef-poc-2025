@@ -14,6 +14,7 @@ public class EdiParserTest
     private EdiParserService _ediParser;
     private Mock<ILogger<EdiParserService>> _logger;
     private Mock<IEdiRepository> _ediRepository;
+    private Mock<IEdiValidatorService> _ediValidatorService;
     private ValidationLevel _validationLevel = ValidationLevel.SyntaxOnly_SNIP1;
 
     [SetUp]
@@ -22,7 +23,8 @@ public class EdiParserTest
         LoadEnvironment();
         _logger = new Mock<ILogger<EdiParserService>>();
         _ediRepository = new Mock<IEdiRepository>();
-        _ediParser = new EdiParserService(_ediRepository.Object, _logger.Object);
+        _ediValidatorService = new Mock<IEdiValidatorService>();
+        _ediParser = new EdiParserService(_ediRepository.Object, _logger.Object, _ediValidatorService.Object);
     }
 
     [Test]

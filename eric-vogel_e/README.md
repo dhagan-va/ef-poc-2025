@@ -170,6 +170,8 @@ eric-vogel_e/
 │       │   └── S3EdiParserService.cs    # S3EdiParser implementation
 │       │   └── IS3Service.cs            # S3Service interface
 │       │   └── S3Service.cs             # S3Service implementation
+│       │   └── IEdiValidatorService.cs  # EdiValidatorService interface
+│       │   └── EdiValidatorService.cs   # EdiValidatorService implementation
 │       ├── Program.cs                   # CLI entry point
 │       └── Edi837Ingester.csproj
 │   └── S3Integration/

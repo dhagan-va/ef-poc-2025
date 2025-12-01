@@ -71,6 +71,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IEdiRepository, EdiRepository>();
         services.AddTransient<IS3Service, S3Service>();
         services.AddTransient<IS3EdiParserService, S3EdiParserService>();
+        services.AddTransient<IEdiValidatorService, EdiValidatorService>();
 
         var s3Configuration = context.Configuration.GetRequiredSection("S3")
             .Get<S3Configuration>();
