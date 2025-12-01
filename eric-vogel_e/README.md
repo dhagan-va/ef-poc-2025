@@ -157,6 +157,9 @@ eric-vogel_e/
 ├── src/
 │   └── Edi837Ingester/
 │       ├── Data/
+│       │   └── Entities/
+│       │       └── ClaimType.cs         # ClaimType entity
+│       │       └── ProcessedClaim.cs    # ProcessedClaim entity
 │       │   └── AppDbContext.cs          # EF Core database context
 │       │   └── ClaimTypeEnum.cs         # Enum for claim types
 │       │   ├── Repositories/
