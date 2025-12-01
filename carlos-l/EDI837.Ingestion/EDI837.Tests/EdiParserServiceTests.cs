@@ -20,10 +20,11 @@ namespace EDI837.Tests
             Assert.IsEmpty(transactions);
         }
 
-        [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]
+        [TestCase(4)]
+
         public void ExtractValid837PTransactions_ExistentFie_ShouldReturnTrue(int snipLevel)
         {
             //Arrange
@@ -36,6 +37,21 @@ namespace EDI837.Tests
 
             //Assert
             Assert.IsTrue(transactions.Count() >= 1);
+        }
+
+        [TestCase(2)]      
+        public void ExtractValid837PTransactions_ExistentFie_ShouldTrueForFailingSnipLevel2(int snipLevel)
+        {
+            //Arrange
+            var fileName = "837FileFailsSnipLevel2.edi";
+            List<string> errors = new List<string>();
+
+            //Act 
+            Stream stream = this._parserService.GetStreamByFileName(fileName);
+            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors, snipLevel);
+
+            //Assert
+            Assert.IsTrue(transactions.Count() == 0);
         }
     }
 }

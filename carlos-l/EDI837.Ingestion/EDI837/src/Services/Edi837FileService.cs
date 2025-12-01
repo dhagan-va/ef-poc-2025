@@ -25,7 +25,6 @@ namespace EDI837.src.Services
         /// <exception cref="Exception">Get logged to the selected media.</exception>
         public async Task<IEnumerable<ProcessedClaim>> SaveOriginalClaim(IEnumerable<TS837P> transactions)
         {
-            _logger.LogInformation("The transactions collection was null");
             ArgumentNullException.ThrowIfNull(nameof(transactions));
 
             var jsonString = JsonSerializer.Serialize(transactions);
@@ -73,7 +72,6 @@ namespace EDI837.src.Services
         /// <exception cref="Exception">Get logged to the selected media.</exception>
         public async Task<IEnumerable<TS837P>> Save837PClaims(IEnumerable<TS837P> transactions)
         {
-            _logger.LogInformation("The transactions collection was null");
             ArgumentNullException.ThrowIfNull(nameof(transactions));
 
             List<TS837P> result = new List<TS837P>();

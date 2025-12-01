@@ -35,6 +35,7 @@ namespace EDI837.src.Services
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
+                this._logger.LogWarning(ex.Message);
                 return false;
             }           
         }
@@ -114,6 +115,9 @@ namespace EDI837.src.Services
         /// <returns>No Return</returns>
         public async Task DeleteFileAsync(string bucketName, string fileName)
         {
+            ArgumentException.ThrowIfNullOrEmpty(nameof(bucketName));
+            ArgumentException.ThrowIfNullOrEmpty(nameof(fileName));
+
             try
             {
                 await this._amazonS3.DeleteObjectAsync(

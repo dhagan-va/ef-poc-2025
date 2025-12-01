@@ -1,9 +1,10 @@
 ﻿using EDI837.src.Models;
 using EdiFabric.Core.Model.Edi;
-using EdiFabric.Framework.Readers;
-using Microsoft.Extensions.FileProviders;
-using EdiFabric.Templates.Hipaa5010;
 using EdiFabric.Core.Model.Edi.ErrorContexts;
+using EdiFabric.Framework.Readers;
+using EdiFabric.Templates.Hipaa5010;
+using Microsoft.Extensions.FileProviders;
+using System.IO;
 
 namespace EDI837.src.Services
 {
@@ -28,13 +29,20 @@ namespace EDI837.src.Services
         /// </summary>
         /// <param name="fileName">File name of the claim to process.</param>
         /// <param name="parsingErrors">Collection of parsing errors passed by reference.</param>
+        /// <param name="validationLevel">SNIP Validation Level.</param>
         /// <returns>The collection of transactions in the claim.</returns>
         public IEnumerable<TS837P> ExtractValid837PTransactions(Stream stream, IEnumerable<string> parsingErrors, int validationLevel)
         {
+            ArgumentNullException.ThrowIfNull(nameof(stream));
+            ArgumentNullException.ThrowIfNull(nameof(parsingErrors));
+            ArgumentNullException.ThrowIfNull(nameof(validationLevel));
+
+            // SNIP Validation level is a zero based enum, Level 1 = 0 and so on. 
+            int level = validationLevel < 1 || validationLevel >4 ? 0 : validationLevel -1; 
 
             ValidationSettings validationSettings = new ValidationSettings()
             {
-                ValidationLevel = (ValidationLevel)validationLevel
+                ValidationLevel = (ValidationLevel)level
             }; 
 
             var validTransactions = new List<TS837P>();
@@ -90,6 +98,8 @@ namespace EDI837.src.Services
         /// <returns>Readable Stream or a Null stream if the file does not exists.</returns>
         public Stream GetStreamByFileName(string fileName)
         {
+            ArgumentNullException.ThrowIfNull(nameof(fileName));
+
             var fileInfo = this._fileProvider.GetFileInfo($"{_configuration["LocalFileFolder"]}\\{fileName}");
             this._logger.LogInformation(fileInfo.Exists ? $"{fileInfo.Name} does exist." : $"{fileInfo.Name} does not exist.");
 
