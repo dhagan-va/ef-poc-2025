@@ -28,8 +28,7 @@ public class EdiRepository(AppDbContext dbContext) : IEdiRepository
     /// <returns>A task that represents the asynchronous save operation.</returns>
     public async Task SaveClaims<T>(List<T> items) where T : EdiMessage
     {
-        await dbContext.AddRangeAsync(items);
-        await dbContext.SaveChangesAsync();
+        await SaveInBatchesAsync(items);
     }
 
     /// <summary>
@@ -39,7 +38,34 @@ public class EdiRepository(AppDbContext dbContext) : IEdiRepository
     /// <returns></returns>
     public async Task SaveProcessedClaims(IEnumerable<ProcessedClaim> processedClaims)
     {
-        await dbContext.AddRangeAsync(processedClaims);
-        await dbContext.SaveChangesAsync();
+        await SaveInBatchesAsync(processedClaims);
+
+    }
+
+    /// <summary>
+    /// Saves items in batches to the database to optimize performance and reduce memory usage.
+    /// </summary>
+    /// <typeparam name="T">Entity type.</typeparam>
+    /// <param name="items">The collection of items to be saved. Cannot be null.</param>
+    /// <param name="chunkSize">The size of each batch. Default is 1000.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
+    private async Task SaveInBatchesAsync<T>(IEnumerable<T> items, int chunkSize = 1000) where T : class
+    {
+        var list = items.ToList();
+        dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
+        {
+            for (int i = 0; i < list.Count; i += chunkSize)
+            {
+                var chunk = list.Skip(i).Take(chunkSize).ToList();
+                await dbContext.AddRangeAsync(chunk);
+                await dbContext.SaveChangesAsync();
+                dbContext.ChangeTracker.Clear(); 
+            }
+        }
+        finally
+        {
+            dbContext.ChangeTracker.AutoDetectChangesEnabled = true;
+        }
     }
 }
