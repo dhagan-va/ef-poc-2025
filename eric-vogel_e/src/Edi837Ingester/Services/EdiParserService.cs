@@ -5,7 +5,6 @@ using EdiFabric.Core.Model.Edi;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Xml.Serialization;
 
 namespace Edi837Ingester.Services;

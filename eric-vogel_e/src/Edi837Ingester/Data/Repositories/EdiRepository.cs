@@ -1,7 +1,5 @@
-using Edi837Ingester.Data;
 using Edi837Ingester.Data.Entities;
 using EdiFabric.Core.Model.Edi;
-using EdiFabric.Templates.Hipaa5010;
 using Microsoft.EntityFrameworkCore;
 
 namespace Edi837Ingester.Data.Repositories;

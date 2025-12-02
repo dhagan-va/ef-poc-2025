@@ -8,12 +8,9 @@ using Edi837Ingester.Data.Repositories;
 using Edi837Ingester.Services;
 using EdiFabric.Core.Model.Edi;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Sprache;
 
 string? s3bucket = null;
 
