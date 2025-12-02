@@ -169,6 +169,7 @@ eric-vogel_e/
 │       │   └── AppDbContext.cs          # EF Core database context
 │       │   └── ClaimTypeEnum.cs         # Enum for claim types
 │       │   ├── Repositories/
+│       │   │   ├── BaseRepository.cs    # Repository base class
 │       │   │   ├── IEdiRepository.cs    # EDI repository interface
 │       │   │   └── EdiRepository.cs     # EDI repository implementation
 │       ├── Migrations/                  # EF Core migrations
