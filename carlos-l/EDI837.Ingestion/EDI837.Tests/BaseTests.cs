@@ -38,7 +38,7 @@ public class BaseTests
         //Mock the needed parts of the appsettings.json
         _configurationMock = new Mock<IConfiguration>();
         _configurationMock.Setup(c => c["LocalFileFolder"]).Returns("samples\\");
-        _configurationMock.Setup(c => c["EdiFabricSerialKey"]).Returns("c417cb9dd9d54297a55c032a74c87996");
+        _configurationMock.Setup(c => c["EdiFabricSerialKey"]).Returns("ebf6a2673296406b822b11d47d25e0f6");
 
         //Mock AWS Settings
         _configurationMock.Setup(c => c["ServiceURL"]).Returns("http://localhost:5001");

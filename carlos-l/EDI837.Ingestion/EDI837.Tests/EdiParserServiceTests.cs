@@ -39,6 +39,22 @@ namespace EDI837.Tests
             Assert.IsTrue(transactions.Count() >= 1);
         }
 
+        [TestCase(1)]
+        public void ExtractValid837PTransactions_ExistentFie_ShouldTrueForFailingSnipLevel1(int snipLevel)
+        {
+            //Arrange
+            // Missing the NM1 segment.
+            var fileName = "837FileFailsSnipLevel1.edi";
+            List<string> errors = new List<string>();
+
+            //Act 
+            Stream stream = this._parserService.GetStreamByFileName(fileName);
+            var transactions = this._parserService.ExtractValid837PTransactions(stream, errors, snipLevel);
+
+            //Assert
+            Assert.IsTrue(transactions.Count() == 0);
+        }
+
         [TestCase(2)]      
         public void ExtractValid837PTransactions_ExistentFie_ShouldTrueForFailingSnipLevel2(int snipLevel)
         {

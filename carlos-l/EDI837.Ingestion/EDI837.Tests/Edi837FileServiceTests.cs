@@ -3,10 +3,10 @@ namespace EDI837.Tests;
 [TestFixture]
 public class Edi837FileServiceTests : BaseTests
 {
-    [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
+    [TestCase(4)]
     public async Task SaveOriginalClaim_ValidClaim_ShouldReturnTrue(int snipLevel)
     {
         //Arrange
@@ -22,10 +22,10 @@ public class Edi837FileServiceTests : BaseTests
         Assert.IsTrue(savedClaims.Count() >= 1);
     }
 
-    [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
+    [TestCase(4)]
     public async Task Save837PClaims_ValidClaim_ShouldReturnTrue(int snipLevel)
     {
         //Arrange
