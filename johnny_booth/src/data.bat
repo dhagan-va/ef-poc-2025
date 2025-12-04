@@ -9,7 +9,7 @@ dotnet ef migrations add %MIGRATION% --project X12EDI.Data --startup-project X12
 goto :eof
 
 :installef
-dotnet tool install --global dotnet-ef
+dotnet tool install --global dotnet-ef --version 9.0.10
 goto :eof
 
 :update

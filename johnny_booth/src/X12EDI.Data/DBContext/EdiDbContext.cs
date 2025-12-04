@@ -1,9 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using EdiFabric.Templates.Hipaa5010;
+using Microsoft.EntityFrameworkCore;
 using X12EDI.Data.Entities;
 
 namespace X12EDI.Data.DBContext
@@ -23,8 +19,33 @@ namespace X12EDI.Data.DBContext
         public DbSet<EdiError> EdiErrors => Set<EdiError>();
         public DbSet<EdiFile> EdiFiles => Set<EdiFile>();
         public DbSet<EdiTransaction> EdiTransactions => Set<EdiTransaction>();
+        public DbSet<TS837P> TS837Ps => Set<TS837P>();
 
         #endregion Public Properties
+
+        #region Public Methods
+
+        public void AddEntity(object entity)
+        {
+            if (entity == null)
+            {
+                throw new ArgumentNullException(nameof(entity));
+            }
+
+            base.Add(entity);
+        }
+
+        public void AddRangeEntities(IEnumerable<object> entities)
+        {
+            if (entities == null)
+            {
+                throw new ArgumentNullException(nameof(entities));
+            }
+
+            base.AddRange(entities);
+        }
+
+        #endregion Public Methods
 
         #region Protected Methods
 

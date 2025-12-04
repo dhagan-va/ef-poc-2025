@@ -4,7 +4,7 @@ import os
 # --- Configuration ---
 MOTO_ENDPOINT = "http://localhost:7808"
 BUCKET_NAME = "edi-test-bucket"
-LOCAL_FILE_PATH = "C:\\Users\\fsr-admin\\source\\repos\\ef-poc-2025\\johnny_booth\\samples\\837-sample-file.edi" 
+LOCAL_FILE_PATH = "..\\samples\\837-sample-file.edi" 
 S3_OBJECT_KEY = "837-sample-file.edi"
 
 # --- Credentials ---

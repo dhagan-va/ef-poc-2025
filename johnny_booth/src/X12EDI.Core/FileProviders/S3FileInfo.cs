@@ -84,7 +84,7 @@ public class S3FileInfo : IFileInfo
     public long Length { get; private set; } = -1;
 
     public string Name => Path.GetFileName(_key);
-    public string PhysicalPath => string.Empty;
+    public string PhysicalPath => default!;
 
     #endregion Public Properties
 
