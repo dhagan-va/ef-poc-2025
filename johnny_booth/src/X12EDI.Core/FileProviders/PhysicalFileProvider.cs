@@ -5,10 +5,25 @@ using Microsoft.Extensions.Primitives;
 
 namespace X12EDI.Core.FileProviders
 {
+    /// <summary>
+    /// An implementation of <see cref="IFileProvider"/> that provides file access to a physical file system.
+    /// </summary>
     public class PhysicalFileProvider : IFileProvider
     {
+        #region Private Fields
+
         private readonly string _directory;
 
+        #endregion Private Fields
+
+        #region Public Constructors
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PhysicalFileProvider"/> class.
+        /// </summary>
+        /// <param name="directory">The root directory for this provider.</param>
+        /// <exception cref="ArgumentException">Thrown if the directory path is null, empty, or whitespace.</exception>
+        /// <exception cref="DirectoryNotFoundException">Thrown if the specified directory does not exist.</exception>
         public PhysicalFileProvider(string directory)
         {
             if (string.IsNullOrWhiteSpace(directory))
@@ -16,14 +31,23 @@ namespace X12EDI.Core.FileProviders
                 throw new ArgumentException("Directory path must be provided.", nameof(directory));
             }
 
-            if (!Directory.Exists(directory))
-            {
-                throw new DirectoryNotFoundException($"The directory '{directory}' does not exist.");
-            }
+            _directory = Path.GetFullPath(directory);
 
-            _directory = directory;
+            if (!Directory.Exists(_directory))
+            {
+                throw new DirectoryNotFoundException($"The directory '{_directory}' does not exist.");
+            }
         }
 
+        #endregion Public Constructors
+
+        #region Public Methods
+
+        /// <summary>
+        /// Enumerates a directory at the given path.
+        /// </summary>
+        /// <param name="subpath">The path relative to the root directory.</param>
+        /// <returns>The contents of the directory. Returns <see cref="NotFoundDirectoryContents"/> if the directory does not exist.</returns>
         public IDirectoryContents GetDirectoryContents(string subpath)
         {
             var fullPath = Path.Combine(_directory, subpath ?? string.Empty);
@@ -36,6 +60,11 @@ namespace X12EDI.Core.FileProviders
             return new PhysicalDirectoryContents(fullPath);
         }
 
+        /// <summary>
+        /// Locates a file at the given path.
+        /// </summary>
+        /// <param name="subpath">The path relative to the root directory.</param>
+        /// <returns>The file information. Returns a <see cref="NotFoundFileInfo"/> if the file does not exist.</returns>
         public IFileInfo GetFileInfo(string subpath)
         {
             var fullPath = Path.Combine(_directory, subpath ?? string.Empty);
@@ -48,6 +77,11 @@ namespace X12EDI.Core.FileProviders
             return new NotFoundFileInfo(subpath ?? string.Empty);
         }
 
+        /// <summary>
+        /// Creates an <see cref="IChangeToken"/> for the specified filter.
+        /// </summary>
+        /// <param name="filter">A filter string for files and directories to watch. This can include wildcards.</param>
+        /// <returns>An <see cref="IChangeToken"/> that is notified when a file matching the filter is added, modified, or deleted.</returns>
         public IChangeToken Watch(string filter)
         {
             var fullPath = Path.Combine(_directory, filter ?? string.Empty);
@@ -56,5 +90,6 @@ namespace X12EDI.Core.FileProviders
             return new PollingFileChangeToken(fileInfo);
         }
 
+        #endregion Public Methods
     }
 }

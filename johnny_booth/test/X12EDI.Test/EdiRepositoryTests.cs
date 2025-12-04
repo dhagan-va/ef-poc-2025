@@ -9,22 +9,19 @@ namespace X12EDI.Test
     [TestClass]
     public class EdiRepositoryTests
     {
+        #region Private Fields
+
         private EdiDbContext? _dbContext;
         private EdiRepository? _repository;
 
-        [TestInitialize]
-        public void Setup()
+        #endregion Private Fields
+
+        #region Public Methods
+
+        [TestCleanup]
+        public void Cleanup()
         {
-            var options = new DbContextOptionsBuilder<EdiDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-
-            _dbContext = new EdiDbContext(options);
-
-            var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-            var logger = loggerFactory.CreateLogger<EdiRepository>();
-
-            _repository = new EdiRepository(_dbContext, logger);
+            _dbContext?.Dispose();
         }
 
         [TestMethod]
@@ -57,7 +54,6 @@ namespace X12EDI.Test
             // Assert
             Assert.IsTrue(bExceptionThrown);
 
-
             var savedFile = _dbContext.EdiFiles
                 .Include(f => f.Transactions)
                 .Include(f => f.Errors)
@@ -73,7 +69,7 @@ namespace X12EDI.Test
             var identifier = "FILE123";
             var cancellationToken = CancellationToken.None;
 
-            var message = new TS837P(); 
+            var message = new TS837P();
             var items = new List<object> { message };
 
             // Sanity check the _repository and _dbcontext
@@ -86,7 +82,6 @@ namespace X12EDI.Test
             // Assert
             Assert.IsTrue(result);
 
-
             var savedFile = _dbContext.EdiFiles
                 .Include(f => f.Transactions)
                 .Include(f => f.Errors)
@@ -97,10 +92,21 @@ namespace X12EDI.Test
             Assert.AreEqual(0, savedFile.Errors.Count);
         }
 
-        [TestCleanup]
-        public void Cleanup()
+        [TestInitialize]
+        public void Setup()
         {
-            _dbContext?.Dispose();
+            var options = new DbContextOptionsBuilder<EdiDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+
+            _dbContext = new EdiDbContext(options);
+
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+            var logger = loggerFactory.CreateLogger<EdiRepository>();
+
+            _repository = new EdiRepository(_dbContext, logger);
         }
+
+        #endregion Public Methods
     }
 }

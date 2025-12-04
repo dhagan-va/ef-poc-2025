@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 
+/// <summary>
+/// A delegating handler that logs critical details of outgoing S3 requests.
+/// </summary>
 public class S3LoggingHandler : DelegatingHandler
 {
     #region Private Fields

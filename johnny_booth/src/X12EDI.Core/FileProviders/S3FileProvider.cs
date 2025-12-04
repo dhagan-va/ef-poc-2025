@@ -1,20 +1,15 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.Runtime;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Primitives;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.IO;
-using Amazon;
-using EdiFabric.Templates.Hipaa5010;
-using X12EDI.Core.Config;
-using Amazon.Runtime.Internal.Util;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using X12EDI.Core.Config;
 
 namespace X12EDI.Core.FileProviders
 {
+    /// <summary>
+    /// An implementation of <see cref="IFileProvider"/> that provides file access to an Amazon S3 bucket.
+    /// </summary>
     public class S3FileProvider : IFileProvider
     {
         #region Private Fields
@@ -27,6 +22,12 @@ namespace X12EDI.Core.FileProviders
 
         #region Public Constructors
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="S3FileProvider"/> class.
+        /// </summary>
+        /// <param name="logger">The logger for recording information and errors.</param>
+        /// <param name="s3Client">The configured Amazon S3 client.</param>
+        /// <param name="s3Options">The S3 configuration options, including the bucket name.</param>
         public S3FileProvider(ILogger<S3FileProvider> logger, IAmazonS3 s3Client, S3Options s3Options)
         {
             _s3Client = s3Client;
@@ -40,6 +41,11 @@ namespace X12EDI.Core.FileProviders
 
         #region Public Methods
 
+        /// <summary>
+        /// Enumerates a directory at the given path in the S3 bucket.
+        /// </summary>
+        /// <param name="subpath">The path that identifies the directory in the S3 bucket.</param>
+        /// <returns>An <see cref="IDirectoryContents"/> object representing the contents of the directory.</returns>
         public IDirectoryContents GetDirectoryContents(string subpath)
         {
             string prefix = string.IsNullOrEmpty(subpath) ? string.Empty : subpath.TrimStart('/');
@@ -88,6 +94,11 @@ namespace X12EDI.Core.FileProviders
             return NotFoundDirectoryContents.Singleton;
         }
 
+        /// <summary>
+        /// Locates a file at the given path in the S3 bucket.
+        /// </summary>
+        /// <param name="subpath">The path that identifies the file in the S3 bucket.</param>
+        /// <returns>An <see cref="IFileInfo"/> object representing the file. The existence of the file is checked on-demand.</returns>
         public IFileInfo GetFileInfo(string subpath)
         {
             // Note: We don't call S3 here. The metadata check (HEAD request)
@@ -95,6 +106,11 @@ namespace X12EDI.Core.FileProviders
             return new S3FileInfo(_s3Client, _bucketName, subpath);
         }
 
+        /// <summary>
+        /// Returns a <see cref="IChangeToken"/> that cannot be used to watch for changes.
+        /// </summary>
+        /// <param name="filter">A filter string used to determine which files or folders to watch.</param>
+        /// <returns>A <see cref="NullChangeToken"/>, as S3 does not support native change notifications.</returns>
         public IChangeToken Watch(string filter)
         {
             // S3 does not have a native change notification system

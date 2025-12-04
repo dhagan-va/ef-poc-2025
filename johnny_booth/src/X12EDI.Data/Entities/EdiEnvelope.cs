@@ -6,7 +6,7 @@ namespace X12EDI.Data.Entities
     {
         #region Public Constructors
 
-        public EdiEnvelope() 
+        public EdiEnvelope()
         {
         }
 

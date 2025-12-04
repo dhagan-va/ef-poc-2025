@@ -3,6 +3,9 @@ using Microsoft.Extensions.FileProviders;
 
 namespace X12EDI.Blazor.API.Controllers
 {
+    /// <summary>
+    /// API controller for handling file operations, mimicking S3-like behavior.
+    /// </summary>
     [ApiController]
     [Route("api/files/{bucketName?}")]
     public class FilesController : ControllerBase
@@ -15,6 +18,10 @@ namespace X12EDI.Blazor.API.Controllers
 
         #region Public Constructors
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FilesController"/> class.
+        /// </summary>
+        /// <param name="fileProvider">The file provider for accessing file data.</param>
         public FilesController(IFileProvider fileProvider)
         {
             _fileProvider = fileProvider;
@@ -24,8 +31,11 @@ namespace X12EDI.Blazor.API.Controllers
 
         #region Public Methods
 
-        // Add a HEAD request endpoint for efficiency
-        // Clients can use this to check file existence and get size without downloading.
+        /// <summary>
+        /// Handles HEAD requests to check for file existence and retrieve metadata.
+        /// </summary>
+        /// <param name="id">The identifier of the file.</param>
+        /// <returns>An <see cref="IActionResult"/> indicating the file status.</returns>
         [HttpHead("{id}")]
         public IActionResult CheckFile(string id)
         {
@@ -46,6 +56,11 @@ namespace X12EDI.Blazor.API.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Handles GET requests to retrieve a file's content.
+        /// </summary>
+        /// <param name="id">The identifier of the file.</param>
+        /// <returns>A <see cref="Task{IActionResult}"/> that streams the file content.</returns>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetFile(string id)
         {
@@ -82,7 +97,11 @@ namespace X12EDI.Blazor.API.Controllers
             );
         }
 
-        // This is the endpoint that gets hit upon going to ~/api/files/<bucket-name>
+        /// <summary>
+        /// Handles GET requests to list files in a bucket, returning an S3-compatible XML response.
+        /// </summary>
+        /// <param name="bucketName">The name of the bucket.</param>
+        /// <returns>An <see cref="IActionResult"/> containing the XML listing.</returns>
         [HttpGet]
         public IActionResult ListFiles(
              string bucketName
@@ -126,6 +145,7 @@ namespace X12EDI.Blazor.API.Controllers
             // 3. Return the XML content with the correct Content-Type
             return Content(xmlBuilder.ToString(), "application/xml");
         }
+
         #endregion Public Methods
     }
 }

@@ -6,15 +6,32 @@ using X12EDI.Core.Config;
 using X12EDI.Core.Extensions;
 using X12EDI.Data.Extensions;
 
+/// <summary>
+/// Represents the main entry point for the X12 EDI Command Line Interface (CLI) application.
+/// This class is responsible for configuring and bootstrapping the application, setting up dependency injection,
+/// logging, and application-specific services.
+/// </summary>
 public class Program
 {
-    static async Task Main()
+    #region Private Methods
+
+    /// <summary>
+    /// The main entry point of the application.
+    /// </summary>
+    /// <remarks>
+    /// This method performs the following steps:
+    /// 1. Builds the application configuration from various sources.
+    /// 2. Configures the dependency injection container with necessary services, including logging, EDI services, S3 storage, and the database context.
+    /// 3. Builds the service provider.
+    /// 4. Resolves the <see cref="IFileIngestionService"/> and triggers the file ingestion process.
+    /// </remarks>
+    /// <returns>A <see cref="Task"/> that represents the asynchronous operation.</returns>
+    private static async Task Main()
     {
         // 1. Build configuration (JSON + environment variables + command line)
         var configuration = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true, reloadOnChange: true)
             .Build();
-
 
         var services = new ServiceCollection();
 
@@ -62,4 +79,6 @@ public class Program
         var fileIngestionService = provider.GetRequiredService<IFileIngestionService>();
         await fileIngestionService.IngestAllAsync(CancellationToken.None);
     }
+
+    #endregion Private Methods
 }

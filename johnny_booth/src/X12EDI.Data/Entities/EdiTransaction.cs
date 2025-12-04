@@ -1,6 +1,5 @@
 ﻿namespace X12EDI.Data.Entities
 {
-
     public class EdiTransaction
     {
         #region Public Properties

@@ -4,10 +4,12 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using X12EDI.Abstractions.Repositories;
 using X12EDI.Abstractions.Services;
-using X12EDI.Data.Repositories;
 
 namespace X12EDI.Core.Services
 {
+    /// <summary>
+    /// Service responsible for ingesting and processing EDI files from a configured file source.
+    /// </summary>
     public class FileIngestionService : IFileIngestionService
     {
         #region Private Fields
@@ -21,6 +23,13 @@ namespace X12EDI.Core.Services
 
         #region Public Constructors
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FileIngestionService"/> class.
+        /// </summary>
+        /// <param name="fileProvider">The file provider to access the EDI files.</param>
+        /// <param name="parser">The parser service to process EDI transactions.</param>
+        /// <param name="logger">The logger for recording information and errors.</param>
+        /// <param name="ediRepository">The repository for persisting parsed EDI data.</param>
         public FileIngestionService(
             IFileProvider fileProvider,
             IX12ParserService parser,
@@ -36,8 +45,10 @@ namespace X12EDI.Core.Services
 
         #region Public Methods
 
-        /// <summary>Ingests all .edi files provided by the file provider asynchronously.</summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <summary>
+        /// Discovers and ingests all files with a '.edi' extension from the root of the configured <see cref="IFileProvider"/>
+        /// </summary>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
         public async Task IngestAllAsync(CancellationToken cancellationToken = default)
         {
             var contents = _fileProvider.GetDirectoryContents(string.Empty);
@@ -57,9 +68,11 @@ namespace X12EDI.Core.Services
             }
         }
 
-        /// <summary>Ingests a sinle file asynchronously.</summary>
-        /// <param name="subpath">The subpath.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <summary>
+        /// Ingests, parses, and persists a single EDI file from the specified path.
+        /// </summary>
+        /// <param name="subpath">The relative path to the file within the file provider.</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
         public async Task IngestAsync(string subpath, CancellationToken cancellationToken = default)
         {
             var fileInfo = _fileProvider.GetFileInfo(subpath);

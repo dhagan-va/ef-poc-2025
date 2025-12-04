@@ -1,6 +1,5 @@
 ﻿using Amazon.Runtime;
 using Amazon.S3;
-using EdiFabric;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using X12EDI.Abstractions.Services;
@@ -11,16 +10,19 @@ using PhysicalFileProvider = X12EDI.Core.FileProviders.PhysicalFileProvider;
 
 namespace X12EDI.Core.Extensions
 {
+    /// <summary>
+    /// Provides extension methods for registering EDI and S3 related services in the dependency injection container.
+    /// </summary>
     public static class ParserServiceCollectionExtensions
     {
         #region Public Methods
 
-        /// <summary>Adds the edi services.</summary>
-        /// <param name="services">The services.</param>
-        /// <param name="configure">The configure.</param>
-        /// <returns>
-        ///   <br />
-        /// </returns>
+        /// <summary>
+        /// Adds EDI processing services to the specified <see cref="IServiceCollection"/>.
+        /// </summary>
+        /// <param name="services">The <see cref="IServiceCollection"/> to add the services to.</param>
+        /// <param name="configure">An action to configure the <see cref="EdiOptions"/>.</param>
+        /// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
         public static IServiceCollection AddEDIServices(this IServiceCollection services, Action<EdiOptions> configure)
 
         {
@@ -48,6 +50,13 @@ namespace X12EDI.Core.Extensions
             return services;
         }
 
+        /// <summary>
+        /// Adds and configures services for interacting with an S3-compatible object store.
+        /// </summary>
+        /// <param name="services">The <see cref="IServiceCollection"/> to add the services to.</param>
+        /// <param name="configure">An action to configure the <see cref="S3Options"/>.</param>
+        /// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
+        /// <exception cref="ArgumentException">Thrown if <see cref="S3Options.BucketName"/> is not provided.</exception>
         public static IServiceCollection AddS3(
             this IServiceCollection services,
             Action<S3Options> configure)
