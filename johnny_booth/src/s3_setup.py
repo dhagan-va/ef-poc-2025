@@ -2,7 +2,7 @@ import boto3
 import os
 
 # --- Configuration ---
-MOTO_ENDPOINT = "http://localhost:7808"
+MOTO_ENDPOINT = "http://localhost:4566"
 BUCKET_NAME = "edi-test-bucket"
 LOCAL_FILE_PATH = "..\\samples\\837-sample-file.edi" 
 S3_OBJECT_KEY = "837-sample-file.edi"

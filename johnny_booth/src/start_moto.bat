@@ -1,6 +1,6 @@
 @echo off
 echo Starting Moto Server in the background...
-start /B cmd /k "python -m moto.server -p 7808"
+start /B cmd /k "python -m moto.server -p 4566"
 
 echo Giving the server a moment to start...
 timeout /t 3 /nobreak >nul
