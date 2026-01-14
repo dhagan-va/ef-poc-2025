@@ -51,12 +51,18 @@ namespace X12EDI.Core.Services
            IEnumerable<(Stream stream, string Identifier)> sources,
            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            var validationSettings = new ValidationSettings
+            {
+                ValidationLevel = _ediOptions.SNIPLevelValidation
+            };
+
             foreach (var (stream, identifier) in sources)
             {
                 using var ediReader = new X12Reader(stream, MessageFactory, new X12ReaderSettings()
                 {
                     ContinueOnError = _ediOptions.ContinueOnError
                 });
+
 
                 while (await ediReader.ReadAsync(cancellationToken))
                 {

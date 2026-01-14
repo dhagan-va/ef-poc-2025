@@ -1,4 +1,6 @@
-﻿namespace X12EDI.Core.Config
+﻿using EdiFabric.Core.Model.Edi;
+
+namespace X12EDI.Core.Config
 {
     /// <summary>
     /// Represents configuration options for EDI processing.
@@ -11,6 +13,8 @@
         /// Gets or sets a value indicating whether to continue processing on error.
         /// </summary>
         public bool ContinueOnError { get; set; } = true;
+
+        public ValidationLevel SNIPLevelValidation { get; set; } = ValidationLevel.SyntaxOnly_SNIP1;
 
         /// <summary>
         /// Gets or sets the folder path for EDI files.
