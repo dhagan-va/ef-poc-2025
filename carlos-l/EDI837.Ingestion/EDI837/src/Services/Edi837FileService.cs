@@ -21,6 +21,14 @@ namespace EDI837.src.Services
         }
 
         
+        /// <summary>
+        /// Processes the specified file by name if it exists in the configured local file folder.
+        /// </summary>
+        /// <remarks>The method attempts to locate and process a file with the given name from the folder
+        /// specified in the application's configuration. If the file is found, it is read and processed; otherwise, an
+        /// exception is thrown.</remarks>
+        /// <param name="fileName">The name of the file to process. This value must not be null or empty.</param>
+        /// <exception cref="Exception">Thrown if the specified file does not exist in the configured local file folder.</exception>
         public void GetFileByName(string fileName)
         {
             var fileInfo = this._fileProvider.GetFileInfo($"{_configuration["LocalFileFolder"]}\\{fileName}");
