@@ -1,23 +1,20 @@
 ﻿using EDI837.src.Models;
-using EdiFabric.Core.Model.Edi;
-using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.FileProviders.Internal;
+using System.Text.Json;
 
 namespace EDI837.src.Services
 {
     public class Edi837FileService : IEdi837FileService
     {
         private readonly AppDataContext _context;
-        private readonly IConfiguration _configuration;
-        private readonly IFileProvider _fileProvider;
+        private readonly ILogger _logger;
 
-        public Edi837FileService(AppDataContext context, IConfiguration configuration, IFileProvider fileProvider)
+        public Edi837FileService(
+            AppDataContext context, 
+            ILogger<Edi837FileService> logger)
         {
             this._context = context;
-            this._configuration = configuration;
-            this._fileProvider = fileProvider;
+            this._logger = logger;
         }
 
         
@@ -35,31 +32,76 @@ namespace EDI837.src.Services
             if (fileInfo.Exists)
             {
 
-                var fileStream = fileInfo.CreateReadStream();
-            
-                List<IEdiItem> ediItems;
-                using (var ediReader = new X12Reader(fileStream, "EdiFabric.Templates.Hipaa"))
+                if (!this.IsClaimDuplicate(processedClaim.ClaimControlNumber, processedClaim.ClaimConventionReference, processedClaim.ClaimIdentifier))
                 {
-                    ediItems = ediReader.ReadToEnd().ToList();
+                    try
+                    {
+                        await this._context.ProcessedClaims.AddAsync(processedClaim);
+                        await this._context.SaveChangesAsync();
+
+                        result.Add(processedClaim);
+                    }
+                    catch (Exception)
+                    {
+                        _logger.LogWarning("Unable to Save Transaction.");
+                        throw new Exception("Unable to process claim.");
+                    }
                 }
-
-
-                //var transactions = ediItems.OfType<TS837P>();
-
-                //foreach (var transaction in transactions)
-                //{
-                //    if (transaction.HasErrors)
-                //    {
-                //        //  partially parsed
-                //        var errors = transaction.ErrorContext.Flatten();
-                //    }
-                //}
+                else
+                {
+                    _logger.LogInformation("Duplicate Claim");
+                }
             }
-            else
+           
+            return result;
+        }
+
+        /// <summary>
+        /// Method saves the transaction to the TS837 defined structure in the database.
+        /// </summary>
+        /// <param name="transactions">Parsed collection of transactions.</param>
+        /// <returns>The JSON Object saved in the database.</returns>
+        /// <exception cref="Exception">Get logged to the selected media.</exception>
+        public async Task<IEnumerable<TS837P>> Save837PClaims(IEnumerable<TS837P> transactions)
+        {
+            ArgumentNullException.ThrowIfNull(nameof(transactions));
+
+            List<TS837P> result = new List<TS837P>();
+
+            foreach (var transaction in transactions)
             {
-                throw new Exception($"File {fileName} was not found.");
+                try
+                {
+                    await this._context.TS837Ps.AddAsync(transaction);
+                    await this._context.SaveChangesAsync();
+
+                    result.Add(transaction);
+                }
+                catch (Exception)
+                {
+                    _logger.LogWarning("Unable to Save Transaction.");
+                    throw new Exception("Unable to save the trasaction.");
+                }
             }
-                
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Method ensures the claim is unique and a copy of it has not been stored in the database.
+        /// </summary>
+        /// <param name="claimControlNumber">Claim control number from the claim claim's header.</param>
+        /// <param name="claimConventionReference">Claim conversion reference from the claim's header.</param>
+        /// <param name="claimIdentifier">Claim identifier from the claim's header.</param>
+        /// <returns>The JSON Object saved in the database.</returns>
+        private bool IsClaimDuplicate(string claimControlNumber, string claimConventionReference, string claimIdentifier)
+        {
+            var record = this._context.ProcessedClaims.FirstOrDefault(
+                c => c.ClaimControlNumber.ToUpper() == claimControlNumber.ToUpper() && 
+                c.ClaimConventionReference.ToUpper() == claimConventionReference.ToUpper() && 
+                c.ClaimIdentifier.ToUpper() == claimIdentifier.ToUpper());
+            
+            return record != null;
         }
     }
 }

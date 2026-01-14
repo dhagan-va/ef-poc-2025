@@ -6,24 +6,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace EDI837.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreation : Migration
+    public partial class ProcessedFiles : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "WeatherForecasts",
+           migrationBuilder.CreateTable(
+                name: "ProcessedClaims",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Date = table.Column<DateOnly>(type: "date", nullable: false),
-                    TemperatureC = table.Column<int>(type: "int", nullable: false),
-                    Summary = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    ClaimIdentifier = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ClaimControlNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ClaimConventionReference = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Claim = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WeatherForecasts", x => x.Id);
+                    table.PrimaryKey("PK_ProcessedClaims", x => x.Id);
                 });
         }
 
@@ -31,7 +32,9 @@ namespace EDI837.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "WeatherForecasts");
+                name: "ProcessedClaims");
+
+  
         }
     }
 }
