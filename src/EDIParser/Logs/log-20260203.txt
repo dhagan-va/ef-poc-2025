@@ -1,0 +1,37 @@
+2026-02-03 11:18:07.020 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:18:52.938 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:19:51.387 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:19:59.861 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:21:41.721 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:21:41.815 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:27:19.766 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:27:19.844 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:29:24.103 -07:00 [ERR] One or more errors occurred. (nodename nor servname provided, or not known (api.edifabric.com:443))
+2026-02-03 11:33:16.854 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:33:16.945 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:35:08.650 -07:00 [ERR] One or more errors occurred. (nodename nor servname provided, or not known (api.edifabric.com:443))nodename nor servname provided, or not known (api.edifabric.com:443)
+   at System.Threading.Tasks.Task.ThrowIfExceptional(Boolean includeTaskCanceledExceptions)
+   at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+   at EdiFabric.SerialKey.GetToken(String serialKey)
+   at EdiFabric.SerialKey.Set(String serialKey, Boolean enforce)
+   at EdiParser.EdiParser..ctor(ILogger`1 logger, String licenseKey) in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/EdiParser.cs:line 14
+   at EdiParser.Application.Run() in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/Application.cs:line 51
+2026-02-03 11:46:08.901 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:46:08.979 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:47:09.226 -07:00 [ERR] One or more errors occurred. (nodename nor servname provided, or not known (api.edifabric.com:443))nodename nor servname provided, or not known (api.edifabric.com:443)
+   at System.Threading.Tasks.Task.ThrowIfExceptional(Boolean includeTaskCanceledExceptions)
+   at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+   at EdiFabric.SerialKey.GetToken(String serialKey)
+   at EdiFabric.SerialKey.Set(String serialKey, Boolean enforce)
+   at EdiParser.EdiParser..ctor(ILogger`1 logger, String licenseKey) in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/EdiParser.cs:line 14
+   at EdiParser.Application.Run() in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/Application.cs:line 51
+2026-02-03 11:48:25.960 -07:00 [INF] Starting EDI parser...
+2026-02-03 11:48:26.036 -07:00 [INF] Testing file in '../../../../../samples/837-sample-file.edi' is used
+2026-02-03 11:49:26.261 -07:00 [ERR] One or more errors occurred. (nodename nor servname provided, or not known (api.edifabric.com:443))nodename nor servname provided, or not known (api.edifabric.com:443)
+   at System.Threading.Tasks.Task.ThrowIfExceptional(Boolean includeTaskCanceledExceptions)
+   at System.Threading.Tasks.Task`1.GetResultCore(Boolean waitCompletionNotification)
+   at EdiFabric.SerialKey.GetToken(String serialKey)
+   at EdiFabric.SerialKey.Set(String serialKey, Boolean enforce)
+   at EdiParser.EdiParser..ctor(ILogger`1 logger, String licenseKey) in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/EdiParser.cs:line 14
+   at EdiParser.Application.Run() in /Users/asychev/RiderProjects/EdiParser/src/EdiParser/Application.cs:line 51
+2026-02-03 11:49:26.262 -07:00 [INF] Console app shutting down...
