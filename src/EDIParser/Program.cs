@@ -15,8 +15,11 @@ namespace EdiParser
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
+            // Register the global unhandled exception handler
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+
             // Load configuration from appsettings.json
             var builder = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -56,10 +59,26 @@ namespace EdiParser
             // Run the app
             var app = provider.GetRequiredService<Application>();
             var logger = provider.GetRequiredService<ILogger<Program>>();
-            app.Run();
+            await app.Run();
 
             logger.LogInformation("Console app shutting down...");
             
+
+        }
+        
+        // The global exception handler method
+        static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Exception ex = (Exception)e.ExceptionObject;
+            Console.WriteLine("\n\n#############################################");
+            Console.WriteLine("A global unhandled exception occurred!");
+            Console.WriteLine($"Is terminating: {e.IsTerminating}"); // e.IsTerminating is usually true
+            Console.WriteLine($"Exception Type: {ex.GetType().Name}");
+            Console.WriteLine($"Message: {ex.Message}");
+            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            Console.WriteLine("Logging the error and preparing for application termination.");
+            // Log the exception to a file or a logging service (e.g., NLog, Serilog) here
+            Console.WriteLine("#############################################\n\n");
         }
     }
     

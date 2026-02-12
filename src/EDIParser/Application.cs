@@ -24,7 +24,7 @@ public class Application
         
     }
 
-    public void Run()
+    public async Task Run()
     {
         _logger.LogInformation("Starting EDI parser...");
         
@@ -49,11 +49,12 @@ public class Application
         
         try
         {
-            List<IEdiItem> ediItems = _parser.ParseX12File(fullPath, "EdiFabric.Templates.X12");
-            var edi837Data = ediItems.OfType<TS837>();
-            _logger.LogInformation($"Read {edi837Data .Count()} TS837 items from {fullPath}...");
 
-            Save837P(edi837Data);
+            var ediItems =  _parser.ParseX12File(fullPath, "EdiFabric.Templates.X12");
+            var edi837Data = ediItems.OfType<TS837>().ToList();
+            _logger.LogInformation($"Read {edi837Data.Count()} TS837 items from {fullPath}...");
+            // Save asynchronously
+            await Save837Async(edi837Data);
         }
         catch (Exception e)
         {
@@ -61,10 +62,14 @@ public class Application
             return;
         }
     }
-    
-    public void Save837P(IEnumerable<TS837> ediData)
+
+    /// <summary>
+    /// Synchronous version of the save
+    /// </summary>
+    /// <param name="ediData"></param>
+    public void Save837(List<TS837> ediData)
     {
-        _logger.LogInformation($"Comitting {ediData.Count()} edi data...");
+        _logger.LogInformation($"Committing {ediData.Count} edi data...");
         try
         {
             _context.TS837.AddRange(ediData);
@@ -72,10 +77,32 @@ public class Application
         }
         catch (Exception e)
         {
-            _logger.LogError("Failed to save edi data: " + e.Message + (e.InnerException != null ? e.InnerException.Message : "") + "\n" + e.StackTrace);
+            _logger.LogError("Failed to save edi data: " + e.Message +
+                             (e.InnerException != null ? e.InnerException.Message : "") + "\n" + e.StackTrace);
             return;
         }
-        
-        
     }
+
+    /// <summary>
+    /// Asynchronous version of the method
+    /// </summary>
+    /// <param name="ediData"></param>
+    public async Task Save837Async(IEnumerable<TS837> ediData)
+    {
+        await Task.Run(() => _logger.LogInformation($"Comitting {ediData.Count()} edi data..."));
+        try
+        {
+            await _context.TS837.AddRangeAsync(ediData);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError("Failed to save edi data: " + e.Message +
+                             (e.InnerException != null ? e.InnerException.Message : "") + "\n" + e.StackTrace);
+            return;
+        }
+    }
+
+
+    
 }
