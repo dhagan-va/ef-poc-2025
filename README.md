@@ -1,4 +1,4 @@
-EDI 837 Ingestetion
+##EDI 837 Ingestetion
 
 A command-line tool built with .NET 8 and EdiFabric to parse EDI 837 files and save them to SQL Server.
 
@@ -62,7 +62,7 @@ export S3_SECRET_ACCESS_KEY="your-secret-access-key-here"
 ## Installation
 
 ```bash
-cd eric-vogel_e/src/Edi837Ingester
+cd andrey-s-837-ingestion/EDIParser/src/EDIParser
 dotnet restore
 dotnet build
 ```
@@ -75,7 +75,6 @@ Parse an EDI 837 file:
 
 ```bash
 dotnet run
-Enter EDI file path when prompted.
 ```
 
 ### Command line arguments
@@ -83,19 +82,13 @@ Enter EDI file path when prompted.
 Parse an EDI 837 file:
 
 ```bash
-dotnet run --file "C:\path\to\your\file.edi"
+dotnet run
 ```
 
 Parse an EDI 837 file with setting SNIP level:
 
 ```bash
 dotnet run --file "C:\path\to\your\file.edi" --validation 1
-```
-
-Parse an EDI 837 file with license key:
-
-```bash
-dotnet run --file "C:\path\to\your\file.edi" --license "YOUR_LICENSE_KEY"
 ```
 
 Parse an EDI 837 file from S3:
@@ -136,15 +129,13 @@ $env:EDIFABRIC_LICENSE="YOUR_LICENSE_KEY"
 The tool produces:
 
 1. **Console Summary** - Overview of parsed data
+2. **Log files** - Details of the executed operation in /Logs 
 
 
 ### Example Output
-
+TBD
 ```
-Enter the path to the EDI 837 file:
-C:\path\to\your\file.edi
-Parsing EDI 837 file...
-Done parsing the EDI 837 file.
+
 ============================================================
 ```
 
@@ -154,69 +145,16 @@ Sample files are included at `samples/'
 ClaimPayment.edi - 837P
 DentalClaim.edi - 837D
 InstitutionalClaim.edi - 837I
-## Project Structure
-
-```
-eric-vogel_e/
-├── src/
-│   └── Edi837Ingester/
-│       ├── Data/
-│       │   └── Entities/
-│       │       └── ClaimType.cs         # ClaimType entity
-│       │       └── ProcessedClaim.cs    # ProcessedClaim entity
-│       │   └── AppDbContext.cs          # EF Core database context
-│       │   └── ClaimTypeEnum.cs         # Enum for claim types
-│       │   ├── Repositories/
-│       │   │   ├── BaseRepository.cs    # Repository base class
-│       │   │   ├── IEdiRepository.cs    # EDI repository interface
-│       │   │   └── EdiRepository.cs     # EDI repository implementation
-│       ├── Migrations/                  # EF Core migrations
-│       ├── Services/
-│       │   ├── IEdiParserService.cs     # EdiParser interface
-│       │   └── EdiParserService.cs      # EdiParser implementation
-│       │   └── IS3EdiParserService.cs   # S3EdiParser interface
-│       │   └── S3EdiParserService.cs    # S3EdiParser implementation
-│       │   └── IS3Service.cs            # S3Service interface
-│       │   └── S3Service.cs             # S3Service implementation
-│       │   └── IEdiValidatorService.cs  # EdiValidatorService interface
-│       │   └── EdiValidatorService.cs   # EdiValidatorService implementation
-│       ├── Program.cs                   # CLI entry point
-│       └── Edi837Ingester.csproj
-│   └── S3Integration/
-│       └── start_moto.py 			  # Script to start local S3 server with Moto
-│       └── uploadFile.py 			  # Script to upload files to local S3 server with Moto
-├── samples/
-│   └── ClaimPayment.edi         # Sample 837P EDI file
-│   └── DentalClaim.edi          # Sample 837D EDI file
-│   └── InstitutionalClaim.edi   # Sample 837I EDI file
-├── tests/
-│   └── Edi837Ingestor.Tests/
-│       ├── EdiParserTest.cs     # EdiParserService unit tests
-└── README.md
-```
 
 ## How It Works
 
 1. **Read EDI File** - Uses EdiFabric's X12Reader to parse the file
-2. **Save Data to Database** - Saves parsed EDI data to SQL Server using Entity Framework Core
-3. **Outputs processed transactions count** - Displays number of transactions processed to console
+2. **Save Data to Database** - Saves parsed EDI data to SQLite using Entity Framework Core
+3. **Outputs processed transactions count** - 
 
 
 ## Troubleshooting
 
-### "The token was not set!" Error
-
-This means EdiFabric license is not configured. Solutions:
-
-1. Get a free trial license from https://www.edifabric.com/trial.html
-2. Set the license using `EDIFABRIC_LICENSE` environment variable
-
-### File Not Found
-
-Check the file path is correct and use absolute or relative paths:
-```bash
-dotnet run
-```
 ## License
 
 MIT License
