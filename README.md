@@ -24,40 +24,7 @@ EdiFabric requires a valid license key to function.
 
 ### Set the License Key
 
-**Option 1: Using .env file** (Recommended):
-
-1. Copy `env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and add your license key and S3 credentials:
-   ```
-   TRIAL_EDIFABRIC_LICENSE=your-license-key-here
-   S3_ACCESS_KEY_ID=your-access-key-id-here
-   S3_SECRET_ACCESS_KEY=your-secret-access-key-here
-   ```
-
-The application automatically loads the `.env` file at startup.
-
-**Option 2: Environment variable**:
-
-```powershell
-# Windows PowerShell
-$env:TRIAL_EDIFABRIC_LICENSE = "your-license-key-here"
-$env:S3_ACCESS_KEY_ID = "your-access-key-id-here"
-$env:S3_SECRET_ACCESS_KEY = "your-secret-access-key-here"
-
-# Windows CMD
-set TRIAL_EDIFABRIC_LICENSE=your-license-key-here
-set S3_ACCESS_KEY_ID=your-access-key-id-here
-set S3_SECRET_ACCESS_KEY=your-secret-access-key-here
-
-# Linux/Mac
-export TRIAL_EDIFABRIC_LICENSE="your-license-key-here"
-export S3_ACCESS_KEY_ID="your-access-key-id-here"
-export S3_SECRET_ACCESS_KEY="your-secret-access-key-here"
-```
+All parameters and variables are stored in appsettings.json file
 
 ## Installation
 
@@ -88,19 +55,13 @@ dotnet run
 Parse an EDI 837 file with setting SNIP level:
 
 ```bash
-dotnet run --file "C:\path\to\your\file.edi" --validation 1
+dotnet run --validation 1
 ```
 
 Parse an EDI 837 file from S3:
 
 ```bash
-dotnet run --s3 "file.edi"
-```
-
-Parse an EDI 837 file from S3 and setting S3 bucket:
-
-```bash
-dotnet run --s3 "file.edi" --s3-bucket "your-bucket-name"
+dotnet run --s3 
 ```
 
 ### Moto.py S3
@@ -115,13 +76,6 @@ Upload sample files to Moto.py S3 server:
 
 ```bash
 python uploadFile.py
-```
-
-### Using Environment Variable
-
-```bash
-# Set license once
-$env:EDIFABRIC_LICENSE="YOUR_LICENSE_KEY"
 ```
 
 ## Output
