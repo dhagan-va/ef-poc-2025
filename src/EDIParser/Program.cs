@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Amazon.S3;
+using EdiParser.Configuration;
+using EdiParser.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -51,7 +54,25 @@ namespace EdiParser
             // Add IConfiguration to DI
             serviceCollection.AddSingleton<IConfiguration>(configuration);
             // Add EdiParser registration to DI
-            serviceCollection.AddTransient<IEdiParser, EdiParser>();
+            serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
+            // Add EdiReaderService registration to DI
+            serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
+
+            
+            var s3Configuration = configuration.GetRequiredSection("S3Configuration")
+                .Get<S3Configuration>();
+            string? s3Bucket = s3Configuration?.Bucket;
+            
+            serviceCollection.AddSingleton<IAmazonS3>(sp =>
+            {
+                var config = new AmazonS3Config
+                {
+                    ServiceURL = s3Configuration?.ServiceUrl,
+                    ForcePathStyle = true,
+                };
+                return new AmazonS3Client(s3Configuration?.s3AccessKeyId, s3Configuration?.s3SecretAccessKey, config);
+            });
+            
 
             // Build the provider
             var provider = serviceCollection.BuildServiceProvider();
@@ -59,7 +80,49 @@ namespace EdiParser
             // Run the app
             var app = provider.GetRequiredService<Application>();
             var logger = provider.GetRequiredService<ILogger<Program>>();
-            await app.Run();
+            
+            
+            // Default validation level
+            ValidationLevel? validationLevel = null;
+
+            // Parse validation level from command line arguments --validation or --validation-level <value>
+            // Accepts enum names (case-insensitive) or integer values; maps user-friendly 1..4 -> SNIP1..SNIP4
+            for (int i = 0; i < args.Length; i++)
+            {
+                if ((args[i].Equals("--validation", StringComparison.OrdinalIgnoreCase) ||
+                     args[i].Equals("--validation-level", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
+                {
+                    var val = args[i + 1];
+
+                    // Try parse enum name first (case-insensitive)
+                    if (int.TryParse(val, out var intVal) && intVal >= 1 && intVal <= 4)
+                    {
+                        validationLevel = (ValidationLevel)(intVal - 1);
+                        logger.LogInformation($"Using validation level: {validationLevel}");
+                    }
+                    else
+                    {
+                        logger.LogWarning($"Warning: Unknown validation level '{val}', you will need to enter the validation level manually later.");
+                    }
+
+                    break;
+                }
+            }
+
+            ValidationLevel? validationLevelLocal = validationLevel;
+
+            // Check mode
+            bool s3Mode = false;
+            for (int i = 0; i < args.Length; i++)
+            {       
+                if (args[i] == "--s3")
+                {
+                    s3Mode = true;
+                    logger.LogInformation($"Running in S3 mode");
+                    break;
+                }
+            }
+            await app.Run(validationLevelLocal, s3Mode);
 
             logger.LogInformation("Console app shutting down...");
             

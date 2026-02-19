@@ -1,5 +1,6 @@
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Templates.X12004010;
+using EdiParser.Services;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -8,10 +9,15 @@ using Serilog;
 
 namespace EdiParser.Tests;
 
+
 public class EdiParserUnitTests
 {
-    [Fact]
-    public void EdiParser_ShouldParseSuccessfully()
+    private readonly ILogger<Program> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly IEdiParserService _parserService;
+    private readonly IEdiReaderService _readerService;
+    
+    public EdiParserUnitTests()
     {
         // Load configuration from appsettings.json
         var builder = new ConfigurationBuilder()
@@ -34,15 +40,21 @@ public class EdiParserUnitTests
             loggingBuilder.AddSerilog(Log.Logger, dispose: true);
         });
         serviceCollection.AddSingleton<IConfiguration>(configuration);
-        serviceCollection.AddTransient<IEdiParser, EdiParser>();
+        serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
+        serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
 
     
         // Iniitialize configuration, logger and parser interfaces
         var provider = serviceCollection.BuildServiceProvider();
-        var logger = provider.GetRequiredService<ILogger<Program>>();
-        var parser = provider.GetRequiredService<IEdiParser>();
+        _logger = provider.GetRequiredService<ILogger<Program>>();
+        _readerService = provider.GetRequiredService<IEdiReaderService>();
+        _parserService = provider.GetRequiredService<IEdiParserService>();
+        _configuration = provider.GetRequiredService<IConfiguration>();
+    }
 
-        
+    [Fact]
+    public void EdiParser_ShouldParseSuccessfully()
+    {
         // Set up path to the test file
         var sampleFilePath = Path.Combine("..", "..", "..", "..","..", "samples", "837File.edi");
         var absolutePath = Path.GetFullPath(sampleFilePath);
@@ -52,8 +64,8 @@ public class EdiParserUnitTests
         Assert.True(File.Exists(absolutePath), $"Sample file not found: {absolutePath}");
         
         // Parse the file
-        List<IEdiItem> ediItems = parser.ParseX12File(sampleFilePath, "EdiFabric.Templates.X12");
-        var edi837Data = ediItems.OfType<TS837>();
+        var fileStream = _readerService.GetFileStream(sampleFilePath);
+        var edi837Data = _parserService.ParseX12File(fileStream, "EdiFabric.Templates.X12");
         // Make sure parsed succesfully
         Assert.NotNull(edi837Data);
         Log.Logger.Information($"Read {edi837Data.Count()} TS837 items from {sampleFilePath}...");
