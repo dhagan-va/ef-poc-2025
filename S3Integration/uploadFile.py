@@ -6,7 +6,7 @@ bucket = "test-bucket"
 s3.create_bucket(Bucket=bucket)
 
 current_dir = Path(__file__).resolve().parent
-samples_folder = current_dir.parent.parent / "samples"
+samples_folder = current_dir.parent / "samples"
 for filename in os.listdir(samples_folder):
     if not filename.lower().startswith("test") and filename.lower().endswith(".edi"):
         path = os.path.join(samples_folder, filename)

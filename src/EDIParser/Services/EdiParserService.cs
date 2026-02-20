@@ -11,8 +11,8 @@ namespace EdiParser.Services;
 
 public interface IEdiParserService
 {
-    List<TS837P> ParseX12File(Stream fileStream, string ediFabricTemplateName);
-    Task<List<TS837P>> ParseX12FileAsync(Stream fileStream, string ediFabricTemplateName);
+    List<T> ParseX12File<T>(Stream fileStream, string ediFabricTemplateName) where T : EdiMessage;
+    Task<List<T>> ParseX12FileAsync<T>(Stream fileStream,  string ediFabricTemplateName) where T : EdiMessage;
 }
 
 public class EdiParserService : IEdiParserService
@@ -42,7 +42,7 @@ public class EdiParserService : IEdiParserService
     /// </summary>
     /// <param name="fileStream">File stream of the file</param>
     /// <param name="ediFabricTemplateName">Edi Fabric Template name (like EdiFabric.Templates.X12)</param>
-    public List<TS837P> ParseX12File(Stream fileStream, string ediFabricTemplateName)
+    public List<T> ParseX12File<T>(Stream fileStream, string ediFabricTemplateName) where T : EdiMessage
     {
         // Parse file
         try
@@ -52,11 +52,10 @@ public class EdiParserService : IEdiParserService
                        new X12ReaderSettings { ContinueOnError = true }))
             {
                 IEnumerable<IEdiItem> ediItems = reader.ReadToEnd();
-                var transactions = ediItems.OfType<TS837P>().ToList();
+                var parsedEdiItems = ediItems.OfType<T>().ToList();
                 _logger.LogInformation($"Read EDI file successfully...");
-                return transactions;
+                return parsedEdiItems;
             }
-
         }
         catch (Exception e)
         {
@@ -74,7 +73,7 @@ public class EdiParserService : IEdiParserService
     /// </summary>
     /// <param name="fileStream">File Stream of the file</param>
     /// <param name="ediFabricTemplateName">Edi Fabric Template name (like EdiFabric.Templates.X12)</param>
-    public async Task<List<TS837P>> ParseX12FileAsync(Stream fileStream, string ediFabricTemplateName)
+    public async Task<List<T>> ParseX12FileAsync<T>(Stream fileStream, string ediFabricTemplateName) where T : EdiMessage
     {
         // Parse file
         try
@@ -85,8 +84,14 @@ public class EdiParserService : IEdiParserService
                        new X12ReaderSettings { ContinueOnError = true }))
             {
                 IEnumerable<IEdiItem> ediItems = await reader.ReadToEndAsync(); 
-                var transactions  = ediItems.OfType<TS837P>().ToList();
+                var transactions  = ediItems.OfType<T>().ToList();
                 _logger.LogInformation($"Parsed EDI file successfully...");
+                
+                if (!transactions.Any())
+                {
+                    _logger.LogWarning("No EDI transactions found in file");
+                    throw new Exception("No EDI transactions found in file");
+                }
                 return transactions;
             }
 

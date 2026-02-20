@@ -1,5 +1,7 @@
 using EdiFabric.Core.Model.Edi;
+using EdiFabric.Templates.Hipaa5010;
 using EdiFabric.Templates.X12004010;
+using EdiParser.Entities;
 using EdiParser.Services;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Microsoft.Extensions.Logging;
@@ -16,6 +18,8 @@ public class EdiParserUnitTests
     private readonly IConfiguration _configuration;
     private readonly IEdiParserService _parserService;
     private readonly IEdiReaderService _readerService;
+    private readonly IEdiValidatorService _validatorService;
+    private readonly IDatabaseService _databaseService;
     
     public EdiParserUnitTests()
     {
@@ -42,6 +46,7 @@ public class EdiParserUnitTests
         serviceCollection.AddSingleton<IConfiguration>(configuration);
         serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
         serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
+        serviceCollection.AddTransient<IEdiValidatorService, Services.EdiValidatorService>();
 
     
         // Iniitialize configuration, logger and parser interfaces
@@ -50,26 +55,44 @@ public class EdiParserUnitTests
         _readerService = provider.GetRequiredService<IEdiReaderService>();
         _parserService = provider.GetRequiredService<IEdiParserService>();
         _configuration = provider.GetRequiredService<IConfiguration>();
+        _validatorService = provider.GetRequiredService<IEdiValidatorService>();
+        _databaseService = provider.GetRequiredService<IDatabaseService>();
     }
 
     [Fact]
-    public void EdiParser_ShouldParseSuccessfully()
+    public async Task EdiParser_ShouldParseSuccessfully()
     {
         // Set up path to the test file
-        var sampleFilePath = Path.Combine("..", "..", "..", "..","..", "samples", "837File.edi");
+        var sampleFilePath = Path.Combine("..", "..", "..", "..","..", "samples", "ClaimPayment.edi");
         var absolutePath = Path.GetFullPath(sampleFilePath);
         Log.Logger.Information($"Using sample file: {absolutePath}");
        
         // Make sure file exists
         Assert.True(File.Exists(absolutePath), $"Sample file not found: {absolutePath}");
         
+        Log.Logger.Information($"Testing normal edi parsing");
         // Parse the file
         var fileStream = _readerService.GetFileStream(sampleFilePath);
-        var edi837Data = _parserService.ParseX12File(fileStream, "EdiFabric.Templates.X12");
+        var edi837Transactions = _parserService.ParseX12File<EdiMessage>(fileStream, "EdiFabric.Templates.Hipaa");
         // Make sure parsed succesfully
-        Assert.NotNull(edi837Data);
-        Log.Logger.Information($"Read {edi837Data.Count()} TS837 items from {sampleFilePath}...");
-        
+        Assert.NotNull(edi837Transactions);
+        Log.Logger.Information($"Read {edi837Transactions.Count()} TS837 items from {sampleFilePath}...");
+        Log.Logger.Information($"Testing transaction validation");
+        // Figure out claim type
+        var claimType = 
+            edi837Transactions.Any(x => x is TS837P) ? ClaimTypeEnum.Professional :
+            edi837Transactions.Any(x => x is TS837I) ? ClaimTypeEnum.Institutional :
+            edi837Transactions.Any(x => x is TS837D) ? ClaimTypeEnum.Dental : 
+            ClaimTypeEnum.Unknown;
+        Assert.NotEqual(ClaimTypeEnum.Unknown, claimType);
+        Log.Logger.Information($"Testing SNIP1");
+        ValidationLevel vl = ValidationLevel.SyntaxOnly_SNIP1;
+        // Validate transactions
+        var validatedTransactions = await _validatorService.ValidateItems(edi837Transactions, claimType, vl);
+        Assert.NotNull(validatedTransactions);
+        Log.Logger.Information($"Testing Save");
+        var exception = await Record.ExceptionAsync(async () => await _databaseService.Save837Async(validatedTransactions, claimType));
+        Assert.Null(exception);
         Log.Logger.Information($"\n✓ Test completed successfully");
         
     }

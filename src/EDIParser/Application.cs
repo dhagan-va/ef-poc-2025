@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using EdiFabric.Templates.Hipaa5010;
 using EdiFabric.Templates.X12004010;
 using EdiParser.Configuration;
+using EdiParser.Entities;
 using EdiParser.Services;
 using Microsoft.EntityFrameworkCore;
 using SQLitePCL;
@@ -14,21 +15,23 @@ public class Application
 {
     private readonly ILogger<Application> _logger;
     private readonly IConfiguration _configuration;
-    private readonly EdiDBContext _context;
     private readonly IEdiReaderService _readerService;
     private readonly IEdiParserService _parserService;
+    private readonly IEdiValidatorService _validatorService;
+    private readonly IDatabaseService _databaseService;
 
-    public Application(ILogger<Application> logger, IConfiguration configuration, EdiDBContext context, IEdiReaderService readerService, IEdiParserService parserService)
+    public Application(ILogger<Application> logger, IConfiguration configuration, IEdiReaderService readerService, 
+        IEdiParserService parserService, IEdiValidatorService validatorService, IDatabaseService databaseService)
     {
         _logger = logger;
         _configuration = configuration;
-        _context = context;
         _readerService = readerService;
         _parserService = parserService;
-        
+        _validatorService = validatorService;
+        _databaseService = databaseService;
     }
 
-    public async Task Run(ValidationLevel? vl, bool s3Mode)
+    public async Task Run(ValidationLevel vl, bool s3Mode)
     {
         _logger.LogInformation("Starting EDI parser...");
         
@@ -77,10 +80,19 @@ public class Application
             }
             
            
-            var edi837Data =  await _parserService.ParseX12FileAsync(fileStream, "EdiFabric.Templates.Hipaa");
-            _logger.LogInformation($"Read {edi837Data.Count()} TS837 items from {fullPath}...");
+            var edi837Transactions =  await _parserService.ParseX12FileAsync<EdiMessage>(fileStream, "EdiFabric.Templates.Hipaa");
+            _logger.LogInformation($"Read {edi837Transactions.Count()} TS837 items from {fullPath}...");
+            // Figure out claim type
+            var claimType = 
+                edi837Transactions.Any(x => x is TS837P) ? ClaimTypeEnum.Professional :
+                edi837Transactions.Any(x => x is TS837I) ? ClaimTypeEnum.Institutional :
+                edi837Transactions.Any(x => x is TS837D) ? ClaimTypeEnum.Dental : 
+                ClaimTypeEnum.Unknown;
+            // Validate transactions
+            var validatedTransactions = await _validatorService.ValidateItems(edi837Transactions, claimType, vl);
             // Save asynchronously
-            await Save837Async(edi837Data);
+            await _databaseService.Save837Async(validatedTransactions, claimType);
+            
         }
         catch (Exception e)
         {
@@ -88,47 +100,4 @@ public class Application
             return;
         }
     }
-
-    /// <summary>
-    /// Synchronous version of the save
-    /// </summary>
-    /// <param name="ediData"></param>
-    public void Save837(List<TS837P> ediData)
-    {
-        _logger.LogInformation($"Committing {ediData.Count} edi data...");
-        try
-        {
-            _context.TS837P.AddRange(ediData);
-            _context.SaveChanges();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("Failed to save edi data: " + e.Message +
-                             (e.InnerException != null ? e.InnerException.Message : "") + "\n" + e.StackTrace);
-            return;
-        }
-    }
-
-    /// <summary>
-    /// Asynchronous version of the method
-    /// </summary>
-    /// <param name="ediData"></param>
-    public async Task Save837Async(IEnumerable<TS837P> ediData)
-    {
-        await Task.Run(() => _logger.LogInformation($"Comitting {ediData.Count()} edi data..."));
-        try
-        {
-            await _context.TS837P.AddRangeAsync(ediData);
-            await _context.SaveChangesAsync();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("Failed to save edi data: " + e.Message +
-                             (e.InnerException != null ? e.InnerException.Message : "") + "\n" + e.StackTrace);
-            return;
-        }
-    }
-
-
-    
 }

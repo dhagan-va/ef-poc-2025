@@ -51,12 +51,20 @@ namespace EdiParser
             // Register your main application class
             serviceCollection.AddSingleton<Application>();
 
+            serviceCollection.AddSingleton<IEdiDBContext, EdiDBContext>();
+            
+            
+            
+            // Register DB service
+            serviceCollection.AddTransient<IDatabaseService, DatabaseService>();
             // Add IConfiguration to DI
             serviceCollection.AddSingleton<IConfiguration>(configuration);
             // Add EdiParser registration to DI
             serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
             // Add EdiReaderService registration to DI
             serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
+            // Add EdiValidatorService registration to DI
+            serviceCollection.AddTransient<IEdiValidatorService, Services.EdiValidatorService>();
 
             
             var s3Configuration = configuration.GetRequiredSection("S3Configuration")
@@ -110,6 +118,11 @@ namespace EdiParser
             }
 
             ValidationLevel? validationLevelLocal = validationLevel;
+            if (!validationLevelLocal.HasValue)
+            { 
+                logger.LogWarning("No validation level configured, setting to default");
+                validationLevelLocal = ValidationLevel.SyntaxOnly_SNIP1;
+            }
 
             // Check mode
             bool s3Mode = false;
@@ -122,7 +135,8 @@ namespace EdiParser
                     break;
                 }
             }
-            await app.Run(validationLevelLocal, s3Mode);
+            
+            await app.Run(validationLevelLocal.Value, s3Mode);
 
             logger.LogInformation("Console app shutting down...");
             
