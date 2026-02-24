@@ -51,21 +51,26 @@ Assuming the desired files are uploaded to S3 bucket, change the following setti
 
 Parse local an EDI 837 file:
 
-''' Set IsS3Mode to FALSE to process file indicated in "TestFilePath" setting
+Set IsS3Mode to FALSE to process file indicated in "TestFilePath" setting
+```bash
 "TestFilePath: "complete file path"
 "IsS3Mode": "False"
+```
 
-''' Set IsS3Mode to TRUE to download and process EDI file name in "TestFilePath" setting from AWS S3 bucket
+Set IsS3Mode to TRUE to download and process EDI file name in "TestFilePath" setting from AWS S3 bucket
+```bash
 "TestFilePath: "complete file path(path does not matter)"
 "IsS3Mode": "True"
-
+```
 
 Parse a local or S3 EDI 837 file with setting SNIP level is controlled by setting "SNIPValidationLevel" as follows:
 
+```bash
 "SNIPValidationLevel": "1" - will validate to SyntaxOnly_SNIP1
 "SNIPValidationLevel": "2" - will validate to LimitsAndCodes_SNIP2
 "SNIPValidationLevel": "3" - will validate to Balancing_SNIP3
 "SNIPValidationLevel": "4" - will validate to InterSegment_SNIP4
+```
 
 Start the process in command line:
 
