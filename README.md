@@ -1,4 +1,4 @@
-##EDI 837 Ingestetion
+## EDI 837 Ingestetion
 
 A command-line tool built with .NET 8 and EdiFabric to parse EDI 837 files and save them to SQL Server.
 
@@ -44,31 +44,44 @@ Parse an EDI 837 file:
 dotnet run
 ```
 
-### Command line arguments
+### Configuration
 
-Parse an EDI 837 file:
+All configurations including running mode (EDI local file/S3 bucket file download) and validation modes are configured in appsettings.json
+Assuming the desired files are uploaded to S3 bucket, change the following setting as shown:
+
+Parse local an EDI 837 file:
+
+''' Set IsS3Mode to FALSE to process file indicated in "TestFilePath" setting
+"TestFilePath: "complete file path"
+"IsS3Mode": "False"
+
+''' Set IsS3Mode to TRUE to download and process EDI file name in "TestFilePath" setting from AWS S3 bucket
+"TestFilePath: "complete file path(path does not matter)"
+"IsS3Mode": "True"
+
+
+Parse a local or S3 EDI 837 file with setting SNIP level is controlled by setting "SNIPValidationLevel" as follows:
+
+"SNIPValidationLevel": "1" - will validate to SyntaxOnly_SNIP1
+"SNIPValidationLevel": "2" - will validate to LimitsAndCodes_SNIP2
+"SNIPValidationLevel": "3" - will validate to Balancing_SNIP3
+"SNIPValidationLevel": "4" - will validate to InterSegment_SNIP4
+
+Start the process in command line:
 
 ```bash
-dotnet run
-```
-
-Parse an EDI 837 file with setting SNIP level:
-
-```bash
-dotnet run --validation 1
-```
-
-Parse an EDI 837 file from S3:
-
-```bash
-dotnet run --s3 
+dotnet run 
 ```
 
 ### Moto.py S3
 
-Run S3 Server with Moto.py:
+Run S3 Server with Moto.py (tested on boto3-1.42.50, Python 3.14.3, pip 26.0.1):
 
 ```bash
+```Create and activate a virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
+```Start the server
 python start_moto.py
 ```
 
