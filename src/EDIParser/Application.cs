@@ -16,16 +16,19 @@ public class Application
     private readonly ILogger<Application> _logger;
     private readonly IConfiguration _configuration;
     private readonly IEdiReaderService _readerService;
+    private readonly IS3FileReaderService _s3ReaderService;
     private readonly IEdiParserService _parserService;
     private readonly IEdiValidatorService _validatorService;
     private readonly IDatabaseService _databaseService;
 
     public Application(ILogger<Application> logger, IConfiguration configuration, IEdiReaderService readerService, 
-        IEdiParserService parserService, IEdiValidatorService validatorService, IDatabaseService databaseService)
+        IS3FileReaderService s3ReaderService, IEdiParserService parserService, IEdiValidatorService validatorService, 
+        IDatabaseService databaseService)
     {
         _logger = logger;
         _configuration = configuration;
         _readerService = readerService;
+        _s3ReaderService = s3ReaderService;
         _parserService = parserService;
         _validatorService = validatorService;
         _databaseService = databaseService;
@@ -68,7 +71,7 @@ public class Application
                 CancellationToken token = cts.Token;
                 
                 _logger.LogInformation($"Downloading {fileName} from S3 bucket {s3Bucket}...");
-                fileStream = await _readerService.DownloadFileAsync(
+                fileStream = await _s3ReaderService.GetS3FileStreamAsync(
                     String.IsNullOrEmpty(s3Bucket) ? "test-bucket" : s3Bucket,
                     fileName,
                     token);
@@ -76,7 +79,7 @@ public class Application
             else
             {
                 _logger.LogInformation($"Reading {fileName} from  {configTestFilesPath}...");
-                fileStream =  _readerService.GetFileStream(fullPath);
+                fileStream =  await _readerService.GetFileStreamAsync(fullPath);
             }
             
            

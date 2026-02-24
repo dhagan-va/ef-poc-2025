@@ -21,7 +21,8 @@ namespace EdiParser
         static async Task Main(string[] args)
         {
             // Register the global unhandled exception handler
-            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+            AppDomain.CurrentDomain.UnhandledException +=
+                new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
             // Load configuration from appsettings.json
             var builder = new ConfigurationBuilder()
@@ -34,7 +35,7 @@ namespace EdiParser
                 .ReadFrom.Configuration(configuration)
                 .CreateLogger();
 
-            
+
             // Set up DI container
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddLogging(loggingBuilder =>
@@ -42,19 +43,16 @@ namespace EdiParser
                 // Add Serilog as a logging provider
                 loggingBuilder.AddSerilog(Log.Logger, dispose: true);
             });
-    
-           
+
+
             // Register ApplicationDbContext as a service
             serviceCollection.AddDbContext<EdiDBContext>(options =>
                 options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
-           
+
             // Register your main application class
             serviceCollection.AddSingleton<Application>();
-
+            // Register EdiDBContext with DI
             serviceCollection.AddSingleton<IEdiDBContext, EdiDBContext>();
-            
-            
-            
             // Register DB service
             serviceCollection.AddTransient<IDatabaseService, DatabaseService>();
             // Add IConfiguration to DI
@@ -63,14 +61,24 @@ namespace EdiParser
             serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
             // Add EdiReaderService registration to DI
             serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
+            // Add S3ReaderService registration to DI
+            serviceCollection.AddTransient<IS3FileReaderService, Services.S3FileReaderService>();
             // Add EdiValidatorService registration to DI
             serviceCollection.AddTransient<IEdiValidatorService, Services.EdiValidatorService>();
 
+            // Build the provider
+            var provider = serviceCollection.BuildServiceProvider();
+
+            // Run the app
+            var app = provider.GetRequiredService<Application>();
+            var logger = provider.GetRequiredService<ILogger<Program>>();
             
+            // Get S3 configuration information and initialize bucket
             var s3Configuration = configuration.GetRequiredSection("S3Configuration")
                 .Get<S3Configuration>();
             string? s3Bucket = s3Configuration?.Bucket;
-            
+
+            // Initialize AWS client
             serviceCollection.AddSingleton<IAmazonS3>(sp =>
             {
                 var config = new AmazonS3Config
@@ -81,62 +89,45 @@ namespace EdiParser
                 return new AmazonS3Client(s3Configuration?.s3AccessKeyId, s3Configuration?.s3SecretAccessKey, config);
             });
             
-
-            // Build the provider
-            var provider = serviceCollection.BuildServiceProvider();
-
-            // Run the app
-            var app = provider.GetRequiredService<Application>();
-            var logger = provider.GetRequiredService<ILogger<Program>>();
-            
-            
-            // Default validation level
-            ValidationLevel? validationLevel = null;
-
-            // Parse validation level from command line arguments --validation or --validation-level <value>
-            // Accepts enum names (case-insensitive) or integer values; maps user-friendly 1..4 -> SNIP1..SNIP4
-            for (int i = 0; i < args.Length; i++)
-            {
-                if ((args[i].Equals("--validation", StringComparison.OrdinalIgnoreCase) ||
-                     args[i].Equals("--validation-level", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
-                {
-                    var val = args[i + 1];
-
-                    // Try parse enum name first (case-insensitive)
-                    if (int.TryParse(val, out var intVal) && intVal >= 1 && intVal <= 4)
-                    {
-                        validationLevel = (ValidationLevel)(intVal - 1);
-                        logger.LogInformation($"Using validation level: {validationLevel}");
-                    }
-                    else
-                    {
-                        logger.LogWarning($"Warning: Unknown validation level '{val}', you will need to enter the validation level manually later.");
-                    }
-
-                    break;
-                }
-            }
-
-            ValidationLevel? validationLevelLocal = validationLevel;
-            if (!validationLevelLocal.HasValue)
-            { 
-                logger.LogWarning("No validation level configured, setting to default");
-                validationLevelLocal = ValidationLevel.SyntaxOnly_SNIP1;
-            }
-
-            // Check mode
+            // Get runing mode from configuration
             bool s3Mode = false;
-            for (int i = 0; i < args.Length; i++)
-            {       
-                if (args[i] == "--s3")
+            string? s3ModeStr = configuration["IsS3Mode"];
+            if (string.IsNullOrEmpty(s3ModeStr))
+            { 
+                s3Mode = Boolean.Parse(s3ModeStr!);
+                if (!String.IsNullOrEmpty(s3ModeStr) && s3Mode)
                 {
-                    s3Mode = true;
                     logger.LogInformation($"Running in S3 mode");
-                    break;
+                }
+                else
+                {
+                    logger.LogInformation($"Running in edi mode");
+                }
+            }
+
+            ValidationLevel SNIPLevel = ValidationLevel.SyntaxOnly_SNIP1;
+            string? snipLevelStr = configuration["SNIPValidationLevel"];
+            if (string.IsNullOrEmpty(snipLevelStr))
+            {
+                int snipLevelInt = int.Parse(snipLevelStr!);
+                if (snipLevelInt > 0 && snipLevelInt < 5)
+                {
+                    var result = snipLevelInt switch
+                    {
+                        1 => ValidationLevel.SyntaxOnly_SNIP1,
+                        2 => ValidationLevel.LimitsAndCodes_SNIP2,
+                        3 => ValidationLevel.Balancing_SNIP3,
+                        4 => ValidationLevel.InterSegment_SNIP4,
+                        _ => ValidationLevel.SyntaxOnly_SNIP1
+                        
+                    };
+                    
+                    logger.LogInformation($"Validating snip level {SNIPLevel}");
                 }
             }
             
-            await app.Run(validationLevelLocal.Value, s3Mode);
+            // Run app
+            await app.Run(SNIPLevel, s3Mode);
 
             logger.LogInformation("Console app shutting down...");
             
