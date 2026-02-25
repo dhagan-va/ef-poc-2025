@@ -30,6 +30,7 @@ public class EdiValidatorService : IEdiValidatorService
         ValidationLevel validationLevel = ValidationLevel.SyntaxOnly_SNIP1) where T : EdiMessage
     {
             
+        _logger.LogInformation($"Validating with {validationLevel}");
         var invalidItems = new List<T>();
 
         // SNIP Level 1 validation (pre-parsing errors surfaced by the reader)
@@ -40,6 +41,7 @@ public class EdiValidatorService : IEdiValidatorService
             _logger.LogError("Error parsing {ClaimType} claim: {Errors}", claimType, string.Join(", ",
                 error.ErrorContext.Errors.Select(e => e.Message)));
         }
+        _logger.LogInformation($"Passed SNIP1 validation...");
 
         // Perform higher-level validation 
         var toValidate = items.Except(invalidItems).ToList();
@@ -64,6 +66,12 @@ public class EdiValidatorService : IEdiValidatorService
                             Enumerable.Empty<string>();
                         _logger.LogError(
                             $"Error parsing transaction with control #: {controlNumber}: {string.Join(", ", messages)}");
+                    }
+                    else
+                    {
+                        {
+                            _logger.LogInformation($"Passed all validation...");
+                        }
                     }
                 }
                 catch (Exception ex)

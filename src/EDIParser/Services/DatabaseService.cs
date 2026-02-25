@@ -54,7 +54,8 @@ public class DatabaseService : IDatabaseService
     /// <typeparam name="T"></typeparam>
     public async Task Save837Async<T>(List<T> ediTransactions, ClaimTypeEnum claimType) where T : EdiMessage
     {
-        await Task.Run(() => _logger.LogInformation($"Commiting {ediTransactions.Count()} edi transactions..."));
+        //await Task.Run(() => _logger.LogInformation($"Committing {ediTransactions.Count()} edi transactions..."));
+        _logger.LogInformation($"Committing {ediTransactions.Count()} edi transactions...");
         try
         {
             if(claimType == ClaimTypeEnum.Professional) await _context.TS837P.AddRangeAsync(ediTransactions.OfType<TS837P>());

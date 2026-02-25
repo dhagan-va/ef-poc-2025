@@ -65,19 +65,11 @@ namespace EdiParser
             serviceCollection.AddTransient<IS3FileReaderService, Services.S3FileReaderService>();
             // Add EdiValidatorService registration to DI
             serviceCollection.AddTransient<IEdiValidatorService, Services.EdiValidatorService>();
-
-            // Build the provider
-            var provider = serviceCollection.BuildServiceProvider();
-
-            // Run the app
-            var app = provider.GetRequiredService<Application>();
-            var logger = provider.GetRequiredService<ILogger<Program>>();
             
             // Get S3 configuration information and initialize bucket
             var s3Configuration = configuration.GetRequiredSection("S3Configuration")
                 .Get<S3Configuration>();
-            string? s3Bucket = s3Configuration?.Bucket;
-
+            
             // Initialize AWS client
             serviceCollection.AddSingleton<IAmazonS3>(sp =>
             {
@@ -89,10 +81,17 @@ namespace EdiParser
                 return new AmazonS3Client(s3Configuration?.s3AccessKeyId, s3Configuration?.s3SecretAccessKey, config);
             });
             
-            // Get runing mode from configuration
+            // Build the provider
+            var provider = serviceCollection.BuildServiceProvider();
+
+            // Run the app
+            var app = provider.GetRequiredService<Application>();
+            var logger = provider.GetRequiredService<ILogger<Program>>();
+            
+            // Get running mode from configuration
             bool s3Mode = false;
             string? s3ModeStr = configuration["IsS3Mode"];
-            if (string.IsNullOrEmpty(s3ModeStr))
+            if (!string.IsNullOrEmpty(s3ModeStr))
             { 
                 s3Mode = Boolean.Parse(s3ModeStr!);
                 if (!String.IsNullOrEmpty(s3ModeStr) && s3Mode)
@@ -107,7 +106,7 @@ namespace EdiParser
 
             ValidationLevel SNIPLevel = ValidationLevel.SyntaxOnly_SNIP1;
             string? snipLevelStr = configuration["SNIPValidationLevel"];
-            if (string.IsNullOrEmpty(snipLevelStr))
+            if (!string.IsNullOrEmpty(snipLevelStr))
             {
                 int snipLevelInt = int.Parse(snipLevelStr!);
                 if (snipLevelInt > 0 && snipLevelInt < 5)
@@ -121,7 +120,7 @@ namespace EdiParser
                         _ => ValidationLevel.SyntaxOnly_SNIP1
                         
                     };
-                    
+                    SNIPLevel = result;
                     logger.LogInformation($"Validating snip level {SNIPLevel}");
                 }
             }

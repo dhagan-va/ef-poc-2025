@@ -1,6 +1,8 @@
+using Amazon.S3;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Templates.Hipaa5010;
 using EdiFabric.Templates.X12004010;
+using EdiParser.Configuration;
 using EdiParser.Entities;
 using EdiParser.Services;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
@@ -18,6 +20,7 @@ public class EdiParserUnitTests
     private readonly IConfiguration _configuration;
     private readonly IEdiParserService _parserService;
     private readonly IEdiReaderService _readerService;
+    private readonly IS3FileReaderService _s3FileReaderService;
     private readonly IEdiValidatorService _validatorService;
     private readonly IDatabaseService _databaseService;
     
@@ -47,16 +50,34 @@ public class EdiParserUnitTests
         serviceCollection.AddTransient<IEdiParserService, Services.EdiParserService>();
         serviceCollection.AddTransient<IEdiReaderService, Services.EdiReaderService>();
         serviceCollection.AddTransient<IEdiValidatorService, Services.EdiValidatorService>();
-
+        serviceCollection.AddTransient<IS3FileReaderService, Services.S3FileReaderService>();
+        serviceCollection.AddSingleton<IEdiDBContext, EdiDBContext>();
+        serviceCollection.AddTransient<IDatabaseService, DatabaseService>();
+        // Get S3 configuration information and initialize bucket
+        var s3Configuration = configuration.GetRequiredSection("S3Configuration")
+            .Get<S3Configuration>();
+            
+        // Initialize AWS client
+        serviceCollection.AddSingleton<IAmazonS3>(sp =>
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = s3Configuration?.ServiceUrl,
+                ForcePathStyle = true,
+            };
+            return new AmazonS3Client(s3Configuration?.s3AccessKeyId, s3Configuration?.s3SecretAccessKey, config);
+        });
     
         // Iniitialize configuration, logger and parser interfaces
         var provider = serviceCollection.BuildServiceProvider();
         _logger = provider.GetRequiredService<ILogger<Program>>();
         _readerService = provider.GetRequiredService<IEdiReaderService>();
+        _s3FileReaderService = provider.GetRequiredService<IS3FileReaderService>();
         _parserService = provider.GetRequiredService<IEdiParserService>();
         _configuration = provider.GetRequiredService<IConfiguration>();
         _validatorService = provider.GetRequiredService<IEdiValidatorService>();
         _databaseService = provider.GetRequiredService<IDatabaseService>();
+        
     }
 
     [Fact]
