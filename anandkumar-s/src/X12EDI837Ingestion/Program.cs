@@ -1,31 +1,29 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using X12EDI837Ingestion.Application.Extensions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using EdiFabric.Core.Model.Edi.X12;
-using Microsoft.EntityFrameworkCore;
-using X12EDI837Ingestion.Domain;
-using Microsoft.Extensions.Configuration;
-using X12EDI837Ingestion.Infrastructure.Repositories;
-using static X12EDI837Ingestion.Infrastructure.Repositories.X12EDI837IngestRepo;
-
-
+using X12EDI837Ingestion.Application.Extensions;
+using X12EDI837Ingestion.Application.Interfaces;
 public class Program
 {
     public static async Task<int> Main(string[] args)
     {
-
+        // 1) Validate input early (before building DI container)
         if (args.Length == 0)
         {
-            Console.Error.WriteLine("Usage: EdiIngestor.Cli <path-to-edi-file>");
-            return -1;
+            Console.Error.WriteLine("Usage: X12EDI837Ingestion.Cli <path-to-edi-file>");
+            return 1;
         }
-        if (!File.Exists(args[0]))
+
+        var filePath = args[0];
+
+        if (!File.Exists(filePath))
         {
-            Console.Error.WriteLine($"File not found: {args[0]}");
-            return -1;
+            Console.Error.WriteLine($"File not found: {filePath}");
+            return 1;
         }
-        var host = Host.CreateDefaultBuilder(args)
+
+        // 2) Build Host + DI
+        using var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((ctx, services) =>
             {
                 services.AddApplication();
@@ -34,14 +32,27 @@ public class Program
             })
             .Build();
 
+       
+        var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
+        try
+        {
+            await host.Services
+                .GetRequiredService<IX12EDI837IngestionService>()
+                .ProcessIngestionAsync(filePath);
 
-        //await host.Services
-        //          .GetRequiredService<IIngestionService>()
-        //          .ProcessAsync(args);
-
-        return 0;
-
+            logger.LogInformation("Ingestion completed successfully for file: {FilePath}", filePath);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ingestion failed for file: {FilePath}", filePath);
+            return 2;
+        }
+        finally
+        {
+           
+            await host.StopAsync();
+        }
     }
 }
- 

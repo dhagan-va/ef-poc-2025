@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="EdiFabric" Version="10.7.6" />
+    <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />
     <PackageReference Include="EdiFabric.Templates.X12" Version="2.7.6" />
 
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
@@ -25,7 +26,7 @@
   <ItemGroup>
     <Folder Include="Application\Mapping\" />
     <Folder Include="Application\Parsing\" />
-    <Folder Include="Application\Services\" />
+    <Folder Include="Configuration\" />
   </ItemGroup>
 
 

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using X12EDI837Ingestion.Application.Interfaces;
 using X12EDI837Ingestion.Domain;
 using X12EDI837Ingestion.Infrastructure.Repositories;
 
@@ -12,14 +13,10 @@ namespace X12EDI837Ingestion.Application.Extensions
         public static IServiceCollection AddApplication(
             this IServiceCollection services)
         {
-            //services.AddScoped<IIngestionService, IngestionService>();
-            //services.AddScoped<IEdiReader, EdiFabricReader>();
-            //services.AddScoped<ITransactionRouter, TransactionRouter>();
-
-            //services.AddScoped<Ts837Handler>();
-            //services.AddScoped<Ts835Handler>();
-
+            services.AddScoped<IX12EDI837IngestionService, X12EDI837IngestionService>();
             return services;
+
+           
         }
 
         public static IServiceCollection AddInfrastructure(

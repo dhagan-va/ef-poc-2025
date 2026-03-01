@@ -12,37 +12,27 @@ namespace X12EDI837Ingestion.Application.Extensions
     public static class EdiFabricExtensions
     {
         public static IServiceCollection AddEdiFabric(
-            this IServiceCollection services,
-            IConfiguration configuration)
+                      this IServiceCollection services,
+                      IConfiguration configuration)
         {
+            var licenseKey = configuration["EdiFabric:LicenseKey"];
+
+            if (string.IsNullOrWhiteSpace(licenseKey))
+                throw new InvalidOperationException(
+                    "EdiFabric license key is missing in configuration.");
+
             try
             {
-                var licenseKey = configuration["EdiFabric:LicenseKey"];
-
-                if (string.IsNullOrWhiteSpace(licenseKey))
-                    throw new InvalidOperationException(
-                        "EDIFabric license key is missing in configuration.");
-
-
                 SerialKey.Set(licenseKey, true);
-
-
-                return services;
-
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex.Message.StartsWith("Can't set token"))
             {
-                if (ex.Message.StartsWith("Can't set token"))
-                {
-                    throw new Exception("Your trial has expired! To continue using EdiFabric SDK you must purchase a plan from https://www.edifabric.com/pricing.html");
-                }
-                else
-                {
-                    throw new Exception(ex.Message);
-                }
-
+                throw new InvalidOperationException(
+                    "Your EdiFabric trial has expired. Purchase a license from https://www.edifabric.com/pricing.html",
+                    ex);
             }
 
+            return services;
         }
     }
 }

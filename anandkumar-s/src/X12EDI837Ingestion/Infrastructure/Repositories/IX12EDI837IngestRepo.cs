@@ -3,7 +3,7 @@
 namespace X12EDI837Ingestion.Infrastructure.Repositories
 {
 
-    interface IX12EDI837IngestRepo
+    public interface IX12EDI837IngestRepo
     {
         Task<long> InsertInterchangeAsync(
         InterchangeHeader interchange,

@@ -24,6 +24,9 @@ namespace X12EDI837Ingestion.Domain.Entities
         public string? RawSegment { get; set; }
 
         public List<TransactionSetHeader> TransactionSets { get; set; } = new();
+        public object FunctionalIdentifierCode { get; internal set; }
+        public string Date { get; internal set; }
+        public string Time { get; internal set; }
     }
 
 }

@@ -30,6 +30,9 @@ namespace X12EDI837Ingestion.Domain.Entities
 
         public List<Party> Parties { get; set; } = new();
         public List<Claim> Claims { get; set; } = new();
+        public dynamic? TransactionSetId { get; internal set; }
+        public dynamic? ImplementationConvention { get; internal set; }
+        public dynamic? BhtReferenceId { get; internal set; }
     }
 
 }
