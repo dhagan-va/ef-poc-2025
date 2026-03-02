@@ -26,9 +26,9 @@ namespace X12EDI837Ingestion.Domain.Entities
         public string? RawSegment { get; set; }                   // audit/debug
 
         public List<FunctionalGroupHeader> FunctionalGroups { get; set; } = new();
-        public string InterchangeControlNumber { get; internal set; }
-        public string Time { get; internal set; }
-        public string Date { get; internal set; }
-        public string SourceFile { get; internal set; }
+        public string? InterchangeControlNumber { get; set; }
+        public string? Time { get; internal set; }
+        public string? Date { get; internal set; }
+        public string? SourceFile { get; internal set; }
     }
 }

@@ -27,9 +27,9 @@ namespace X12EDI837Ingestion.Domain.Entities
         public string? RawSegment { get; set; }
 
         public List<ServiceLine> ServiceLines { get; set; } = new();
-        public dynamic ClaimSubmitterId { get; internal set; }
-        public dynamic FacilityCode { get; internal set; }
-        public dynamic TotalChargeAmount { get; internal set; }
+        public string? ClaimSubmitterId { get; set; }
+        public string? FacilityCode { get;  set; }
+       
     }
 
 }

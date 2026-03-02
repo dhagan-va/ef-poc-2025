@@ -211,7 +211,7 @@ public sealed class X12EDI837IngestionService : IX12EDI837IngestionService
                                 var claim = new Claim
                                 {
                                     ClaimSubmitterId = clm.ClaimSubmittersIdentifier_1,
-                                    TotalChargeAmount = TryParseDecimal(clm.MonetaryAmount_2),
+                                    TotalClaimChargeAmount = TryParseDecimal(clm.MonetaryAmount_2),
                                     FacilityCode = clm.FacilityCodeValue_05_1,
                                     ClaimFrequencyCode = clm.ClaimFrequencyCode_05_3
                                 };
@@ -232,7 +232,7 @@ public sealed class X12EDI837IngestionService : IX12EDI837IngestionService
                                         claim.ServiceLines.Add(new ServiceLine
                                         {
                                             ProcedureCode = procCode,
-                                            LineChargeAmount = TryParseDecimal(sv1.MonetaryAmount_2),
+                                            LineItemChargeAmount = TryParseDecimal(sv1.MonetaryAmount_2),
                                             UnitOrBasis = sv1.UnitOrBasisForMeasurementCode_3,
                                             UnitCount = TryParseDecimal(sv1.Quantity_4)
                                         });

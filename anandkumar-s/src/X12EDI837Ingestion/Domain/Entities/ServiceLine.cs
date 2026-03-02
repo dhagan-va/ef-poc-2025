@@ -20,8 +20,8 @@ namespace X12EDI837Ingestion.Domain.Entities
         public string? PlaceOfService { get; set; }           // SV105 (if present)
 
         public string? RawSegment { get; set; }
-        public dynamic LineChargeAmount { get; internal set; }
-        public dynamic UnitOrBasis { get; internal set; }
+    
+        public string? UnitOrBasis { get; set; }
     }
 
 }

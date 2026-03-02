@@ -8,6 +8,8 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+appsettings.Development.json
+out.xml
 
 # Rider
 .idea/
