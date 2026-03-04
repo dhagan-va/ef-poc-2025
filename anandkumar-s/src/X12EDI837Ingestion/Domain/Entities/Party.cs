@@ -18,6 +18,7 @@ namespace X12EDI837Ingestion.Domain.Entities
         // Examples: Submitter, Receiver, BillingProvider, Subscriber, Patient, Payer
         public string Role { get; set; } = "";                 // derived from context/loop
 
+        public string PartyType { get; set; } = "";                 // derived from context/loop (e.g. "BillingProvider", "Subscriber", "Payer")
         public string? EntityIdentifierCode { get; set; }      // NM101
         public string? EntityTypeQualifier { get; set; }       // NM102 (1=person, 2=non-person)
         public string? LastNameOrOrgName { get; set; }         // NM103

@@ -80,7 +80,7 @@ public class AppDbContext : DbContext
             e.ToTable("TransactionSetHeaders");
 
             e.HasKey(x => x.Id);
-            e.Property(x => x.Id).UseIdentityColumn(1, 1);
+            e.Property(x => x.Id).ValueGeneratedOnAdd().UseIdentityColumn(1, 1);
 
             e.HasOne(x => x.FunctionalGroupHeader)
                 .WithMany(x => x.TransactionSets)

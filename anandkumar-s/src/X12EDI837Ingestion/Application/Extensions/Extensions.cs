@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using X12EDI837Ingestion.Application.Interfaces;
+using X12EDI837Ingestion.Application.Services;
 using X12EDI837Ingestion.Domain;
 using X12EDI837Ingestion.Infrastructure.Repositories;
 

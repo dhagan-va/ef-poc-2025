@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "X12EDI837Ingestion": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\DotNetProjects\\SAIC\\ef-poc-2025\\anandkumar-s\\samples\\EDI_837_Sample1_Formatted.edi"
+    }
+  }
+}
