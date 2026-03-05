@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace X12EDI837Ingestion.Application.Interfaces
 {
-    interface IX12EDI837IngestionService
+    public interface IX12EDI837IngestionService
     {
         Task ProcessIngestionAsync(
             string filePath,
