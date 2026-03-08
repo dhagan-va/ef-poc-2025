@@ -156,19 +156,19 @@ namespace X12EDI837Ingestion.Application.Services
                 ReceiverCode = gs.ReceiverIDCode_3,
                 Date = gs.Date_4,
                 Time = gs.Time_5,
-                GroupControlNumber = gs.GroupControlNumber_6, // e.g., 101
-                Version = gs.VersionAndRelease_8              // e.g., 005010X222A1
+                GroupControlNumber = gs.GroupControlNumber_6, 
+                Version = gs.VersionAndRelease_8              
             };
 
         private static TransactionSetHeader MapTransactionSetFrom837(TS837P ts837)
             => new()
             {
                 TransactionSetId =
-                    ts837.ST?.TransactionSetIdentifierCode_01, // 837
+                    ts837.ST?.TransactionSetIdentifierCode_01, 
                 TransactionSetControlNumber =
-                    ts837.ST?.TransactionSetControlNumber_02,  // 0021
+                    ts837.ST?.TransactionSetControlNumber_02,  
                 ImplementationConvention =
-                    ts837.ST?.ImplementationConventionPreference_03, // 005010X222A1
+                    ts837.ST?.ImplementationConventionPreference_03, 
                 BhtReferenceId =
                     ts837.BHT_BeginningOfHierarchicalTransaction?.SubmitterTransactionIdentifier_03 // e.g., 244579
             };

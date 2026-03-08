@@ -15,7 +15,12 @@ namespace X12EDI837Ingestion.Application.Extensions
                       this IServiceCollection services,
                       IConfiguration configuration)
         {
+
+            Console.WriteLine($"ENV direct: {Environment.GetEnvironmentVariable("EdiFabric__LicenseKey")}");
+            Console.WriteLine($"CONFIG value: {configuration["EdiFabric:LicenseKey"]}");
             var licenseKey = configuration["EdiFabric:LicenseKey"];
+
+           
 
             if (string.IsNullOrWhiteSpace(licenseKey))
                 throw new InvalidOperationException(
