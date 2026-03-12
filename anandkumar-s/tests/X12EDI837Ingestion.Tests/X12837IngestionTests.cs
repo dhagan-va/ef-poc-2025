@@ -19,12 +19,11 @@ namespace X12EDI837Ingestion.Tests;
 
 public class X12837IngestionTests
 {
-    // ---------- Helpers (keep inside same class as you requested) ----------
 
     private static AppDbContext CreateInMemoryDbContext(string inMemoryDBName)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            // Unique DB name so each test runs isolated
+         
             .UseInMemoryDatabase(inMemoryDBName)
             .Options;
 
@@ -37,7 +36,7 @@ public class X12837IngestionTests
     {
         var services = new ServiceCollection();
 
-        // InMemory EF Core for tests
+        
         services.AddDbContext<AppDbContext>(opt =>
             opt.UseInMemoryDatabase(inMemoryDBName));
 
@@ -123,7 +122,7 @@ public class X12837IngestionTests
     [Fact]
     public async Task Moq_Should_Verify_Repository_Method_Call()
     {
-        // This test proves Moq is wired and working, and gives you the pattern.
+      
         var repoMock = new Mock<IX12EDI837IngestRepo>();
         
         repoMock
