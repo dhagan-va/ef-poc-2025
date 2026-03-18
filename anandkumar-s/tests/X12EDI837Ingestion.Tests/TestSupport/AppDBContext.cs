@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using X12EDI837Ingestion.Domain;
+using X12EDI837Ingestion.Domain.Entities;
 
 namespace X12EDI837Ingestion.Tests.TestSupport
 {

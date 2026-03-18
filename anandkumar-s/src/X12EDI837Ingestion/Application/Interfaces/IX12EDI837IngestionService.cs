@@ -11,5 +11,10 @@ namespace X12EDI837Ingestion.Application.Interfaces
         Task ProcessIngestionAsync(
             string filePath,
             CancellationToken cancellationToken = default);
+
+        Task ProcessIngestionAsync(
+            Stream stream,
+            string sourceName,
+            CancellationToken cancellationToken = default);
     }
 }

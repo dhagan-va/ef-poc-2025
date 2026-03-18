@@ -5,9 +5,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" Version="4.0.3.18" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.19" />
     <PackageReference Include="EdiFabric" Version="10.7.6" />
     <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />
     <PackageReference Include="EdiFabric.Templates.X12" Version="2.7.6" />
@@ -25,12 +28,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="11.0.0-preview.2.26159.112" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Application\Mapping\" />
     <Folder Include="Application\Parsing\" />
-    <Folder Include="Configuration\" />
   </ItemGroup>
 
   <ItemGroup>

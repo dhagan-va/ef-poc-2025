@@ -20,11 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="..\..\src\X12EDI837Ingestion\X12EDI837Ingestion.Consumer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\X12EDI837Ingestion\X12EDI837Ingestion.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
 </Project>

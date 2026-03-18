@@ -29,118 +29,44 @@ namespace X12EDI837Ingestion.Application.Services
 
         public async Task ProcessIngestionAsync(string filePath, CancellationToken ct = default)
         {
-            _logger.LogInformation("ProcessIngestionAsync started. File={File}", filePath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
+            _logger.LogInformation("ProcessIngestionAsync started. File={File}", filePath);
 
             await using var stream = File.OpenRead(filePath);
 
-            // Load HIPAA templates by assembly name 
-            using var reader = new X12Reader(stream, "EdiFabric.Templates.Hipaa");
+            await ProcessEDIStream(stream, filePath, ct);
 
+            _logger.LogInformation("ProcessIngestionAsync completed. File={File}", filePath);
+        }
 
-            InterchangeHeader? interchange = null;
-            FunctionalGroupHeader? currentGs = null;
+        public async Task ProcessIngestionAsync(
+                            Stream stream,
+                            string sourceName,
+                            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
 
-            // Stream read to keep memory stable and preserve proper GS context
-            while (reader.Read())
+            _logger.LogInformation("ProcessIngestionAsync started. Source={SourceName}", sourceName);
+
+            if (stream.CanSeek)
             {
-                ct.ThrowIfCancellationRequested();
-                var item = reader.Item;
-                // Fail fast on parse errors emitted by the reader.
-                if (item is ErrorContext err)
-                    throw new InvalidOperationException($"EDI parse error: {err.Message}");
-
-
-                if (HasErrors(item))
-                    throw new InvalidOperationException($"EDI parse error: item {item.GetType().Name} contains errors.");
-
-                switch (item)
-                {
-                    case ISA isa:
-                        {
-                            interchange = MapIsa(isa, filePath);
-                            break;
-                        }
-
-                    case GS gs:
-                        {
-                            EnsureInterchange(interchange);
-
-                            currentGs = MapGs(gs);
-                            interchange!.FunctionalGroups.Add(currentGs);
-                            break;
-                        }
-
-                    case ST st:
-                        {
-                            // This ST is the generic ST segment. We log it for diagnostics.
-                            // ST*837*0021*005010X222A1~
-                            _logger.LogInformation("ST01={Id} ST02={Ctrl} ST03={Impl}",
-                                st.TransactionSetIdentifierCode_01,
-                                st.TransactionSetControlNumber_02,
-                                st.ImplementationConventionPreference_03);
-
-                            break;
-                        }
-
-                    default:
-                        {
-                            if (item is TS837P tx)
-                            {
-                                EnsureInterchange(interchange);
-
-                                if (currentGs is null)
-                                    throw new InvalidOperationException("GS not found. Cannot attach transaction sets.");
-
-                                string? st02 = null;
-
-                                try
-                                {
-                                    // ST header access (strongly typed)
-                                    st02 = tx.ST?.TransactionSetControlNumber_02;
-
-                                    var stHeader = MapTransactionSetFrom837(tx);
-                                    currentGs.TransactionSets.Add(stHeader);
-                                    MapPartiesFrom837(tx, stHeader);
-
-                                    MapClaimsAndLinesFrom837(tx, stHeader);
-
-                                    if (stHeader.Claims.Count == 0)
-                                    {
-                                        _logger.LogWarning(
-                                            "No claims found while mapping 837 transaction. ST02={Ctrl}.",
-                                            st02);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex,
-                                        "Failed mapping 837 transaction. ST02={Ctrl}",
-                                        st02);
-
-                                    throw;
-                                }
-                            }
-
-                            break;
-                        }
-                }
+                stream.Position = 0;
             }
 
-            EnsureInterchange(interchange);
+            await ProcessEDIStream(stream, sourceName, cancellationToken);
 
-            // Persist as one unit (repo already has transaction + correct insert order)
-            var interchangeId = await _repo.InsertInterchangeAsync(interchange, ct);
-
-            _logger.LogInformation("ProcessIngestionAsync completed. InterchangeId={Id}", interchangeId);
+            _logger.LogInformation("ProcessIngestionAsync completed. Source={SourceName}", sourceName);
         }
+
 
         // ---------------- Mapping helpers ----------------
 
-        private static InterchangeHeader MapIsa(ISA isa, string filePath)
+        private static InterchangeHeader MapIsa(ISA isa, string sourceName)
             => new()
             {
-                SourceFile = Path.GetFileName(filePath),
+                SourceFile = Path.GetFileName(sourceName),
                 InterchangeControlNumber = isa.InterchangeControlNumber_13,
                 SenderId = isa.InterchangeSenderID_6,
                 ReceiverId = isa.InterchangeReceiverID_8,
@@ -156,19 +82,19 @@ namespace X12EDI837Ingestion.Application.Services
                 ReceiverCode = gs.ReceiverIDCode_3,
                 Date = gs.Date_4,
                 Time = gs.Time_5,
-                GroupControlNumber = gs.GroupControlNumber_6, 
-                Version = gs.VersionAndRelease_8              
+                GroupControlNumber = gs.GroupControlNumber_6,
+                Version = gs.VersionAndRelease_8
             };
 
         private static TransactionSetHeader MapTransactionSetFrom837(TS837P ts837)
             => new()
             {
                 TransactionSetId =
-                    ts837.ST?.TransactionSetIdentifierCode_01, 
+                    ts837.ST?.TransactionSetIdentifierCode_01,
                 TransactionSetControlNumber =
-                    ts837.ST?.TransactionSetControlNumber_02,  
+                    ts837.ST?.TransactionSetControlNumber_02,
                 ImplementationConvention =
-                    ts837.ST?.ImplementationConventionPreference_03, 
+                    ts837.ST?.ImplementationConventionPreference_03,
                 BhtReferenceId =
                     ts837.BHT_BeginningOfHierarchicalTransaction?.SubmitterTransactionIdentifier_03 // e.g., 244579
             };
@@ -304,5 +230,109 @@ namespace X12EDI837Ingestion.Application.Services
                 return false;
             }
         }
+
+        private async Task ProcessEDIStream(Stream stream, string sourceName, CancellationToken ct = default)
+        {
+            using var reader = new X12Reader(stream, "EdiFabric.Templates.Hipaa");
+
+
+            InterchangeHeader? interchange = null;
+            FunctionalGroupHeader? currentGs = null;
+
+            // Stream read to keep memory stable and preserve proper GS context
+            while (reader.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var item = reader.Item;
+                // Fail fast on parse errors emitted by the reader.
+                if (item is ErrorContext err)
+                    throw new InvalidOperationException($"EDI parse error: {err.Message}");
+
+
+                if (HasErrors(item))
+                    throw new InvalidOperationException($"EDI parse error: item {item.GetType().Name} contains errors.");
+
+                switch (item)
+                {
+                    case ISA isa:
+                        {
+                            interchange = MapIsa(isa, sourceName);
+                            break;
+                        }
+
+                    case GS gs:
+                        {
+                            EnsureInterchange(interchange);
+
+                            currentGs = MapGs(gs);
+                            interchange!.FunctionalGroups.Add(currentGs);
+                            break;
+                        }
+
+                    case ST st:
+                        {
+                            // This ST is the generic ST segment. We log it for diagnostics.
+                            // ST*837*0021*005010X222A1~
+                            _logger.LogInformation("ST01={Id} ST02={Ctrl} ST03={Impl}",
+                                st.TransactionSetIdentifierCode_01,
+                                st.TransactionSetControlNumber_02,
+                                st.ImplementationConventionPreference_03);
+
+                            break;
+                        }
+
+                    default:
+                        {
+                            if (item is TS837P tx)
+                            {
+                                EnsureInterchange(interchange);
+
+                                if (currentGs is null)
+                                    throw new InvalidOperationException("GS not found. Cannot attach transaction sets.");
+
+                                string? st02 = null;
+
+                                try
+                                {
+                                    // ST header access (strongly typed)
+                                    st02 = tx.ST?.TransactionSetControlNumber_02;
+
+                                    var stHeader = MapTransactionSetFrom837(tx);
+                                    currentGs.TransactionSets.Add(stHeader);
+                                    MapPartiesFrom837(tx, stHeader);
+
+                                    MapClaimsAndLinesFrom837(tx, stHeader);
+
+                                    if (stHeader.Claims.Count == 0)
+                                    {
+                                        _logger.LogWarning(
+                                            "No claims found while mapping 837 transaction. ST02={Ctrl}.",
+                                            st02);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex,
+                                        "Failed mapping 837 transaction. ST02={Ctrl}",
+                                        st02);
+
+                                    throw;
+                                }
+                            }
+
+                            break;
+                        }
+                }
+            }
+
+            EnsureInterchange(interchange);
+
+            // Persist as one unit (repo already has transaction + correct insert order)
+            var interchangeId = await _repo.InsertInterchangeAsync(interchange, ct);
+
+            _logger.LogInformation("ProcessIngestionAsync completed. InterchangeId={Id}", interchangeId);
+        }
+
+        
     }
 }
