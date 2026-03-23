@@ -271,8 +271,7 @@ namespace X12EDI837Ingestion.Application.Services
 
                     case ST st:
                         {
-                            // This ST is the generic ST segment. We log it for diagnostics.
-                            // ST*837*0021*005010X222A1~
+                            
                             _logger.LogInformation("ST01={Id} ST02={Ctrl} ST03={Impl}",
                                 st.TransactionSetIdentifierCode_01,
                                 st.TransactionSetControlNumber_02,

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\X12EDI837Ingestion.Producer\X12EDI837Ingestion.Producer.csproj" />
     <ProjectReference Include="..\..\src\X12EDI837Ingestion\X12EDI837Ingestion.Consumer.csproj" />
   </ItemGroup>
 

@@ -94,6 +94,7 @@ public sealed class S3StorageService : IS3StorageService
 
         do
         {
+            //Create ListObjectsV2Request - It is a request object for listing objects in an Amazon S3 bucket.
             var request = new ListObjectsV2Request
             {
                 BucketName = _s3Info.Bucket,
@@ -101,6 +102,7 @@ public sealed class S3StorageService : IS3StorageService
                 ContinuationToken = continuationToken
             };
 
+            //ListObjectsV2Async - It is an asynchronous method that lists objects in an Amazon S3 bucket based on the specified ListObjectsV2Request.
             var response = await _s3Client.ListObjectsV2Async(request, cancellationToken);
 
             keys.AddRange(response.S3Objects.Select(x => x.Key));

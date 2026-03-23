@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using X12EDI837Ingestion.Producer.Configuration;
 using X12EDI837Ingestion.Producer.Interfaces;
 using X12EDI837Ingestion.Producer.Services;
+using X12EDI837Ingestion.Producer.Validators;
 
 namespace X12EDI837Ingestion.Producer.Extensions;
 
@@ -43,6 +44,7 @@ public static class ProducerExtensions
 
         services.AddSingleton<IS3StorageService, S3StorageService>();
         services.AddTransient<IProducerService, ProducerService>();
+        services.AddSingleton<IValidateOptions<S3Information>, S3OptionsValidator>();
 
         return services;
     }

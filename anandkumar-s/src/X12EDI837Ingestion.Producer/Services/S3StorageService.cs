@@ -59,7 +59,7 @@ public sealed class S3StorageService : IS3StorageService
             bucketName);
     }
 
-    public async Task UploadFileAsync(
+    public async Task<PutObjectResponse> UploadFileAsync(
         string key,
         string filePath,
         CancellationToken cancellationToken = default)
@@ -69,6 +69,9 @@ public sealed class S3StorageService : IS3StorageService
 
         await using var stream = File.OpenRead(filePath);
 
+        //PutObjectRequest - It is an upload request object.
+        //It contains properties such as BucketName, Key (the object key),
+        //InputStream (the file stream to upload), and ContentType (the MIME type of the file).
         var request = new PutObjectRequest
         {
             BucketName = _s3Info.Bucket,
@@ -77,6 +80,9 @@ public sealed class S3StorageService : IS3StorageService
             ContentType = "text/plain"
         };
 
+        //PutObjectAsync - Uploads a file to an actual Amazon S3 bucket or Moto S3 Server using the specified PutObjectRequest.
+        //It returns a PutObjectResponse that contains information about the upload operation,
+        //such as the HTTP status code.
         var response = await _s3Client.PutObjectAsync(request, cancellationToken);
 
         _logger.LogInformation(
@@ -85,6 +91,7 @@ public sealed class S3StorageService : IS3StorageService
             _s3Info.Bucket,
             key,
             response.HttpStatusCode);
+        return response;
     }
 
     public async Task<IReadOnlyList<string>> ListObjectKeysAsync(
