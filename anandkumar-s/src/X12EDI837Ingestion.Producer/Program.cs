@@ -76,7 +76,7 @@ public class Program
 
             var producerService = host.Services.GetRequiredService<IProducerService>();
             CancellationToken cancellationToken = CancellationToken.None;
-            await producerService.UploadUsingWorkerPoolAsync(cancellationToken);
+            await producerService.UploadFolderAsync(cancellationToken);
 
             //Use the bellow aws cli command to verify the files are uploaded to the moto server
             //aws--endpoint - url = http://localhost:5000 s3 ls s3://edi-x12ingestion-bucket/incoming/

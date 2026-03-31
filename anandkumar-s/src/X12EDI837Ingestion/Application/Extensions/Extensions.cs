@@ -4,9 +4,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using X12EDI837Ingestion.Application.Interfaces;
 using X12EDI837Ingestion.Application.Services;
+using X12EDI837Ingestion.Consumer.Application.Interfaces;
+using X12EDI837Ingestion.Consumer.Application.Validator;
 using X12EDI837Ingestion.Domain;
 using X12EDI837Ingestion.Infrastructure.Repositories;
-
+using X12EDI837Ingestion.Consumer.Application.Services; 
 namespace X12EDI837Ingestion.Application.Extensions
 {
     public static class DIExtensions
@@ -34,5 +36,7 @@ namespace X12EDI837Ingestion.Application.Extensions
            
             return services;
         }
+
+        
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using X12EDI837Ingestion.Application.Extensions;
 using X12EDI837Ingestion.Application.Interfaces;
+using X12EDI837Ingestion.Consumer.Application.Extensions;
 using X12EDI837Ingestion.Consumer.Application.Interfaces;
 using X12EDI837Ingestion.Consumer.Extensions;
 using X12EDI837Ingestion.Domain;
@@ -20,6 +21,7 @@ public partial class Program
                 services.AddApplication();
                 services.AddInfrastructure(ctx.Configuration);
                 services.AddEdiFabric(ctx.Configuration);
+                services.AddSnipValidators(ctx.Configuration);
                 services.AddConsumerServices(ctx.Configuration);
                 services.AddLogging(log => log.ClearProviders().AddConsole());
             })

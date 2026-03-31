@@ -10,6 +10,10 @@ using X12EDI837Ingestion.Application.Interfaces;
 using X12EDI837Ingestion.Domain.Entities;
 using X12EDI837Ingestion.Infrastructure.Repositories;
 using EdiFabric.Templates.X12004010;
+using X12EDI837Ingestion.Consumer.Application.Validator;
+using X12EDI837Ingestion.Consumer.Application.Services;
+using X12EDI837Ingestion.Consumer.Application.Interfaces;
+using X12EDI837Ingestion.Consumer.Application.Models;
 
 namespace X12EDI837Ingestion.Application.Services
 {
@@ -18,13 +22,16 @@ namespace X12EDI837Ingestion.Application.Services
     {
         private readonly ILogger<X12EDI837IngestionService> _logger;
         private readonly IX12EDI837IngestRepo _repo;
+        private readonly ISnipValidator _snipValidator;
 
         public X12EDI837IngestionService(
             ILogger<X12EDI837IngestionService> logger,
-            IX12EDI837IngestRepo repo)
+            IX12EDI837IngestRepo repo,
+            ISnipValidator snipValidator)
         {
             _logger = logger;
             _repo = repo;
+            _snipValidator = snipValidator;
         }
 
         public async Task ProcessIngestionAsync(string filePath, CancellationToken ct = default)
@@ -40,10 +47,39 @@ namespace X12EDI837Ingestion.Application.Services
             _logger.LogInformation("ProcessIngestionAsync completed. File={File}", filePath);
         }
 
+        //public async Task ProcessIngestionAsync(
+        //                    Stream stream,
+        //                    string sourceName,
+        //                    CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentNullException.ThrowIfNull(stream);
+        //    ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
+
+        //    _logger.LogInformation("ProcessIngestionAsync started. Source={SourceName}", sourceName);
+
+        //    if (stream.CanSeek)
+        //    {
+        //        stream.Position = 0;
+        //    }
+
+        //    IEdiX12DocumentReader reader = new EdiDocumentReader();
+        //    await reader.ReadAsync(stream, sourceName, cancellationToken);
+
+
+        //    await ProcessEDIStream(stream, sourceName, cancellationToken);
+
+        //    _logger.LogInformation("ProcessIngestionAsync completed. Source={SourceName}", sourceName);
+        //}
+
+
+
+
+        // ---------------- Mapping helpers ----------------
+
         public async Task ProcessIngestionAsync(
-                            Stream stream,
-                            string sourceName,
-                            CancellationToken cancellationToken = default)
+     Stream stream,
+     string sourceName,
+     CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(stream);
             ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
@@ -55,13 +91,30 @@ namespace X12EDI837Ingestion.Application.Services
                 stream.Position = 0;
             }
 
+            var validationResult = await _snipValidator.ValidateAsync(
+                stream,
+                sourceName,
+                cancellationToken);
+
+            if (!validationResult.IsValid)
+            {
+                _logger.LogError(
+                    "SNIP validation failed for Source={SourceName}. Errors={Errors}",
+                    sourceName,
+                    string.Join(" | ", validationResult.Errors.Select(e => e.Message)));
+
+                return;
+            }
+
+            if (stream.CanSeek)
+            {
+                stream.Position = 0;
+            }
+
             await ProcessEDIStream(stream, sourceName, cancellationToken);
 
             _logger.LogInformation("ProcessIngestionAsync completed. Source={SourceName}", sourceName);
         }
-
-
-        // ---------------- Mapping helpers ----------------
 
         private static InterchangeHeader MapIsa(ISA isa, string sourceName)
             => new()

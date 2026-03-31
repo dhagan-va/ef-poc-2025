@@ -33,7 +33,6 @@
 
   <ItemGroup>
     <Folder Include="Application\Mapping\" />
-    <Folder Include="Application\Parsing\" />
   </ItemGroup>
 
   <ItemGroup>

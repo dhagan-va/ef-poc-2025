@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using X12EDI837Ingestion.Consumer.Application.Interfaces;
+using X12EDI837Ingestion.Consumer.Application.Validator;
 
 namespace X12EDI837Ingestion.Application.Extensions
 {
@@ -39,5 +41,7 @@ namespace X12EDI837Ingestion.Application.Extensions
 
             return services;
         }
+
+        
     }
 }
