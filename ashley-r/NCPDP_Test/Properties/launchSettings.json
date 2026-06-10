@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NCPDP_Test": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "serialKey": "c417cb9dd9d54297a55c032a74c87996",
+        "filePath": "C:\\Files\\",
+        "fileName": "ClaimBilling"
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Test" />
+  </Configurations>
+  <Folder Name="/docs/">
+    <File Path="run-moto.ps1" />
+  </Folder>
+  <Folder Name="/samples/">
+    <File Path="../../../../../../Files/ClaimBilling" />
+    <File Path="../../../../../../Files/ClaimBilling.json" />
+    <File Path="../../../../../../Files/ClaimBilling.xml" />
+    <File Path="../../../../../../Files/ClaimBilling2.xml" />
+    <File Path="../../../../../../Files/ClaimBillingAndResponse" />
+    <File Path="../../../../../../Files/ClaimBillingCorruptG1" />
+    <File Path="../../../../../../Files/ClaimBillingCorruptHeader" />
+    <File Path="../../../../../../Files/ClaimBillingMultiLoop" />
+    <File Path="../../../../../../Files/ClaimBillings" />
+    <File Path="../Files/sample_ClaimBilling.txt" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="EDI_NCPDP_Ingestion.csproj">
+      <BuildType Solution="Test|*" Project="Debug" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="../NCPDP_Test/NCPDP_Test.csproj" Id="d48066b0-fd48-44ce-a6f6-ff17f82160b2" />
+  </Folder>
+</Solution>

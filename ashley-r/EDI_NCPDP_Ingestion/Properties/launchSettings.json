@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "EDI_NCPDP_Ingestion": {
+      "commandName": "Project"
+    }
+  }
+}
