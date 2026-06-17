@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+appsettings.Development.json
+out.xml
+
+# Rider
+.idea/
+
+# Logs
+*.log
+
+# Local DB files
+*.mdf
+*.ldf
+*.db
+
+# OS
+Thumbs.db
+.DS_Store
+
+publish/

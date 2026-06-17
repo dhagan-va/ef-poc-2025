@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "X12EDI837Ingestion": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\DotNetProjects\\SAIC\\ef-poc-2025\\anandkumar-s\\samples\\EDI_837_Sample1_Formatted.edi",
+      "environmentVariables": {
+        "ConnectionStrings__SqlServer": "Server=.\\LOCALSQLEXPRESS;Database=X12EDI837IngestionDb;Trusted_Connection=True;TrustServerCertificate=True;",
+        "DB__RunMigrations": "true",
+        "DOTNET_ENVIRONMENT": "Development",
+        "EdiFabric__LicenseKey": "c417cb9dd9d54297a55c032a74c87996"
+      }
+    }
+  }
+}
