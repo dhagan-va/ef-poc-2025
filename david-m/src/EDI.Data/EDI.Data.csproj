@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="EdiFabric.Templates.Hipaa">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\Hipaa\lib\net6.0\EdiFabric.Templates.Hipaa.dll</HintPath>
+    </Reference>
+    <Reference Include="EdiFabric">
+      <HintPath>C:\Users\david\Downloads\edifabric.examples\EdiFabric.Sdk\Extracted\EdiFabric\lib\net9.0\EdiFabric.dll</HintPath>
+    </Reference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <ProjectReference Include="..\EDI.Common\EDI.Common.csproj" />
+  </ItemGroup>
+
+</Project>
