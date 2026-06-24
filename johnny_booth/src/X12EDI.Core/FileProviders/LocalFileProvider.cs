@@ -8,7 +8,7 @@ namespace X12EDI.Core.FileProviders
     /// <summary>
     /// An implementation of <see cref="IFileProvider"/> that provides file access to a physical file system.
     /// </summary>
-    public class PhysicalFileProvider : IFileProvider
+    public class LocalFileProvider : IFileProvider
     {
         #region Private Fields
 
@@ -19,12 +19,12 @@ namespace X12EDI.Core.FileProviders
         #region Public Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="PhysicalFileProvider"/> class.
+        /// Initializes a new instance of the <see cref="LocalFileProvider"/> class.
         /// </summary>
         /// <param name="directory">The root directory for this provider.</param>
         /// <exception cref="ArgumentException">Thrown if the directory path is null, empty, or whitespace.</exception>
         /// <exception cref="DirectoryNotFoundException">Thrown if the specified directory does not exist.</exception>
-        public PhysicalFileProvider(string directory)
+        public LocalFileProvider(string directory)
         {
             if (string.IsNullOrWhiteSpace(directory))
             {

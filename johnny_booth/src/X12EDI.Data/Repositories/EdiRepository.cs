@@ -97,8 +97,6 @@ namespace X12EDI.Data.Repositories
             // Persist template entities if any (TS837* templates). Implementation expects DB context helper(s) to exist.
             if (tsEntities.Count > 0)
             {
-                // IEdiDbContext may expose a generic add-range helper — keep call here so the repository remains simple.
-                // If your IEdiDbContext doesn't provide AddRangeEntities, replace with an appropriate approach (DbContext.Set(...))
                 _dbContext.AddRangeEntities(tsEntities);
             }
 

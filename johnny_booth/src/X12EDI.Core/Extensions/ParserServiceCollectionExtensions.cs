@@ -6,7 +6,7 @@ using X12EDI.Abstractions.Services;
 using X12EDI.Core.Config;
 using X12EDI.Core.FileProviders;
 using X12EDI.Core.Services;
-using PhysicalFileProvider = X12EDI.Core.FileProviders.PhysicalFileProvider;
+using PhysicalFileProvider = X12EDI.Core.FileProviders.LocalFileProvider;
 
 namespace X12EDI.Core.Extensions
 {

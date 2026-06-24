@@ -28,24 +28,24 @@ public class Program
     /// <returns>A <see cref="Task"/> that represents the asynchronous operation.</returns>
     private static async Task Main()
     {
-        // 1. Build configuration (JSON + environment variables + command line)
+        // Build configuration (JSON + environment variables + command line)
         var configuration = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true, reloadOnChange: true)
             .Build();
 
         var services = new ServiceCollection();
 
-        // 2. Make IConfiguration available via DI
+        // Make IConfiguration available via DI
         services.AddSingleton<IConfiguration>(configuration);
 
-        // 3. Logging
+        // Logging
         services.AddLogging(config =>
         {
             config.AddConsole();
             config.SetMinimumLevel(LogLevel.Information);
         });
 
-        // 4. EDI service registration from .Core, using config
+        // EDI service registration from .Core, using config
         services.AddEDIServices(options =>
         {
             // pull from config first, fall back to environment variable
@@ -61,7 +61,7 @@ public class Program
             options.ForcePathStyle = true;
         });
 
-        // 5. Database context registration from .Data
+        // Database context registration from .Data
         services.AddX12EdiData(configuration);
 
         // Build and use IServiceProvider
