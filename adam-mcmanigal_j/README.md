@@ -104,6 +104,13 @@ EdiFabric__SerialKey=<your-key>
         EdiFabric__SerialKey: ${{ secrets.EDIFABRIC_SERIAL_KEY }}
   ```
 
+  > **Note:** the parser tests apply the EdiFabric license via `SerialKey.Set(...)`,
+  > which validates the key against EdiFabric's licensing service over the network.
+  > The CI runner therefore needs **outbound network access** to that service in
+  > addition to the `EdiFabric__SerialKey` secret — without it, license validation
+  > fails and the parser tests error with "The serial key is invalid!" even when the
+  > key is correct.
+
 - **Containers / deployment:** set `EdiFabric__SerialKey` as a secret environment
   variable, e.g.:
 
