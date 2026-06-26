@@ -5,11 +5,24 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>Edi837Ingestion</RootNamespace>
+        <UserSecretsId>E1889932-8E17-435A-A307-7035B66BCFC5</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="EdiFabric" Version="10.7.7" />
       <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.7" />
+      <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="..\appsettings.json" Link="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

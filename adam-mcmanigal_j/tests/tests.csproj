@@ -1,11 +1,33 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>test</RootNamespace>
+        <IsPackable>false</IsPackable>
+        <UserSecretsId>E1889932-8E17-435A-A307-7035B66BCFC5</UserSecretsId>
     </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+      <PackageReference Include="xunit" Version="2.9.3" />
+      <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0" />
+      <PackageReference Include="coverlet.collector" Version="6.0.4" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="..\appsettings.json" Link="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\src\src.csproj" />
+    </ItemGroup>
 
 </Project>

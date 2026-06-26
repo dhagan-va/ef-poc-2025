@@ -1,3 +1,6 @@
-﻿// See https://aka.ms/new-console-template for more information
+using Edi837Ingestion.Configuration;
 
-Console.WriteLine("Hello, World!");
+var configuration = AppConfiguration.Build();
+var ediFabric = configuration.GetEdiFabricOptions();
+
+Console.WriteLine("EdiFabric serial key loaded.");
