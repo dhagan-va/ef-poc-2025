@@ -24,7 +24,7 @@
       <None Include="..\appsettings.json" Link="appsettings.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
-      <None Include="..\samples\837-sample-file.edi" Link="samples\837-sample-file.edi">
+      <None Include="..\samples\*.edi;..\samples\*.txt" Link="samples\%(Filename)%(Extension)">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>

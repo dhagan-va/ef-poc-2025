@@ -28,7 +28,7 @@ docker compose up -d
 
 This starts:
 
-- **db** — SQL Server 2022 on `localhost:1433`
+- **db** — SQL Server 2025 on `localhost:1433`
 - **moto** — mock S3 on `localhost:5001`
 
 Stop them later with `docker compose down`.
