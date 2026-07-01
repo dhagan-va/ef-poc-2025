@@ -6,7 +6,7 @@ namespace test.Parsing;
 
 /// <summary>
 /// Drives <see cref="Edi837Parser"/> with every bundled 837 sample and asserts each parses
-/// into a <see cref="ParsedInterchange"/> with the right envelope and transaction across all
+/// into a <see cref="ParsedInterchange"/> with the right envelope and transaction set across all
 /// three 837 variants (professional/institutional/dental). The samples are used here only
 /// (the src project is source-agnostic and receives streams from S3 in prod).
 /// </summary>
@@ -19,24 +19,46 @@ public class Edi837ParserTests
         return new Edi837Parser().Parse(stream);
     }
 
-    // Every bundled sample carries a single transaction; this pins each file to the 837
-    // variant, EdiFabric message type, and ST02 control number the parser must produce.
+    // The professional samples each land a single 837P transaction set in the professional list (and
+    // nothing in the other variants' lists), carrying the expected GS06/ST02 control numbers.
     [Theory]
-    [InlineData("837-sample-file.edi", Edi837Variant.Professional, typeof(TS837P), "1239")]
-    [InlineData("ClaimPayment.txt", Edi837Variant.Professional, typeof(TS837P), "0021")]
-    [InlineData("ClaimPaymentEVV.txt", Edi837Variant.Professional, typeof(TS837P), "0021")]
-    [InlineData("InstitutionalClaim.txt", Edi837Variant.Institutional, typeof(TS837I), "987654")]
-    [InlineData("DentalClaim.txt", Edi837Variant.Dental, typeof(TS837D), "3456")]
-    public void Parse_ReadsSingleTransaction_WithVariantAndControlNumbers(
-        string fileName, Edi837Variant expectedVariant, Type expectedMessageType, string expectedSt02)
+    [InlineData("837-sample-file.edi", "1239")]
+    [InlineData("ClaimPayment.txt", "0021")]
+    [InlineData("ClaimPaymentEVV.txt", "0021")]
+    public void Parse_ReadsSingleProfessionalTransactionSet_WithControlNumbers(
+        string fileName, string expectedSt02)
     {
         var interchange = ParseSample(fileName);
 
-        var transaction = Assert.Single(interchange.Transactions);
-        Assert.Equal(expectedVariant, transaction.Variant);
-        Assert.IsType(expectedMessageType, transaction.Transaction);
-        Assert.Equal("101", transaction.GroupControlNumber);
-        Assert.Equal(expectedSt02, transaction.TransactionSetControlNumber);
+        var transactionSet = Assert.Single(interchange.ProfessionalTransactionSets);
+        Assert.Equal("101", transactionSet.GroupControlNumber);
+        Assert.Equal(expectedSt02, transactionSet.TransactionSetControlNumber);
+        Assert.Empty(interchange.InstitutionalTransactionSets);
+        Assert.Empty(interchange.DentalTransactionSets);
+    }
+
+    [Fact]
+    public void Parse_ReadsSingleInstitutionalTransactionSet_WithControlNumbers()
+    {
+        var interchange = ParseSample("InstitutionalClaim.txt");
+
+        var transactionSet = Assert.Single(interchange.InstitutionalTransactionSets);
+        Assert.Equal("101", transactionSet.GroupControlNumber);
+        Assert.Equal("987654", transactionSet.TransactionSetControlNumber);
+        Assert.Empty(interchange.ProfessionalTransactionSets);
+        Assert.Empty(interchange.DentalTransactionSets);
+    }
+
+    [Fact]
+    public void Parse_ReadsSingleDentalTransactionSet_WithControlNumbers()
+    {
+        var interchange = ParseSample("DentalClaim.txt");
+
+        var transactionSet = Assert.Single(interchange.DentalTransactionSets);
+        Assert.Equal("101", transactionSet.GroupControlNumber);
+        Assert.Equal("3456", transactionSet.TransactionSetControlNumber);
+        Assert.Empty(interchange.ProfessionalTransactionSets);
+        Assert.Empty(interchange.InstitutionalTransactionSets);
     }
 
     // All bundled samples share one ISA envelope, so envelope parsing is asserted uniformly
@@ -68,8 +90,8 @@ public class Edi837ParserTests
     {
         var interchange = ParseSample("837-sample-file.edi");
 
-        var claimIds = interchange.Transactions
-            .Select(t => (TS837P)t.Transaction)
+        var claimIds = interchange.ProfessionalTransactionSets
+            .Select(t => t.Message)
             .SelectMany(t => t.Loop2000A ?? [])
             .SelectMany(a => a.Loop2000B ?? [])
             .SelectMany(b => b.Loop2300 ?? [])

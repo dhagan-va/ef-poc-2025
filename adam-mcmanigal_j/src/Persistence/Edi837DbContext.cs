@@ -1,3 +1,4 @@
+using EdiFabric.Templates.Hipaa5010;
 using Microsoft.EntityFrameworkCore;
 
 namespace Edi837Ingestion.Persistence;
@@ -24,25 +25,12 @@ public sealed class Edi837DbContext(DbContextOptions<Edi837DbContext> options) :
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<IngestedInterchange>(entity =>
-        {
-            entity.HasKey(x => x.Id);
+        modelBuilder.ApplyConfiguration(new IngestedInterchangeConfiguration());
 
-            // Idempotent ingestion: the SHA-256 of the raw interchange bytes is the dedup key.
-            // A re-sent file produces the same hash and is rejected by this unique constraint.
-            entity.HasIndex(x => x.ContentHash).IsUnique();
-            entity.Property(x => x.ContentHash).HasMaxLength(64); // 32-byte SHA-256 as hex
-
-            // X12 ISA sender/receiver IDs are 15 chars; the control number is at most 9.
-            entity.Property(x => x.SenderId).HasMaxLength(15);
-            entity.Property(x => x.ReceiverId).HasMaxLength(15);
-            entity.Property(x => x.InterchangeControlNumber).HasMaxLength(9);
-        });
-
-        // Each variant configures its own table via IEntityTypeConfiguration (implemented by the
-        // shared Edi837TransactionSet<,> base); the context just applies it.
-        modelBuilder.ApplyConfiguration(new Edi837ProfessionalTransactionSet());
-        modelBuilder.ApplyConfiguration(new Edi837InstitutionalTransactionSet());
-        modelBuilder.ApplyConfiguration(new Edi837DentalTransactionSet());
+        // Each variant's table is mapped by the shared generic Edi837TransactionSetConfiguration<,>,
+        // closed over the concrete entity and its EdiFabric message type.
+        modelBuilder.ApplyConfiguration(new Edi837TransactionSetConfiguration<Edi837ProfessionalTransactionSet, TS837P>());
+        modelBuilder.ApplyConfiguration(new Edi837TransactionSetConfiguration<Edi837InstitutionalTransactionSet, TS837I>());
+        modelBuilder.ApplyConfiguration(new Edi837TransactionSetConfiguration<Edi837DentalTransactionSet, TS837D>());
     }
 }

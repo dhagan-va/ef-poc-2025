@@ -1,9 +1,11 @@
+using EdiFabric.Templates.Hipaa5010;
+
 namespace Edi837Ingestion.Parsing;
 
 /// <summary>
 /// The result of parsing one X12 interchange (ISA…IEA — i.e. one 837 file): the envelope
 /// identity and content hash that become an <c>IngestedInterchange</c> ledger row, plus the
-/// ready-to-use parsed transactions it contained. An immutable snapshot of "what the file
+/// ready-to-use parsed transaction sets it contained. An immutable snapshot of "what the file
 /// said"; the clock (received-at) and S3 archive pointer are supplied later at persist time.
 /// </summary>
 /// <remarks>
@@ -45,6 +47,12 @@ public sealed record ParsedInterchange
     /// <summary>ISA15 — usage indicator: <c>P</c>(roduction) or <c>T</c>(est).</summary>
     public required string UsageIndicator { get; init; }
 
-    /// <summary>The 837 transactions (professional/institutional/dental) contained in this interchange.</summary>
-    public required IReadOnlyList<Edi837Transaction> Transactions { get; init; }
+    /// <summary>The 837 <b>professional</b> (837P) transaction sets contained in this interchange.</summary>
+    public required IReadOnlyList<ParsedTransactionSet<TS837P>> ProfessionalTransactionSets { get; init; }
+
+    /// <summary>The 837 <b>institutional</b> (837I) transaction sets contained in this interchange.</summary>
+    public required IReadOnlyList<ParsedTransactionSet<TS837I>> InstitutionalTransactionSets { get; init; }
+
+    /// <summary>The 837 <b>dental</b> (837D) transaction sets contained in this interchange.</summary>
+    public required IReadOnlyList<ParsedTransactionSet<TS837D>> DentalTransactionSets { get; init; }
 }
