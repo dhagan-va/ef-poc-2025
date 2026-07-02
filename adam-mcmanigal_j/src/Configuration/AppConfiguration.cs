@@ -69,4 +69,31 @@ public static class AppConfiguration
 
         return options;
     }
+
+    /// <summary>
+    /// Binds the "Aws" section (shared connection settings plus the nested S3 and SQS
+    /// subsections) to a strongly-typed options object. Throws if the region or the S3/SQS
+    /// resource names are missing, so misconfiguration fails fast.
+    /// </summary>
+    public static AwsOptions GetAwsOptions(this IConfiguration configuration)
+    {
+        var options = configuration.GetSection(AwsOptions.SectionName).Get<AwsOptions>()
+            ?? new AwsOptions();
+
+        if (string.IsNullOrWhiteSpace(options.Region))
+            throw new InvalidOperationException(
+                $"AWS region is not configured. Set \"{AwsOptions.SectionName}:{nameof(AwsOptions.Region)}\" in appsettings.json.");
+
+        if (string.IsNullOrWhiteSpace(options.S3.BucketName))
+            throw new InvalidOperationException(
+                $"S3 bucket is not configured. Set \"{AwsOptions.SectionName}:{nameof(AwsOptions.S3)}:{nameof(S3Options.BucketName)}\" in appsettings.json.");
+
+        if (string.IsNullOrWhiteSpace(options.Sqs.QueueName) ||
+            string.IsNullOrWhiteSpace(options.Sqs.DeadLetterQueueName))
+            throw new InvalidOperationException(
+                $"SQS queues are not configured. Set \"{AwsOptions.SectionName}:{nameof(AwsOptions.Sqs)}:{nameof(SqsOptions.QueueName)}\" and " +
+                $"\"{AwsOptions.SectionName}:{nameof(AwsOptions.Sqs)}:{nameof(SqsOptions.DeadLetterQueueName)}\" in appsettings.json.");
+
+        return options;
+    }
 }
