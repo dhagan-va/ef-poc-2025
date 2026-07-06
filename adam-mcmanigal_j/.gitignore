@@ -1,0 +1,6 @@
+# Re-include this project's appsettings files. The parent .gitignore ignores all `appsettings.*`
+# (to keep secret-bearing config out of git), but here secrets live in .env (gitignored) and
+# user-secrets — the appsettings files are secret-free, so they should be tracked and shared.
+# A .gitignore in a deeper directory overrides the parent, and negating file patterns re-includes them.
+!appsettings.json
+!appsettings.*.json

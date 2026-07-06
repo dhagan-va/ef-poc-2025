@@ -26,10 +26,14 @@
       <ProjectReference Include="..\src\src.csproj" />
     </ItemGroup>
 
-    <!-- Integration tests own their appsettings.json (not linked from the repo root),
-         so their configuration stays cleanly separate from the app's. -->
+    <!-- Integration tests share the app's base appsettings.json (linked from the repo root) and layer
+         a Testing-only override (SQL container password + fast SQS polling). The Testing environment is
+         selected by a ModuleInitializer in this project (see TestEnvironment.cs). -->
     <ItemGroup>
-      <None Update="appsettings.json">
+      <None Include="..\appsettings.json" Link="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Include="..\appsettings.Testing.json" Link="appsettings.Testing.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
       <None Include="..\samples\*.edi;..\samples\*.txt" Link="samples\%(Filename)%(Extension)">
