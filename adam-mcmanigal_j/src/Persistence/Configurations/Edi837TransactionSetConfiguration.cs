@@ -11,8 +11,9 @@ namespace Edi837Ingestion.Persistence;
 /// EF Core mapping for a per-variant 837 transaction-set table
 /// (<typeparamref name="TEntity"/> closing <see cref="Edi837TransactionSet{TMessage}"/>): surrogate
 /// key, a required FK + cascade to the parent <see cref="IngestedInterchange"/>, GS06/ST02 length
-/// limits, and the typed EdiFabric POCO persisted as a single <c>nvarchar(max)</c> JSON column (a
-/// <see cref="ValueConverter"/> plus a serialize-based <see cref="ValueComparer"/>, required for
+/// limits, and the typed EdiFabric POCO persisted as a single native SQL Server 2025 <c>json</c>
+/// column (a <see cref="ValueConverter"/> plus a serialize-based <see cref="ValueComparer"/>,
+/// required for
 /// change tracking of a reference-type property). Kept separate from the entity so the entity stays
 /// persistence-ignorant; the context applies one closed instance per variant.
 /// </summary>
@@ -55,7 +56,7 @@ internal sealed class Edi837TransactionSetConfiguration<TEntity, TMessage>
         // generic Message property, so the column would otherwise default to nullable.
         builder.Property(x => x.Message)
             .HasConversion(converter, comparer)
-            .HasColumnType("nvarchar(max)")
+            .HasColumnType("json")
             .IsRequired();
     }
 }

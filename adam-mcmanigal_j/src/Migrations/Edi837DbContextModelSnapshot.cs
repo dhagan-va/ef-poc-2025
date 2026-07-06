@@ -40,7 +40,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -72,7 +72,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -104,7 +104,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -155,7 +155,8 @@ namespace Edi837Ingestion.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ContentHash")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Interchanges_ContentHash");
 
                     b.ToTable("Interchanges");
                 });

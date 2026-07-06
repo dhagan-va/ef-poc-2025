@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Edi837Ingestion.Migrations
 {
     [DbContext(typeof(Edi837DbContext))]
-    [Migration("20260630203529_AddTransactionSetTables")]
-    partial class AddTransactionSetTables
+    [Migration("20260706205956_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -43,7 +43,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -75,7 +75,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -107,7 +107,7 @@ namespace Edi837Ingestion.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("json");
 
                     b.Property<string>("TransactionSetControlNumber")
                         .IsRequired()
@@ -158,7 +158,8 @@ namespace Edi837Ingestion.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ContentHash")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Interchanges_ContentHash");
 
                     b.ToTable("Interchanges");
                 });
