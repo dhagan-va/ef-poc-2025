@@ -15,4 +15,11 @@ public sealed class SqsOptions
 
     /// <summary>Delivery attempts before a message is moved to the dead-letter queue (redrive <c>maxReceiveCount</c>).</summary>
     public int MaxReceiveCount { get; set; } = 3;
+
+    /// <summary>
+    /// SQS receive long-poll wait, in seconds (0–20). The production default of 20 lets an idle
+    /// consumer wait for work rather than busy-spin; the Moto-backed integration environment sets 0 so
+    /// an empty receive returns immediately instead of blocking for the full long-poll.
+    /// </summary>
+    public int ReceiveWaitTimeSeconds { get; set; } = 20;
 }

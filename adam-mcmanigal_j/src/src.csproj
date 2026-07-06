@@ -10,6 +10,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="AWSSDK.S3" Version="4.0.100" />
+      <PackageReference Include="AWSSDK.SQS" Version="4.0.100" />
       <PackageReference Include="EdiFabric" Version="10.7.7" />
       <PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.7" />
       <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
@@ -21,6 +23,7 @@
       <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
       <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
     </ItemGroup>
 

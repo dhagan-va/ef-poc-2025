@@ -13,6 +13,7 @@
       <PackageReference Include="AWSSDK.S3" Version="4.0.100" />
       <PackageReference Include="AWSSDK.SQS" Version="4.0.100" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
       <PackageReference Include="Testcontainers" Version="4.12.0" />
       <PackageReference Include="Testcontainers.MsSql" Version="4.12.0" />
@@ -29,6 +30,9 @@
          so their configuration stays cleanly separate from the app's. -->
     <ItemGroup>
       <None Update="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Include="..\samples\*.edi;..\samples\*.txt" Link="samples\%(Filename)%(Extension)">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
