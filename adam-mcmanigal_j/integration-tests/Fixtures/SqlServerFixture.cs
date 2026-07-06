@@ -19,7 +19,7 @@ namespace integration.Fixtures;
 /// when the run ends. Because the container owns its lifecycle, the SA password is set from the same
 /// options value used to build the connection string, keeping the two in sync.
 /// </remarks>
-public sealed class SqlServerFixture : IAsyncLifetime
+public sealed class SqlServerFixture : IAsyncLifetime, IDbContextFactory<Edi837DbContext>
 {
     private const int SqlServerPort = 1433;
 
@@ -62,4 +62,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
         new(new DbContextOptionsBuilder<Edi837DbContext>()
             .UseSqlServer(ConnectionString)
             .Options);
+
+    /// <summary>
+    /// <see cref="IDbContextFactory{TContext}"/> so the fixture can be handed to
+    /// <c>IngestionService</c> as its per-message context factory, mirroring the app's runtime wiring.
+    /// </summary>
+    public Edi837DbContext CreateDbContext() => CreateContext();
 }

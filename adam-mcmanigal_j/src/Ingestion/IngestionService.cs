@@ -43,7 +43,7 @@ public sealed class IngestionService(
     IAmazonSQS sqs,
     IAmazonS3 s3,
     Edi837Parser parser,
-    Edi837DbContext db,
+    IDbContextFactory<Edi837DbContext> contextFactory,
     string queueUrl,
     string deadLetterQueueUrl,
     ILogger<IngestionService> logger,
@@ -86,7 +86,12 @@ public sealed class IngestionService(
         {
             try
             {
-                var outcome = await HandleMessageAsync(message, cancellationToken);
+                // A short-lived context per message: its change tracker starts empty and is discarded
+                // on dispose, so a failed save can never leak Added entities into the next message, and
+                // messages could be handled concurrently. This is why there is no ChangeTracker.Clear().
+                await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+                var outcome = await HandleMessageAsync(db, message, cancellationToken);
                 ingested += outcome.Ingested;
                 duplicates += outcome.Duplicates;
 
@@ -125,12 +130,6 @@ public sealed class IngestionService(
                     message.MessageId);
                 failed++;
             }
-            finally
-            {
-                // Each message is its own unit of work; never carry tracked state into the next one
-                // (a failed SaveChanges leaves entities tracked as Added).
-                db.ChangeTracker.Clear();
-            }
         }
 
         if (messages.Count > 0)
@@ -146,7 +145,7 @@ public sealed class IngestionService(
     /// references. A message with no records (e.g. an <c>s3:TestEvent</c>) is a no-op and is acked.
     /// </summary>
     private async Task<(int Ingested, int Duplicates)> HandleMessageAsync(
-        Message message, CancellationToken cancellationToken)
+        Edi837DbContext db, Message message, CancellationToken cancellationToken)
     {
         S3EventNotification notification;
         try
@@ -173,7 +172,7 @@ public sealed class IngestionService(
             // S3 event object keys are URL-encoded (e.g. '/' as %2F, spaces as '+'), so decode before
             // using the key to fetch the object — otherwise the GetObject lookup misses.
             var key = WebUtility.UrlDecode(record.S3.Object.Key);
-            var outcome = await IngestObjectAsync(record.S3.Bucket.Name, key, cancellationToken);
+            var outcome = await IngestObjectAsync(db, record.S3.Bucket.Name, key, cancellationToken);
 
             if (outcome == IngestOutcome.Ingested)
                 ingested++;
@@ -189,7 +188,7 @@ public sealed class IngestionService(
     /// idempotently. Returns whether the file was newly ingested or was already in the ledger.
     /// </summary>
     private async Task<IngestOutcome> IngestObjectAsync(
-        string bucket, string key, CancellationToken cancellationToken)
+        Edi837DbContext db, string bucket, string key, CancellationToken cancellationToken)
     {
         using var response = await s3.GetObjectAsync(bucket, key, cancellationToken);
 

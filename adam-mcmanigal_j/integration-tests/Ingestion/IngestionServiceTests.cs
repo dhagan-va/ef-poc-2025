@@ -2,7 +2,6 @@ using Amazon.S3.Model;
 using Amazon.SQS.Model;
 using Edi837Ingestion.Ingestion;
 using Edi837Ingestion.Parsing;
-using Edi837Ingestion.Persistence;
 using integration.Fixtures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -127,15 +126,12 @@ public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql
         // generous budget (~15s) of fast, short-poll receives.
         for (var attempt = 0; attempt < 150; attempt++)
         {
-            await using (var context = sql.CreateContext())
-            {
-                var batch = await CreateService(context).IngestNextBatchAsync();
-                received += batch.Received;
-                ingested += batch.Ingested;
-                duplicates += batch.Duplicates;
-                deadLettered += batch.DeadLettered;
-                failed += batch.Failed;
-            }
+            var batch = await CreateService().IngestNextBatchAsync();
+            received += batch.Received;
+            ingested += batch.Ingested;
+            duplicates += batch.Duplicates;
+            deadLettered += batch.DeadLettered;
+            failed += batch.Failed;
 
             var total = new BatchResult(received, ingested, duplicates, deadLettered, failed);
             if (satisfied(total))
@@ -147,8 +143,10 @@ public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql
         throw new TimeoutException("The expected ingestion outcome did not occur before the timeout.");
     }
 
-    private IngestionService CreateService(Edi837DbContext context) =>
-        new(moto.Sqs, moto.S3, new Edi837Parser(), context, moto.QueueUrl, moto.DeadLetterQueueUrl,
+    // The service creates a context per message from the fixture (which is an IDbContextFactory),
+    // mirroring the app's runtime wiring.
+    private IngestionService CreateService() =>
+        new(moto.Sqs, moto.S3, new Edi837Parser(), sql, moto.QueueUrl, moto.DeadLetterQueueUrl,
             NullLogger<IngestionService>.Instance, moto.Options.Sqs.ReceiveWaitTimeSeconds);
 
     private Task PutObjectAsync(string key, string content) =>
