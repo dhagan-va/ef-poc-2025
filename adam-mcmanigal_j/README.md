@@ -1,123 +1,208 @@
 # EDI 837 Ingestion
 
-A proof-of-concept for parsing X12 EDI 837 (professional claim) files with
-[EdiFabric](https://www.edifabric.com/) and persisting them with Entity Framework Core.
+A proof-of-concept service that ingests X12 EDI **837** health-care claim files, parses them with
+[EdiFabric](https://www.edifabric.com/), and persists them with Entity Framework Core into SQL Server.
+It handles all three 837 variants — **837P** (professional), **837I** (institutional), and **837D**
+(dental).
 
-## Initial Setup
+## What it does
+
+The app is a long-running worker that drains a queue of newly-arrived claim files:
+
+```
+S3 (raw file lands)  ──►  S3 event  ──►  SQS  ──►  IngestionWorker
+                                                        │
+                                                        ├─ read raw bytes from S3
+                                                        ├─ parse with EdiFabric   (Edi837Parser)
+                                                        ├─ dedup by SHA-256 content hash
+                                                        └─ persist  (SQL Server, via EF Core)
+```
+
+- **`IngestionWorker`** (`src/Ingestion/`) is a `BackgroundService` that owns the process lifetime and
+  poll loop: it long-polls SQS, hands each batch to `IngestionService`, backs off when the queue is
+  empty, and recovers from transient queue failures without tearing down the host.
+- **`IngestionService`** is the passive unit of work — one SQS batch per call, directly testable. For
+  each message it fetches the S3 object, parses it, and writes the result in one transaction.
+- **`Edi837Parser`** (`src/Parsing/`) turns a raw stream into a single `ParsedInterchange`: the ISA
+  envelope plus three typed lists of transaction sets (P/I/D). Non-837 messages are ignored.
+
+The unit of work is **one interchange** (one ISA…IEA file), matching the X12 999 acknowledgment boundary.
+
+## Schema design and trade-offs
+
+The persistence model is deliberately **not** a full relational shred of the EDI. There are two kinds of
+tables — an idempotency ledger and per-variant transaction-set tables — and the key decisions behind them
+are worth understanding before extending the schema.
+
+### 1. Idempotency ledger — `Interchanges` (`IngestedInterchange`)
+
+One row per ingested file. The dedup guard is **`ContentHash`**: a SHA-256 over the raw interchange
+bytes, with a **unique index**. A re-sent file is byte-identical → same hash → the database rejects the
+insert, so re-delivery (SQS at-least-once, payer resends) is a no-op rather than a duplicate.
+
+> **Why a content hash and not the control numbers?** The obvious key — ISA13/GS06/ST02 — doesn't work:
+> the ISA13 interchange control number recycles (it wraps at 9 digits) and is only unique per sender, so
+> it can't guarantee resend detection across senders or over time. The content hash can.
+
+The ledger also keeps envelope identity (`SenderId`/ISA06, `ReceiverId`/ISA08,
+`InterchangeControlNumber`/ISA13) for observability and conflict detection, `ReceivedAt`, and
+**`PayloadS3Key`** — a pointer to the raw file archived in S3. The S3 archive plus the content hash are
+what enable **reflow**: on a downstream error you can re-fetch the exact original bytes and re-parse,
+which is the driving requirement behind archiving the raw file rather than only the parsed form.
+
+### 2. Per-variant transaction-set tables — one JSON column, no shred
+
+The parsed claims live in three tables — `ProfessionalTransactionSets`, `InstitutionalTransactionSets`,
+`DentalTransactionSets` — each row carrying a required, cascading FK back to its `Interchanges` row, the
+GS06/ST02 control numbers, and **the entire EdiFabric message stored as a single `nvarchar(max)` JSON
+column** (System.Text.Json via an EF `ValueConverter`).
+
+> **Why JSON and not relational columns?** An 837 claim graph is enormous. The
+> `EdiFabric.Templates.Hipaa` (2.7.7) `TS837P/I/D` types expand to **~336 generated classes** (loops +
+> segments). Shredding that into relational tables would mean 300+ tables of join-hell to write, migrate,
+> and query, for a PoC whose job is to *store and reflow* claims, not run analytics over individual
+> segments. Keeping the POCO intact in one JSON column preserves the full fidelity of the parse at a
+> fraction of the schema cost. The table is a structured, queryable *complement* to the S3 archive, not
+> a replacement for it.
+>
+> **Trade-off:** you can't (yet) index or query into individual EDI segments in SQL — deep filtering
+> means JSON path queries or going back to the parsed object. That's an acceptable cost for a
+> store-and-reflow pipeline; it would not be if the primary use case were segment-level reporting.
+
+> **Why three tables via generics, not EF inheritance?** The three entities share a shape, so it's
+> declared once on an abstract generic base `Edi837TransactionSet<TMessage>`; each variant closes the
+> generic (e.g. `Edi837ProfessionalTransactionSet : Edi837TransactionSet<TS837P>`). This is **plain C#
+> reuse, not an EF mapping hierarchy** — the concrete types have distinct closed base types and the open
+> generic is never mapped, so EF emits three independent tables with **no inheritance discriminator**.
+> Variant is carried by *type*, so consumers never downcast.
+
+### What's deferred
+
+This is a PoC; some pieces are intentionally not built yet:
+
+- Persisting the **fuller ISA envelope** (qualifiers, dates, usage indicator) — the parser captures them;
+  the ledger entity stores only a subset.
+- **SNIP validation** (WEDI validation levels) and anywhere to store validation results — see the design
+  notes; it's additive and would also require relaxing the "≥1 transaction set" invariant on
+  `IngestedInterchange.From` so that rejected/parse-failed files can be recorded.
+
+---
+
+## Getting started
 
 ### Prerequisites
 
 - [.NET SDK 8.0+](https://dotnet.microsoft.com/download)
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose (used to run
-  SQL Server and a mock AWS endpoint for S3 and SQS locally)
-- An EdiFabric serial key (required to run the parser)
+- [Docker](https://docs.docker.com/get-docker/) + Docker Compose (runs SQL Server and a mock AWS
+  endpoint — [moto](https://github.com/getmoto/moto) — for S3 and SQS locally)
+- An **EdiFabric serial key** (required — the parser validates it against EdiFabric's licensing service
+  over the network at startup, so the machine also needs outbound network access)
 
-### 1. Restore and build
+### 1. Configure secrets
+
+Copy the sample env file and fill in your serial key. `.env` is gitignored and is read by the app, the
+integration tests, and Docker Compose alike (keys use the `Section__Key` double-underscore convention):
 
 ```bash
-dotnet build
+cp .env.sample .env
+# then edit .env and set EdiFabric__SerialKey=<your-key>
 ```
 
-### 2. Start the backing services
+The SA password defaults to the dev value in `.env.sample`; change it if you like — it is single-sourced
+from there into the db, migrate, and app containers.
 
-The local SQL Server database and a mock S3 (moto) endpoint run in Docker:
+> For host-only development you can instead keep the key in
+> [.NET user-secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets):
+> `dotnet user-secrets set "EdiFabric:SerialKey" "<your-key>" --project src/src.csproj`. Environment
+> variables / `.env` win over user-secrets, which win over `appsettings.json`.
 
-```bash
-docker compose up -d
-```
+### 2. Run it
 
-This starts:
+There are two modes, selected by Docker Compose profiles.
 
-- **db** — SQL Server 2025 on `localhost:1433`
-- **moto** — mock S3 on `localhost:5001`
-
-Stop them later with `docker compose down`.
-
-### 3. Add your EdiFabric serial key
-
-The serial key is read from configuration and is **required** — the app fails
-fast with an `InvalidOperationException` if it is missing.
-
-It is never committed to source control. In development it is supplied through
-[.NET user-secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets),
-which are stored outside the repository. Both projects share the same
-`UserSecretsId`, so a single command sets the key for both:
+**Mode A — infra in Docker, app on the host** (fastest inner loop for development):
 
 ```bash
-dotnet user-secrets set "EdiFabric:SerialKey" "<your-key>" --project src/src.csproj
-```
-
-Replace `<your-key>` with your actual EdiFabric serial key.
-
-### 4. Verify the key is loaded
-
-```bash
+docker compose up -d          # starts db, moto, moto-init, and runs migrate (applies the schema)
 dotnet run --project src/src.csproj
 ```
 
-You should see `EdiFabric serial key loaded.` If the key is not set, you'll get
-a clear error telling you which command to run.
+`docker compose up` (no profile) brings up the backing services **and** runs the `migrate`
+init-container, so the database is migrated and ready. The host app defaults to the `Development`
+environment and talks to `localhost:1433` (db) and `localhost:5001` (moto).
 
-## Configuration
+**Mode B — everything in containers** (full-fidelity system test):
 
-Configuration is bound to strongly-typed options (`EdiFabricOptions`) from the
-`EdiFabric` section of `appsettings.json`. A single `appsettings.json` lives at
-the repository root and is **linked** into both `src` and `tests`, so it is
-edited in one place:
-
-```json
-{
-  "EdiFabric": {
-    "SerialKey": ""
-  }
-}
+```bash
+docker compose --profile app up -d --build
 ```
 
-Sources are layered in increasing order of precedence (later wins):
+This builds the app image and starts the whole stack in dependency order: db (healthy) → migrate
+(completed) → moto (healthy) → moto-init (completed) → app. The app container runs with
+`DOTNET_ENVIRONMENT=Docker` and talks to the `db` and `moto:5000` service endpoints.
 
-1. `appsettings.json` (committed, key left empty)
-2. user-secrets — development only
-3. environment variables — CI/CD and deployment
+Tear down with `docker compose --profile app down` (add `-v` to drop volumes).
 
-Leave `SerialKey` empty in `appsettings.json`; the real value comes from
-user-secrets (dev) or environment variables (CI/deploy), so it stays out of
-source control.
+### 3. Try it end to end
+
+With either mode running, drop a sample claim into the bucket and watch it get ingested. The bucket is
+wired to notify SQS on `ObjectCreated`, which is what the worker polls:
+
+```bash
+# requires the AWS CLI; creds are the moto placeholders
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+  aws --endpoint-url http://localhost:5001 s3 cp samples/837-sample-file.edi s3://edi-bucket/
+```
+
+The worker logs the ingest, e.g. `Ingested interchange <hash> from s3://edi-bucket/... : 1P/0I/0D
+transaction sets.` You should then see a row in `Interchanges` and one in `ProfessionalTransactionSets`.
+Uploading the same file again is deduped (no new rows) by the content-hash unique index.
+
+## Database migrations
+
+Migrations live in `src/Migrations/` (currently just `InitialCreate`). The `migrate` service applies
+them via `dotnet ef database update` once the db is healthy, so you normally never run EF by hand.
+
+After **adding** a migration, rebuild and re-run the init-container to apply it (EF migrations are
+idempotent, so this is always safe):
+
+```bash
+docker compose run --rm --build migrate
+```
+
+> The `migrate` container logs a benign `"EdiFabric serial key is not configured"` line. That's EF's
+> tooling probing the app host first (which validates the key and throws) before falling back to the
+> design-time `Edi837DbContextFactory` — which is what actually applies the migration. It's expected, not
+> an error.
+
+## Configuration reference
+
+Configuration binds to strongly-typed options (`EdiFabricOptions`, `SqlServerOptions`, `AwsOptions`) from
+layered sources, later winning over earlier:
+
+1. `appsettings.json` (committed, secret-free) — base settings; `Server: localhost`, moto at
+   `localhost:5001`, bucket `edi-bucket`, queues `edi-queue` / `edi-queue-dlq`.
+2. `appsettings.{Environment}.json` — e.g. `appsettings.Docker.json` overrides the endpoints to the
+   in-container `db` / `moto:5000`. Environment comes from `DOTNET_ENVIRONMENT` (default `Development`).
+3. `.env` / environment variables — the secrets (`EdiFabric__SerialKey`, `SqlServer__Password`).
+
+The app **fails fast** with a clear `InvalidOperationException` if a required setting (serial key, SQL
+password, AWS region/resource names) is missing.
 
 ### CI/CD and deployment
 
-user-secrets are a **developer-machine-only** mechanism — they are never built
-or deployed. In CI/CD and deployed environments the key is supplied as an
-**environment variable** instead. .NET maps the double-underscore form onto the
-config key, so `EdiFabric:SerialKey` is set via:
+user-secrets are a developer-machine-only mechanism. In CI and deployed environments the key is supplied
+as an **environment variable** (`EdiFabric__SerialKey`), typically sourced from the platform's secret
+store (e.g. GitHub Actions secrets, AWS Secrets Manager).
 
+> **Note:** because `SerialKey.Set(...)` validates the key over the network, the CI runner needs
+> **outbound network access** to EdiFabric's licensing service in addition to the secret — otherwise the
+> parser tests fail with "The serial key is invalid!" even when the key is correct.
+
+## Testing
+
+```bash
+dotnet test
 ```
-EdiFabric__SerialKey=<your-key>
-```
 
-- **CI (GitHub Actions):** store the key as a repository/environment secret and
-  expose it to the build/test step (illustrative — no workflow file is included):
-
-  ```yaml
-  steps:
-    - run: dotnet test
-      env:
-        EdiFabric__SerialKey: ${{ secrets.EDIFABRIC_SERIAL_KEY }}
-  ```
-
-  > **Note:** the parser tests apply the EdiFabric license via `SerialKey.Set(...)`,
-  > which validates the key against EdiFabric's licensing service over the network.
-  > The CI runner therefore needs **outbound network access** to that service in
-  > addition to the `EdiFabric__SerialKey` secret — without it, license validation
-  > fails and the parser tests error with "The serial key is invalid!" even when the
-  > key is correct.
-
-- **Containers / deployment:** set `EdiFabric__SerialKey` as a secret environment
-  variable, e.g.:
-
-  ```bash
-  docker run -e EdiFabric__SerialKey=<your-key> <image>
-  ```
-
-  In production this is typically sourced from your orchestrator's secret store
-  or a cloud secret manager (e.g. AWS Secrets Manager) and surfaced to the
-  process as that environment variable.
+Integration tests under `integration-tests/` use Testcontainers and require a running Docker engine.
