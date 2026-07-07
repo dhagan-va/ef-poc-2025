@@ -82,7 +82,7 @@ public sealed class Edi837DbContextTests
         var message = context.Model.FindEntityType(entityType)!.FindProperty("Message")!;
 
         Assert.NotNull(message.GetValueConverter());
-        Assert.Equal("nvarchar(max)", message.GetColumnType());
+        Assert.Equal("json", message.GetColumnType());
         Assert.False(message.IsNullable);
     }
 

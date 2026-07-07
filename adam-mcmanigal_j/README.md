@@ -158,6 +158,47 @@ The worker logs the ingest, e.g. `Ingested interchange <hash> from s3://edi-buck
 transaction sets.` You should then see a row in `Interchanges` and one in `ProfessionalTransactionSets`.
 Uploading the same file again is deduped (no new rows) by the content-hash unique index.
 
+## Developer tasks (Nuke)
+
+The raw `docker compose` and `dotnet ef` commands above are also wrapped as [Nuke](https://nuke.build)
+targets, so you don't have to remember the flags. The bootstrap needs only the .NET SDK — no global
+tool install. Use `./build.sh` on macOS/Linux and `.\build.cmd` on Windows — they take the same
+targets and arguments (the table below uses `./build.sh`):
+
+```bash
+./build.sh --help          # macOS/Linux: list every target
+.\build.cmd --help         # Windows: same
+```
+
+Common workflows:
+
+| Task | Target | Wraps |
+| --- | --- | --- |
+| Infra in Docker, app on host (Mode A) | `./build.sh InfraUp` then `./build.sh Run` | `docker compose up -d --wait db moto` + `run` moto-init/migrate, then `dotnet run` |
+| Whole stack in containers (Mode B) | `./build.sh AppUp` | `docker compose --profile app up -d --build` (detached — returns once up) |
+| Watch logs / stop the app stack | `./build.sh Logs` / `./build.sh AppDown` | `docker compose logs -f` / `--profile app down` |
+| Drop a test 837 into the bucket | `./build.sh Seed` (or `--sample-file <path>`, relative or absolute) | `aws s3 cp … s3://edi-bucket/` |
+| Re-apply migrations after adding one | `./build.sh Migrate` | `docker compose run --rm --build migrate` |
+| Stop / stop + wipe volumes | `./build.sh InfraDown` / `InfraReset` | `docker compose down` / `down -v` |
+| Add a migration | `./build.sh AddMigration --migration-name AddFoo` | `dotnet ef migrations add` |
+| Build / unit tests / integration tests | `./build.sh Compile` / `Test` / `IntegrationTest` | `dotnet build` / `dotnet test` |
+| Unit tests with coverage report | `./build.sh Coverage` | `dotnet test --collect` + ReportGenerator → `coverage/report/index.html` |
+| Combined unit + integration coverage | `./build.sh CoverageAll` (needs Docker) | both suites collected + merged into one `coverage/report` |
+| View the coverage report in a browser | `./build.sh ServeCoverage` | serves `coverage/report` at http://localhost:5050 (rooted so index.html resolves) |
+
+The build definition is `nuke/Build.cs`; `Test` and `IntegrationTest` are split because the former
+hits the EdiFabric license quirk and the latter needs a running Docker engine for Testcontainers.
+
+**Prerequisites per target.** The build project itself needs only the .NET SDK. Beyond that: the
+Docker targets need a running Docker engine; `Seed` needs the AWS CLI on your PATH; and the coverage
+targets use the `dotnet-ef`, ReportGenerator, and `dotnet-serve` local tools, which are restored
+automatically from `.config/dotnet-tools.json` on first use (no manual install).
+
+**One run at a time.** Nuke holds a lock on `.nuke/temp/build.log` for the life of a run, so two
+`./build.sh` commands can't run concurrently. `AppUp` is detached so it returns immediately, but
+`Logs` and `ServeCoverage` block the terminal on purpose — start further commands in another terminal
+(or after Ctrl-C).
+
 ## Database migrations
 
 Migrations live in `src/Migrations/` (currently just `InitialCreate`). The `migrate` service applies

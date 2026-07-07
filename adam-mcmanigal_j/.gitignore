@@ -4,3 +4,9 @@
 # A .gitignore in a deeper directory overrides the parent, and negating file patterns re-includes them.
 !appsettings.json
 !appsettings.*.json
+
+# Nuke writes a scratch directory here during runs; track parameters.json + build.schema.json only.
+.nuke/temp/
+
+# Code-coverage output from the Nuke `Coverage` target.
+coverage/
