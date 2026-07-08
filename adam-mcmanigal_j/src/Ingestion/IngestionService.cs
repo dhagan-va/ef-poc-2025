@@ -50,8 +50,8 @@ public sealed class IngestionService(
     int receiveWaitTimeSeconds = 20)
 {
     // SQS caps a single receive at 10 messages. receiveWaitTimeSeconds long-polls so an idle queue does
-    // not busy-spin (the 20s max in production); the Moto integration env passes 0 so an empty receive
-    // returns immediately instead of blocking, since Moto honours long-polling on an empty queue.
+    // not busy-spin (the 20s max in production); the Moto integration env sets it to 0 so an empty
+    // receive returns immediately rather than long-polling.
     private const int MaxMessagesPerReceive = 10;
 
     // SQL Server error numbers for a unique-index / unique-constraint violation.

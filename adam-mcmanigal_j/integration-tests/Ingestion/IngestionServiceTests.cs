@@ -17,11 +17,12 @@ namespace integration.Ingestion;
 /// and the persisted ledger.
 /// </summary>
 /// <remarks>
-/// Moto is not a perfect SQS: it delivers the notification asynchronously, ignores SQS long-polling, and
-/// emits a one-off <c>s3:TestEvent</c> (zero records) when the bucket notification is first configured —
-/// exactly as real S3 does. So the tests accumulate batches until the object's business outcome (ingested
-/// or deduplicated) appears, which absorbs the TestEvent no-op and the delivery delay, rather than
-/// asserting on a single receive.
+/// Moto is not a perfect SQS: it delivers the notification asynchronously, and emits a one-off
+/// <c>s3:TestEvent</c> (zero records) when the bucket notification is first configured — exactly as real
+/// S3 does. The integration env also disables long-polling (<c>ReceiveWaitTimeSeconds = 0</c>), so a
+/// receive returns immediately even before the notification has landed. So the tests accumulate batches
+/// until the object's business outcome (ingested or deduplicated) appears, which absorbs the TestEvent
+/// no-op and the delivery delay, rather than asserting on a single receive.
 /// </remarks>
 [Collection("Ingestion")]
 public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql)

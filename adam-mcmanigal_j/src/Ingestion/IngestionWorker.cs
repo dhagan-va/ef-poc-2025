@@ -35,8 +35,8 @@ public sealed class IngestionWorker(
             {
                 var result = await ingestionService.IngestNextBatchAsync(stoppingToken);
 
-                // A full batch may mean more is waiting, so poll straight back; an empty receive means
-                // an idle queue, so pause briefly before polling again.
+                // A non-empty receive may mean more is waiting, so poll straight back; an empty receive
+                // means an idle queue, so pause briefly before polling again.
                 if (result.Received == 0)
                     await Task.Delay(IdleBackoff, stoppingToken);
             }

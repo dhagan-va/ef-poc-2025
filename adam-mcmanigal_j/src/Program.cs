@@ -29,8 +29,8 @@ var deadLetterQueueUrl = (await sqs.GetQueueUrlAsync(aws.Sqs.DeadLetterQueueName
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddSingleton<IAmazonS3>(s3);
-builder.Services.AddSingleton<IAmazonSQS>(sqs);
+builder.Services.AddSingleton(s3);
+builder.Services.AddSingleton(sqs);
 builder.Services.AddSingleton<Edi837Parser>();
 
 // A context factory, not a scoped context: IngestionService opens one short-lived context per SQS

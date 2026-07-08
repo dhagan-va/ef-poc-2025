@@ -38,6 +38,7 @@ class Build : NukeBuild
     AbsolutePath SrcProject => RootDirectory / "src" / "src.csproj";
     AbsolutePath TestsProject => RootDirectory / "tests" / "tests.csproj";
     AbsolutePath CoverageDirectory => RootDirectory / "coverage";
+    AbsolutePath CoverageSettings => RootDirectory / ".runsettings";
     AbsolutePath IntegrationTestsProject => RootDirectory / "integration-tests" / "integration-tests.csproj";
 
     // --------------------------------------------------------------------- //
@@ -256,6 +257,7 @@ class Build : NukeBuild
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .SetDataCollector("XPlat Code Coverage")
+                .SetSettingsFile(CoverageSettings)
                 .SetResultsDirectory(CoverageDirectory));
 
         DotNetToolRestore();

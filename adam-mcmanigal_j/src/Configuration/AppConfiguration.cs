@@ -20,8 +20,10 @@ public static class AppConfiguration
     /// CI/CD or a deployment). The compose <c>app</c> service sets it to <c>Docker</c> for the
     /// in-container endpoints; the integration tests set it to <c>Testing</c>.
     /// User-secrets are resolved against the entry assembly, so each project loads its own
-    /// &lt;UserSecretsId&gt;. Precedence (lowest to highest): appsettings.json →
-    /// appsettings.{Environment}.json → user-secrets (dev only) → <c>.env</c> / environment variables.
+    /// &lt;UserSecretsId&gt;. The user-secrets source is always added but only resolves where a store
+    /// exists (development), so it is effectively dev-only. Precedence (lowest to highest):
+    /// appsettings.json → appsettings.{Environment}.json → user-secrets → <c>.env</c> / environment
+    /// variables.
     /// </summary>
     /// <remarks>
     /// The <c>.env</c> file (gitignored) is loaded into process environment variables so the same

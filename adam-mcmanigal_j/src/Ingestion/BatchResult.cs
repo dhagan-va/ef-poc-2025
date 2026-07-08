@@ -5,8 +5,8 @@ namespace Edi837Ingestion.Ingestion;
 /// many SQS messages were received, and across the S3 records they carried, how many interchanges were
 /// newly ingested, skipped as already-ingested duplicates, moved to the dead-letter queue as poison, or
 /// failed transiently. A caller's polling loop can use <see cref="Received"/> to decide whether to poll
-/// again immediately (a full batch may mean more is waiting) or back off (an empty receive means an idle
-/// queue).
+/// again immediately (a non-empty receive may mean more is waiting) or back off (an empty receive means
+/// an idle queue).
 /// </summary>
 /// <param name="Received">Number of SQS messages returned by the receive.</param>
 /// <param name="Ingested">Interchanges written to the ledger for the first time.</param>
