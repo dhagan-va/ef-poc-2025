@@ -5,91 +5,50 @@ namespace EDI837Ingestion.EF
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> opts) : base(opts) { }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<RawEdiFile> RawEdiFiles { get; set; }
-        public DbSet<Interchange> Interchanges { get; set; }
+        public DbSet<InterchangeControl> InterchangeControls { get; set; }
         public DbSet<FunctionalGroup> FunctionalGroups { get; set; }
-        public DbSet<TransactionSet> TransactionSets { get; set; }
-        public DbSet<Payer> Payers { get; set; }
-        public DbSet<Patient> Patients { get; set; }
-        public DbSet<Provider> Providers { get; set; }
-        public DbSet<Claim> Claims { get; set; }
-        public DbSet<ClaimLineItem> ClaimLineItems { get; set; }
-        public DbSet<Diagnosis> Diagnoses { get; set; }
-        public DbSet<ValidationIssue> ValidationIssues { get; set; }
+        public DbSet<ClaimBatch> ClaimBatches { get; set; }
+        public DbSet<BillingProvider> BillingProviders { get; set; }
+        public DbSet<SubscriberPatient> SubscriberPatients { get; set; }
+        public DbSet<MedicalClaim> MedicalClaims { get; set; }
+        public DbSet<ClaimServiceLine> ClaimServiceLines { get; set; }
+        public DbSet<ClaimDiagnosis> ClaimDiagnoses { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder builder)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // common column settings
-            builder.Entity<Claim>().Property(c => c.TotalChargeAmount).HasColumnType("decimal(18,2)");
-            builder.Entity<ClaimLineItem>().Property(li => li.UnitCharge).HasColumnType("decimal(18,2)");
-            builder.Entity<ClaimLineItem>().Property(li => li.LineTotal).HasColumnType("decimal(18,2)");
-            builder.Entity<ClaimLineItem>().Property(li => li.Units).HasColumnType("decimal(18,2)");
+            // One-to-Many relationships mapping the hierarchy of your 837P file
+            modelBuilder.Entity<InterchangeControl>()
+                .HasMany(i => i.FunctionalGroups).WithOne().HasForeignKey(g => g.InterchangeControlId);
 
-            // indexes and constraints
-            builder.Entity<Payer>().HasIndex(p => p.PayerIdentifier);
-            builder.Entity<Provider>().HasIndex(p => p.Npi).IsUnique(false);
-            builder.Entity<TransactionSet>().HasIndex(t => t.TransactionControlNumber);
-            builder.Entity<Interchange>().HasIndex(i => new { i.IsaControlNumber, i.SenderId, i.ReceiverId }).IsUnique(false);
-            builder.Entity<RawEdiFile>().HasIndex(r => r.FileName);
+            modelBuilder.Entity<FunctionalGroup>()
+                .HasMany(g => g.ClaimBatches).WithOne().HasForeignKey(b => b.FunctionalGroupId);
 
-            // relationships
-            builder.Entity<FunctionalGroup>()
-                .HasOne(fg => fg.Interchange)
-                .WithMany(i => i.FunctionalGroups)
-                .HasForeignKey(fg => fg.InterchangeId)
-                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ClaimBatch>()
+                .HasMany(b => b.MedicalClaims).WithOne().HasForeignKey(c => c.ClaimBatchId);
 
-            builder.Entity<TransactionSet>()
-                .HasOne(ts => ts.FunctionalGroup)
-                .WithMany(fg => fg.TransactionSets)
-                .HasForeignKey(ts => ts.FunctionalGroupId)
-                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MedicalClaim>()
+                .HasMany(c => c.ServiceLines).WithOne().HasForeignKey(s => s.MedicalClaimId);
 
-            builder.Entity<TransactionSet>()
-                .HasOne(ts => ts.RawEdiFile)
-                .WithMany()
-                .HasForeignKey(ts => ts.RawEdiFileId)
-                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MedicalClaim>()
+                .HasMany(c => c.Diagnoses).WithOne().HasForeignKey(d => d.MedicalClaimId);
 
-            builder.Entity<Claim>()
-                .HasOne(c => c.TransactionSet)
-                .WithMany(ts => ts.Claims)
-                .HasForeignKey(c => c.TransactionSetId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // --- FIX FOR DECIMAL PRECISION WARNINGS ---
 
-            builder.Entity<Claim>()
-                .HasOne(c => c.Payer)
-                .WithMany(p => p.Claims)
-                .HasForeignKey(c => c.PayerId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // Configure MedicalClaim decimal columns
+            modelBuilder.Entity<MedicalClaim>()
+                .Property(c => c.TotalClaimChargeAmount)
+                .HasPrecision(18, 2);
 
-            builder.Entity<Claim>()
-                .HasOne(c => c.Patient)
-                .WithMany()
-                .HasForeignKey(c => c.PatientId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // Configure ClaimServiceLine decimal columns
+            modelBuilder.Entity<ClaimServiceLine>()
+                .Property(s => s.LineChargeAmount)
+                .HasPrecision(18, 2);
 
-            builder.Entity<ClaimLineItem>()
-                .HasOne(li => li.Claim)
-                .WithMany(c => c.LineItems)
-                .HasForeignKey(li => li.ClaimId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Diagnosis>()
-                .HasOne(d => d.Claim)
-                .WithMany(c => c.Diagnoses)
-                .HasForeignKey(d => d.ClaimId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<ValidationIssue>()
-                .HasOne(v => v.TransactionSet)
-                .WithMany(ts => ts.ValidationIssues)
-                .HasForeignKey(v => v.TransactionSetId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            base.OnModelCreating(builder);
+            modelBuilder.Entity<ClaimServiceLine>()
+                .Property(s => s.UnitCount)
+                .HasPrecision(18, 2);
         }
     }
 }

@@ -1,5 +1,9 @@
 ﻿using EDI837Ingestion.EF;
+using EDI837Ingestion.EF.Entities;
+using EdiFabric.Core.Model.Edi;
+using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
+using EdiFabric.Templates.Hipaa5010;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -23,13 +27,38 @@ namespace EDI837Ingestion.BusinessLayer
 
         public async Task IngestEdi837()
         {
-            using var ediStream = File.OpenRead(_filePath);
-            using var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa5010");
+            try
+            {
+                using (var ediStream = File.OpenRead(_filePath))
+                {
+                    // Fix 2: Explicitly pass the template namespace as a string
+                    using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
+                    {
+                        List<IEdiItem> ediItems = ediReader.ReadToEnd().ToList();
 
-            //ProfessionalClaimInterchange currentInterchange = null;
+                        // Extract the Professional 837 transaction sets
+                        var transactions = ediItems.OfType<TS837P>();
 
+                        foreach (var transaction in transactions)
+                        {
+                            // Converts the parsed EDI object directly into XML
+                            //var xml = transaction.Serialize();
 
-            //var count = _dbContext.Payers.Count();
+                            // Check if structural or validation errors occurred during parsing
+                            if (transaction.HasErrors)
+                            {
+                                // Flattens the error hierarchy into an easy-to-read list of string messages
+                                var errors = transaction.ErrorContext.Flatten();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                Console.WriteLine($"An error occurred while ingesting EDI 837: {ex.Message}");
+            }
         }
     }
 }

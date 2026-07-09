@@ -6,152 +6,97 @@ using System.Threading.Tasks;
 
 namespace EDI837Ingestion.EF.Entities
 {
-    public class RawEdiFile
+    public class InterchangeControl
     {
         public int Id { get; set; }
-        public string FileName { get; set; }
-        public byte[] Content { get; set; }           // raw bytes
-        public long Size { get; set; }
-        public DateTimeOffset ReceivedAt { get; set; }
-    }
-
-    public class Interchange
-    {
-        public int Id { get; set; }
-        public string IsaControlNumber { get; set; }
-        public string SenderId { get; set; }
-        public string ReceiverId { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-
-        public ICollection<FunctionalGroup> FunctionalGroups { get; set; }
+        public string SenderId { get; set; }      // SUBMITTER99
+        public string ReceiverId { get; set; }    // RECEIVER88
+        public string ControlNumber { get; set; } // 000000001
+        public DateTime TransmissionDate { get; set; }
+        public List<FunctionalGroup> FunctionalGroups { get; set; }
     }
 
     public class FunctionalGroup
     {
         public int Id { get; set; }
-        public string GroupControlNumber { get; set; }
-        public string FunctionalId { get; set; }
-
-        public int InterchangeId { get; set; }
-        public Interchange Interchange { get; set; }
-
-        public ICollection<TransactionSet> TransactionSets { get; set; }
+        public int InterchangeControlId { get; set; }
+        public string GroupControlNumber { get; set; } // 1
+        public string VersionCode { get; set; }        // 005010X222A1
+        public List<ClaimBatch> ClaimBatches { get; set; }
     }
 
-    public class TransactionSet
+    public class ClaimBatch
     {
         public int Id { get; set; }
-        public string TransactionControlNumber { get; set; }
-        public string TransactionType { get; set; } // "837"
-        public DateTimeOffset TransactionDate { get; set; }
-        public string Status { get; set; }
-        public string RawJson { get; set; }
-
-        public int? InterchangeId { get; set; }
-        public Interchange Interchange { get; set; }
-
-        public int? FunctionalGroupId { get; set; }
-        public FunctionalGroup FunctionalGroup { get; set; }
-
-        public int? RawEdiFileId { get; set; }
-        public RawEdiFile RawEdiFile { get; set; }
-
-        public ICollection<Claim> Claims { get; set; }
-        public ICollection<ValidationIssue> ValidationIssues { get; set; }
+        public int FunctionalGroupId { get; set; }
+        public string TransactionId { get; set; }        // 0001
+        public string ReferenceNumber { get; set; }      // 12345 (BHT03)
+        public string SubmitterName { get; set; }        // TEST SUBMITTER CLEARINGHOUSE
+        public string SubmitterContactPhone { get; set; } // 8005550100
+        public string PayerName { get; set; }            // BLUE SHIELD TEST PAYER
+        public List<MedicalClaim> MedicalClaims { get; set; }
     }
 
-    public class Payer
+    public class BillingProvider
     {
         public int Id { get; set; }
-        public string PayerIdentifier { get; set; } // e.g., NM109
-        public string Name { get; set; }
-
-        public ICollection<Claim> Claims { get; set; }
+        public string LastName { get; set; }   // SMITH
+        public string FirstName { get; set; }  // JOHN
+        public string Npi { get; set; }        // 1234567890
+        public string Address { get; set; }    // 123 HEALTHCARE WAY
+        public string City { get; set; }       // HARRISBURG
+        public string State { get; set; }      // PA
+        public string ZipCode { get; set; }    // 17101
+        public string TaxId { get; set; }      // 987654321
     }
 
-    public class Patient
+    public class SubscriberPatient
     {
         public int Id { get; set; }
-        public string MemberId { get; set; } // Subscriber/Member ID
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public DateTime? Dob { get; set; }
-        public string Gender { get; set; }
+        public string MemberId { get; set; }   // 123456789A
+        public string LastName { get; set; }   // DOE
+        public string FirstName { get; set; }  // JANE
+        public string Address { get; set; }    // 456 PATIENT ST
+        public string City { get; set; }       // HERSHEY
+        public string State { get; set; }      // PA
+        public string ZipCode { get; set; }    // 17033
+        public DateTime BirthDate { get; set; } // 1980-01-01
+        public string Gender { get; set; }     // F
     }
 
-    public class Provider
+    public class MedicalClaim
     {
         public int Id { get; set; }
-        public string Npi { get; set; }
-        public string TaxId { get; set; }
-        public string Name { get; set; }
-        public string ProviderType { get; set; } // Billing, Rendering, etc.
+        public int ClaimBatchId { get; set; }
+        public string ClaimSubmitterIdentifier { get; set; } // 1000123 (CLM01)
+        public decimal TotalClaimChargeAmount { get; set; }    // 150.50 (CLM02)
+        public string FacilityCode { get; set; }              // 11 (Office - CLM05-1)
+        public DateTime StatementDate { get; set; }           // 2026-07-07 (DTP)
+
+        // Foreign keys to separate master directories (or nested copies)
+        public int BillingProviderId { get; set; }
+        public int SubscriberPatientId { get; set; }
+
+        public List<ClaimServiceLine> ServiceLines { get; set; }
+        public List<ClaimDiagnosis> Diagnoses { get; set; }
     }
 
-    public class Claim
+    public class ClaimServiceLine
     {
         public int Id { get; set; }
-        public int TransactionSetId { get; set; }
-        public TransactionSet TransactionSet { get; set; }
-
-        public string ClaimNumber { get; set; } // CLM01 or generated
-        public int? PatientId { get; set; }
-        public Patient Patient { get; set; }
-        public int? PayerId { get; set; }
-        public Payer Payer { get; set; }
-
-        public int? BillingProviderId { get; set; }
-        public Provider BillingProvider { get; set; }
-
-        public int? RenderingProviderId { get; set; }
-        public Provider RenderingProvider { get; set; }
-
-        public decimal TotalChargeAmount { get; set; }
-        public DateTimeOffset? ClaimDate { get; set; }
-
-        public ICollection<ClaimLineItem> LineItems { get; set; }
-        public ICollection<Diagnosis> Diagnoses { get; set; }
+        public int MedicalClaimId { get; set; }
+        public int LineNumber { get; set; }            // 1 (LX01)
+        public string ProcedureCode { get; set; }      // 99213 (SV101-2)
+        public decimal LineChargeAmount { get; set; }  // 150.50 (SV102)
+        public decimal UnitCount { get; set; }         // 1 (SV104)
+        public DateTime ServiceDate { get; set; }      // 2026-07-07 (DTP)
     }
 
-    public class ClaimLineItem
+    public class ClaimDiagnosis
     {
         public int Id { get; set; }
-        public int ClaimId { get; set; }
-        public Claim Claim { get; set; }
-
-        public int LineNumber { get; set; }
-        public DateTime? ServiceDateFrom { get; set; }
-        public DateTime? ServiceDateTo { get; set; }
-        public string ProcedureCode { get; set; }
-        public string Modifiers { get; set; } // optional JSON or delimited
-        public decimal Units { get; set; }
-        public decimal UnitCharge { get; set; }
-        public decimal LineTotal { get; set; }
-    }
-
-    public class Diagnosis
-    {
-        public int Id { get; set; }
-        public int ClaimId { get; set; }
-        public Claim Claim { get; set; }
-
-        public int Position { get; set; } // sequence in HI segment
-        public string Code { get; set; }
-        public string Version { get; set; } // ICD10/ICD9
-    }
-
-    public class ValidationIssue
-    {
-        public int Id { get; set; }
-        public int? TransactionSetId { get; set; }
-        public TransactionSet TransactionSet { get; set; }
-        public int? ClaimId { get; set; }
-        public Claim Claim { get; set; }
-
-        public string Segment { get; set; }
-        public string ErrorCode { get; set; }
-        public string Message { get; set; }
-        public string Severity { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
+        public int MedicalClaimId { get; set; }
+        public string DiagnosisCode { get; set; }      // J019, A09 (HI)
+        public string DiagnosisType { get; set; }      // BK (Principal), BF (Secondary)
     }
 }
