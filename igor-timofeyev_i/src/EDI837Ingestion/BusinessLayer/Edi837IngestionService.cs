@@ -26,7 +26,7 @@ namespace EDI837Ingestion.BusinessLayer
         public Edi837IngestionService(AppDbContext dbContext, IConfiguration config)
         {
             //or env variable, or some other default fallback path
-            _filePath = config["FilePaths:Edi837PathWithFilename"] ?? "Server=Igor-Surface\\SQLEXPRESS;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;";
+            _filePath = config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
             _dbContext = dbContext;
         }
 
