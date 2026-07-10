@@ -38,7 +38,7 @@ using (var scope = host.Services.CreateScope())
     // simple sanity check: write how many payers exist
     //var count = db.Payers.Count();
     //Console.WriteLine($"Payers in DB: {count}");
-   
+    EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
     var edi837Service = scope.ServiceProvider.GetRequiredService<IEdi837IngestionService>();
     await edi837Service.IngestEdi837();
 }

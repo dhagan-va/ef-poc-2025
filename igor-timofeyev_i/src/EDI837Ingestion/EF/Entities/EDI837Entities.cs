@@ -41,7 +41,7 @@ namespace EDI837Ingestion.EF.Entities
     {
         public int Id { get; set; }
         public string LastName { get; set; }   // SMITH
-        public string FirstName { get; set; }  // JOHN
+        public string? FirstName { get; set; }  // JOHN
         public string Npi { get; set; }        // 1234567890
         public string Address { get; set; }    // 123 HEALTHCARE WAY
         public string City { get; set; }       // HARRISBURG
@@ -55,11 +55,11 @@ namespace EDI837Ingestion.EF.Entities
         public int Id { get; set; }
         public string MemberId { get; set; }   // 123456789A
         public string LastName { get; set; }   // DOE
-        public string FirstName { get; set; }  // JANE
-        public string Address { get; set; }    // 456 PATIENT ST
-        public string City { get; set; }       // HERSHEY
-        public string State { get; set; }      // PA
-        public string ZipCode { get; set; }    // 17033
+        public string? FirstName { get; set; }  // JANE
+        public string? Address { get; set; }    // 456 PATIENT ST
+        public string? City { get; set; }       // HERSHEY
+        public string? State { get; set; }      // PA
+        public string? ZipCode { get; set; }    // 17033
         public DateTime BirthDate { get; set; } // 1980-01-01
         public string Gender { get; set; }     // F
     }

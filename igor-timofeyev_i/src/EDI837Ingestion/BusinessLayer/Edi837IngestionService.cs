@@ -69,7 +69,6 @@ namespace EDI837Ingestion.BusinessLayer
                                 {
                                     gsControlNum = gsHeader.GroupControlNumber_6;
                                     gsVersionCode = gsHeader.VersionAndRelease_8;
-                                    continue;
                                 }
 
                                 InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
@@ -178,10 +177,10 @@ namespace EDI837Ingestion.BusinessLayer
                             provider.TaxId = taxRef.MemberGrouporPolicyNumber_02;
                         }
                     }
+
+                    _dbContext.BillingProviders.Add(provider);
                 }
-                _dbContext.BillingProviders.Add(provider);
-
-
+                
                 // 2. NOW you can loop through the Subscribers/Patients inside that provider
                 foreach (var loop2000B in loop2000A.Loop2000B)
                 {
@@ -263,7 +262,7 @@ namespace EDI837Ingestion.BusinessLayer
                                 {
                                     LineNumber = int.Parse(loop2400.LX_ServiceLineNumber.AssignedNumber_01),
                                     ProcedureCode = loop2400.SV1_ProfessionalService.CompositeMedicalProcedureIdentifier_01.ProcedureCode_02,
-                                    LineChargeAmount = decimal.Parse(loop2400.SV1_ProfessionalService.MonetaryAmount_19, CultureInfo.InvariantCulture),
+                                    LineChargeAmount = decimal.Parse(loop2400.SV1_ProfessionalService.LineItemChargeAmount_02, CultureInfo.InvariantCulture),
                                     UnitCount = decimal.Parse(loop2400.SV1_ProfessionalService.ServiceUnitCount_04, CultureInfo.InvariantCulture),
                                     ServiceDate = loop2400.AllDTP.DTP_Date_ServiceDate.DateTimeQualifier_01 == "472"
                                         ? ParseEdiDate(loop2400.AllDTP.DTP_Date_ServiceDate.DateTimePeriod_03)
