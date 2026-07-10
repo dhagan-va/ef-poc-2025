@@ -36,7 +36,6 @@ namespace EDI837Ingestion.BusinessLayer
             {
                 using (var ediStream = File.OpenRead(_filePath))
                 {
-                    // Fix 2: Explicitly pass the template namespace as a string
                     using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
                     {
                         List<IEdiItem> ediItems = ediReader.ReadToEnd().ToList();
