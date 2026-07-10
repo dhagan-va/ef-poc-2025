@@ -49,6 +49,9 @@ namespace EDI837Ingestion.BusinessLayer
                         string receiver = string.Empty;
                         string controlNum = string.Empty;
 
+                        string gsControlNum = string.Empty;
+                        string gsVersionCode = string.Empty;
+
                         foreach (var transaction in transactions)
                         {
                             if (!transaction.HasErrors)
@@ -61,7 +64,15 @@ namespace EDI837Ingestion.BusinessLayer
                                     controlNum = isaHeader.InterchangeControlNumber_13;
                                 }
 
-                                InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum);
+                                // 2. NEW: Capture GS Functional Group Header Values
+                                if (ediReader.Item is GS gsHeader)
+                                {
+                                    gsControlNum = gsHeader.GroupControlNumber_6;
+                                    gsVersionCode = gsHeader.VersionAndRelease_8;
+                                    continue;
+                                }
+
+                                InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
 
                                 _dbContext.InterchangeControls.Add(entityRecord);
                                 _dbContext.SaveChanges();
@@ -84,7 +95,7 @@ namespace EDI837Ingestion.BusinessLayer
             }
         }
 
-        public InterchangeControl MapEdiToEntities(TS837P transaction, string sender, string receiver, string controlNum)
+        public InterchangeControl MapEdiToEntities(TS837P transaction, string sender, string receiver, string controlNum, string gsControlNum, string gsVersionCode)
         {
             // 1. Map Interchange Control (ISA/IEA Layer)
             var interchange = new InterchangeControl
@@ -99,8 +110,8 @@ namespace EDI837Ingestion.BusinessLayer
             // 2. Map Functional Group (GS/GE Layer)
             var functionalGroup = new FunctionalGroup
             {
-                GroupControlNumber = "1", // Extracted from GS06
-                VersionCode = "005010X222A1", // Extracted from GS08
+                GroupControlNumber = controlNum, 
+                VersionCode = gsVersionCode,
                 ClaimBatches = new List<ClaimBatch>()
             };
             interchange.FunctionalGroups.Add(functionalGroup);
