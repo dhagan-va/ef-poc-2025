@@ -55,8 +55,11 @@ namespace EDI837Ingestion.BusinessLayer
                         {
                             if (!transaction.HasErrors)
                             {
+                                var isaHeader = ediItems.OfType<ISA>().FirstOrDefault();
+                                var gsHeader = ediItems.OfType<GS>().FirstOrDefault();
+
                                 // 1. EdiFabric exposes control segments directly via the Item property
-                                if (ediReader.Item is ISA isaHeader)
+                                if (isaHeader is not null)
                                 {
                                     sender = isaHeader.InterchangeSenderID_6;
                                     receiver = isaHeader.InterchangeReceiverID_8;
@@ -64,7 +67,7 @@ namespace EDI837Ingestion.BusinessLayer
                                 }
 
                                 // 2. NEW: Capture GS Functional Group Header Values
-                                if (ediReader.Item is GS gsHeader)
+                                if (gsHeader is not null)
                                 {
                                     gsControlNum = gsHeader.GroupControlNumber_6;
                                     gsVersionCode = gsHeader.VersionAndRelease_8;
@@ -198,6 +201,7 @@ namespace EDI837Ingestion.BusinessLayer
                             // FIX 2: Correct property chain name for N4 (City/State/Zip) segment
                             if (loop2010BA.N4_SubscriberCity_State_ZIPCode != null)
                             {
+                                subscriberPatient.Address = loop2010BA.N3_SubscriberAddress?.ResponseContactAddressLine_01; // Assuming N3 segment is present for address
                                 subscriberPatient.City = loop2010BA.N4_SubscriberCity_State_ZIPCode.AdditionalPatientInformationContactCityName_01;
                                 subscriberPatient.State = loop2010BA.N4_SubscriberCity_State_ZIPCode.AdditionalPatientInformationContactStateCode_02;
                                 subscriberPatient.ZipCode = loop2010BA.N4_SubscriberCity_State_ZIPCode.AdditionalPatientInformationContactPostalZoneorZIPCode_03;
