@@ -33,12 +33,12 @@ namespace TestProject
             try
             {
                 var ediContent = @"ISA*00*          *00*          *ZZ*SENDER123     *ZZ*RECEIVER456   *200101*1200*U*00501*000000001*0*T*:~
-GS*HC*SENDER123*RECEIVER456*20200101*120000*1*X*005010X222A1~
-ST*837*0001*005010X222A1~
-BHT*0019*00*244*20200101*120000*CH~
-SE*6*0001~
-GE*1*1~
-IEA*1*000000001~";
+                                    GS*HC*SENDER123*RECEIVER456*20200101*120000*1*X*005010X222A1~
+                                    ST*837*0001*005010X222A1~
+                                    BHT*0019*00*244*20200101*120000*CH~
+                                    SE*6*0001~
+                                    GE*1*1~
+                                    IEA*1*000000001~";
                 await File.WriteAllTextAsync(tempFile, ediContent);
 
                 var configDict = new System.Collections.Generic.Dictionary<string, string>
