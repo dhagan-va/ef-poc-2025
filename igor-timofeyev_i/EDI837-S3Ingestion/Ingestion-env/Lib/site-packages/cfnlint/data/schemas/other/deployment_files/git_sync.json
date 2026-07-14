@@ -1,0 +1,34 @@
+{
+ "additionalProperties": false,
+ "properties": {
+  "parameters": {
+   "patternProperties": {
+    "^.+$": {
+     "type": [
+      "array",
+      "boolean",
+      "integer",
+      "number",
+      "string"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "tags": {
+   "patternProperties": {
+    "^.+$": {
+     "type": "string"
+    }
+   },
+   "type": "object"
+  },
+  "template-file-path": {
+   "type": "string"
+  }
+ },
+ "required": [
+  "template-file-path"
+ ],
+ "type": "object"
+}

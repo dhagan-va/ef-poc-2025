@@ -1,6 +1,7 @@
 ﻿using EDI837Ingestion.EF;
 using EDI837Ingestion.EF.Entities;
 using EdiFabric.Core.Model.Edi;
+using EdiFabric.Core.Model.Edi.ErrorContexts;
 using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
@@ -32,11 +33,36 @@ namespace EDI837Ingestion.BusinessLayer
 
         public async Task IngestEdi837()
         {
-            try
+            string ediPayload = string.Empty;
+
+            // 1. Detect if the script is being piped via Python's Standard Input
+            if (Console.IsInputRedirected)
+            {
+                using (var reader = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8))
+                {
+                    ediPayload = await reader.ReadToEndAsync();
+                }
+            }
+            // 2. Fallback: If running locally without Python simulation, look for a local file argument
+            else if (File.Exists(_filePath))
             {
                 using (var ediStream = File.OpenRead(_filePath))
                 {
-                    using (var ediReader = new X12Reader(ediStream, "EdiFabric.Templates.Hipaa"))
+                    ediPayload = await File.ReadAllTextAsync(_filePath);
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
+            }
+
+
+            try
+            {
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(ediPayload)))
+                //using (var ediStream = File.OpenRead(_filePath))
+                {
+                    using (var ediReader = new X12Reader(stream, "EdiFabric.Templates.Hipaa"))
                     {
                         List<IEdiItem> ediItems = ediReader.ReadToEnd().ToList();
 
@@ -51,32 +77,50 @@ namespace EDI837Ingestion.BusinessLayer
                         string gsControlNum = string.Empty;
                         string gsVersionCode = string.Empty;
 
+                    
+                        // Configure the SNIP validation settings explicitly
+                        var snipSettings = new ValidationSettings
+                        {
+                            // Options: SyntaxOnly_SNIP1, LimitsAndCodes_SNIP2, Balancing_SNIP3, InterSegment_SNIP4
+                            ValidationLevel = ValidationLevel.InterSegment_SNIP4
+                        };
+                        MessageErrorContext errorContext;
+
+
+
                         foreach (var transaction in transactions)
                         {
+                            if (transaction.IsValid(out errorContext, snipSettings))
+                            {
+                                Console.WriteLine("Success: SNIP Level 4 validation passed.");
+                            }
+
                             if (!transaction.HasErrors)
                             {
-                                var isaHeader = ediItems.OfType<ISA>().FirstOrDefault();
-                                var gsHeader = ediItems.OfType<GS>().FirstOrDefault();
+                                    var isaHeader = ediItems.OfType<ISA>().FirstOrDefault();
+                                    var gsHeader = ediItems.OfType<GS>().FirstOrDefault();
 
-                                // 1. EdiFabric exposes control segments directly via the Item property
-                                if (isaHeader is not null)
-                                {
-                                    sender = isaHeader.InterchangeSenderID_6;
-                                    receiver = isaHeader.InterchangeReceiverID_8;
-                                    controlNum = isaHeader.InterchangeControlNumber_13;
-                                }
+                                    // 1. EdiFabric exposes control segments directly via the Item property
+                                    if (isaHeader is not null)
+                                    {
+                                        sender = isaHeader.InterchangeSenderID_6;
+                                        receiver = isaHeader.InterchangeReceiverID_8;
+                                        controlNum = isaHeader.InterchangeControlNumber_13;
+                                    }
 
-                                // 2. NEW: Capture GS Functional Group Header Values
-                                if (gsHeader is not null)
-                                {
-                                    gsControlNum = gsHeader.GroupControlNumber_6;
-                                    gsVersionCode = gsHeader.VersionAndRelease_8;
-                                }
+                                    // 2. NEW: Capture GS Functional Group Header Values
+                                    if (gsHeader is not null)
+                                    {
+                                        gsControlNum = gsHeader.GroupControlNumber_6;
+                                        gsVersionCode = gsHeader.VersionAndRelease_8;
+                                    }
 
-                                InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
+                                    InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
 
-                                _dbContext.InterchangeControls.Add(entityRecord);
-                                _dbContext.SaveChanges();
+                                    _dbContext.InterchangeControls.Add(entityRecord);
+                                    _dbContext.SaveChanges();
+
+                                    Console.WriteLine("Success: Ingestion complete.");
                             }
                             // Check if structural or validation errors occurred during parsing
                             else

@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="EDI837-S3Ingestion/EDI837-S3Ingestion.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52" Id="98aa2e14-ffc6-4bb4-a3b8-0bc6387551ce">
+    <Build Project="false" />
+  </Project>
   <Project Path="src/EDI837Ingestion/EDI837Ingestion.csproj" />
   <Project Path="TestProject/TestProject.csproj" Id="8842454d-2f15-41d0-8bfd-0511e7032b5e" />
 </Solution>

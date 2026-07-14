@@ -34,14 +34,14 @@ var host = Host.CreateDefaultBuilder(args)
 
 using (var scope = host.Services.CreateScope())
 {
-    //var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // simple sanity check: write how many payers exist
-    //var count = db.Payers.Count();
-    //Console.WriteLine($"Payers in DB: {count}");
+    #if DEBUG
+        while (!System.Diagnostics.Debugger.IsAttached)
+        {
+            await Task.Delay(100);
+        }
+    #endif
+
     EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
     var edi837Service = scope.ServiceProvider.GetRequiredService<IEdi837IngestionService>();
     await edi837Service.IngestEdi837();
 }
-
-// run the host if you need background services; otherwise exit
-// await host.RunAsync();
