@@ -1,11 +1,12 @@
-﻿using System;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
+﻿using EDI837Ingestion.BusinessLayer;
 using EDI837Ingestion.EF;
-using EDI837Ingestion.BusinessLayer;
+using EdiFabric.Templates.X12004010;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.Linq;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) =>
@@ -15,7 +16,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
-        var conn = context.Configuration.GetConnectionString("DefaultConnection");
+        var conn = Environment.GetEnvironmentVariable("Default_Connection");
+        //var conn = context.Configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrEmpty(conn))
         {
             conn = context.Configuration["ConnectionStrings:DefaultConnection"];

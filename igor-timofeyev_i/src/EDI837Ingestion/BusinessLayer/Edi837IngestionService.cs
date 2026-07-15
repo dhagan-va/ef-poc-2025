@@ -26,8 +26,9 @@ namespace EDI837Ingestion.BusinessLayer
 
         public Edi837IngestionService(AppDbContext dbContext, IConfiguration config)
         {
-            //or env variable, or some other default fallback path
-            _filePath = config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
+            //env variable, or some other default fallback path
+            _filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
+            //_filePath = config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
             _dbContext = dbContext;
         }
 
@@ -67,7 +68,7 @@ namespace EDI837Ingestion.BusinessLayer
                         List<IEdiItem> ediItems = ediReader.ReadToEnd().ToList();
 
                         // Extract the Professional 837 transaction sets
-                        var transactions = ediItems.OfType<TS837P>();
+                        var transactions837 = ediItems.OfType<TS837P>();
 
                         //control segments are at the ISA/IEA level, so we need to capture them before mapping
                         string sender = string.Empty;
@@ -88,7 +89,7 @@ namespace EDI837Ingestion.BusinessLayer
 
 
 
-                        foreach (var transaction in transactions)
+                        foreach (var transaction in transactions837)
                         {
                             if (transaction.IsValid(out errorContext, snipSettings))
                             {
