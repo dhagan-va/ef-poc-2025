@@ -12,6 +12,8 @@ import subprocess
 import boto3
 import pytest
 from moto import mock_aws
+from dotenv import load_dotenv
+
 
 SAMPLE_837_EDI = (
     "ISA*00*          *00*          *ZZ*SUBMITTER99    *ZZ*RECEIVER88     *260708*1500*^*00501*000000001*1*T*:~\n"
@@ -66,8 +68,12 @@ SAMPLE_837_EDI = (
 
 async def run_csharp_ingestion(edi_payload: str) -> tuple[int, str, str]:
     """Helper function to execute your compiled C# executable asynchronously."""
+
+    load_dotenv()
+
     # Verified Path to your compiled C# app artifact
-    csharp_exe_path = r"C:\Projects\VA\EDI 837\igor-timofeyev_i\src\EDI837Ingestion\bin\Debug\net8.0\EDI837Ingestion.exe"
+    #csharp_exe_path = r"C:\Projects\VA\EDI 837\igor-timofeyev_i\src\EDI837Ingestion\bin\Debug\net8.0\EDI837Ingestion.exe"
+    csharp_exe_path = os.getenv("CSHARP_EXE_PATH")
     
     process = await asyncio.create_subprocess_exec(
         csharp_exe_path,
