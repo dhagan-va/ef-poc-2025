@@ -45,14 +45,79 @@ namespace EDI837Ingestion.BusinessLayer
 
             try
             {
-                Console.WriteLine("Downloading EDI file from S3...");
+                Console.WriteLine("Downloading EDI files from S3...");
 
                 // --- AUTOMATED MOTO S3 SEEDING STEP ---
                 if (useLocalMoto)
                 {
                     try
                     {
-                        ediPayload = await S3BucketSetup();
+                        //set up S3 bucket and seed it with sample EDI files for local testing
+                        await S3BucketSetup();
+                        
+                        string bucketName = "edi-claims-storage";
+                        string prefix = "claims/";
+
+                        Console.WriteLine($"Querying S3 bucket '{bucketName}' for files under prefix '{prefix}'...");
+
+                        // Fetch the metadata index of all objects inside the "claims/" folder
+                        var listRequest = new ListObjectsV2Request
+                        {
+                            BucketName = bucketName,
+                            Prefix = prefix
+                        };
+
+                        ListObjectsV2Response listResponse;
+
+                        do
+                        {
+                            listResponse = await _s3Client.ListObjectsV2Async(listRequest);
+
+                            // Loop through every object discovered in the S3 registry index
+                            foreach (S3Object s3Object in listResponse.S3Objects)
+                            {
+                                // Skip the folder placeholder key itself if it exists
+                                if (s3Object.Key.EndsWith("/")) continue;
+
+                                Console.WriteLine($"\n--- Processing S3 Object: {s3Object.Key} ---");
+
+                                // Create a specific Get request dynamically for this iteration's key
+                                var getRequest = new GetObjectRequest
+                                {
+                                    BucketName = bucketName,
+                                    Key = s3Object.Key
+                                };
+
+                                using var response = await _s3Client.GetObjectAsync(getRequest);
+                                using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
+
+                                ediPayload = await reader.ReadToEndAsync();
+                                Console.WriteLine($"Successfully downloaded {s3Object.Key} ({ediPayload.Length} characters).");
+
+                                // Hand off the downloaded payload directly to your EdiFabric parsing pipeline
+                                try
+                                {
+                                    ProcessFiles(ediPayload);
+                                    Console.WriteLine($"Successfully processed EDI data for {s3Object.Key}.");
+                                }
+                                catch (Exception parserEx)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.Error.WriteLine($"[Parser Error] Failed parsing {s3Object.Key}: {parserEx.Message}");
+                                    Console.ResetColor();
+                                    // Optional: use 'continue;' to skip bad files and process the next one instead of crashing
+                                }
+                            }
+
+                            // Handle pagination token hooks if the bucket contains more than 1,000 files
+                            listRequest.ContinuationToken = listResponse.NextContinuationToken;
+
+                        } while (listResponse.IsTruncated ?? true); // Continue loop if more pages of files exist
+
+                        // OPTIONAL: We can also delete files after they're processed if desired, but for now we just log completion (they get overriden each time process runs)
+
+
+                        Console.WriteLine("\n[Pipeline Complete] All S3 EDI claim payloads processed successfully.");
                     }
                     catch (Exception ex)
                     {
@@ -95,18 +160,14 @@ namespace EDI837Ingestion.BusinessLayer
                     return;
                 }
             }
-
-            // Pass your streamlined payload string directly to your EdiFabric loops
-            ProcessFiles(ediPayload);
         }
 
-        private async Task<string> S3BucketSetup()
+        private async Task S3BucketSetup()
         {
             Console.WriteLine("[Mock Setup] Initializing local Moto S3 Bucket...");
             await _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = "edi-claims-storage" });
 
             // Sample raw EDI 837 payload text to seed your local Moto environment
-            string ediPayload = string.Empty;
             string sampleEdi = string.Empty;
             string filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? _config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
             if (File.Exists(filePath))
@@ -118,32 +179,26 @@ namespace EDI837Ingestion.BusinessLayer
             }
             byte[] ediBytes = Encoding.UTF8.GetBytes(sampleEdi);
 
+
+            //upload sample 1 to s3 bucket
             using var memoryStream = new MemoryStream(ediBytes);
             await _s3Client.PutObjectAsync(new PutObjectRequest
             {
                 BucketName = "edi-claims-storage",
-                Key = "claims/EDI837-sample.edi",
+                Key = "claims/EDI837-sample_1.edi",
                 InputStream = memoryStream
             });
-            Console.WriteLine("[Mock Setup] Sample EDI 837 data successfully pushed to local Moto storage.");
+            Console.WriteLine("[Mock Setup] Sample 1 EDI 837 data successfully pushed to local Moto storage.");
 
-            var getRequest = new GetObjectRequest
+            //upload sample 2 to s3 bucket
+            using var memoryStream2 = new MemoryStream(ediBytes);
+            await _s3Client.PutObjectAsync(new PutObjectRequest
             {
                 BucketName = "edi-claims-storage",
-                Key = "claims/EDI837-sample.edi"
-            };
-
-            // This hits Moto locally in DEBUG/MOCK mode, or real AWS in PRODUCTION mode
-            using var response = await _s3Client.GetObjectAsync(getRequest);
-            if (response != null)
-            {
-                using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
-
-                ediPayload = await reader.ReadToEndAsync();
-                Console.WriteLine("Successfully retrieved EDI payload from S3.");
-            }
-
-            return ediPayload;
+                Key = "claims/EDI837-sample_2.edi",
+                InputStream = memoryStream2
+            });
+            Console.WriteLine("[Mock Setup] Sample 2 EDI 837 data successfully pushed to local Moto storage.");
         }
 
         private void ProcessFiles(string ediPayload)
