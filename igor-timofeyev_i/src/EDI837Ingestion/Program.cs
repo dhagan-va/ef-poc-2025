@@ -16,7 +16,8 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-var useLocalMoto = bool.TryParse(Environment.GetEnvironmentVariable("AWS__UseLocalMoto"), out bool parsed);
+bool.TryParse(Environment.GetEnvironmentVariable("AWS__UseLocalMoto"), out bool parsed);
+bool useLocalMoto = parsed;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration((context, config) => {
         config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);

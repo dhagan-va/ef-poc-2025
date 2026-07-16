@@ -7,7 +7,8 @@
         "Default_Connection": "Server=Igor-Surface\\SQLEXPRESS;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;",
         "Edi837_PathWithFilename": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi",
         "AWS__UseLocalMoto": "true",
-        "AWS__MotoServiceUrl": "http://localhost:5000"
+        "AWS__MotoServiceUrl": "http://localhost:5000",
+        "UseLocalFileDirectory": "false"
       }
     }
   }

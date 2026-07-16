@@ -48,76 +48,16 @@ namespace EDI837Ingestion.BusinessLayer
                 Console.WriteLine("Downloading EDI files from S3...");
 
                 // --- AUTOMATED MOTO S3 SEEDING STEP ---
-                if (useLocalMoto)
+                bool.TryParse(Environment.GetEnvironmentVariable("UseLocalFileDirectory"), out bool parsed);
+                bool useLocalFileDirectory = parsed;
+                if (!useLocalFileDirectory)
                 {
                     try
                     {
                         //set up S3 bucket and seed it with sample EDI files for local testing
                         await S3BucketSetup();
-                        
-                        string bucketName = "edi-claims-storage";
-                        string prefix = "claims/";
-
-                        Console.WriteLine($"Querying S3 bucket '{bucketName}' for files under prefix '{prefix}'...");
-
-                        // Fetch the metadata index of all objects inside the "claims/" folder
-                        var listRequest = new ListObjectsV2Request
-                        {
-                            BucketName = bucketName,
-                            Prefix = prefix
-                        };
-
-                        ListObjectsV2Response listResponse;
-
-                        do
-                        {
-                            listResponse = await _s3Client.ListObjectsV2Async(listRequest);
-
-                            // Loop through every object discovered in the S3 registry index
-                            foreach (S3Object s3Object in listResponse.S3Objects)
-                            {
-                                // Skip the folder placeholder key itself if it exists
-                                if (s3Object.Key.EndsWith("/")) continue;
-
-                                Console.WriteLine($"\n--- Processing S3 Object: {s3Object.Key} ---");
-
-                                // Create a specific Get request dynamically for this iteration's key
-                                var getRequest = new GetObjectRequest
-                                {
-                                    BucketName = bucketName,
-                                    Key = s3Object.Key
-                                };
-
-                                using var response = await _s3Client.GetObjectAsync(getRequest);
-                                using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
-
-                                ediPayload = await reader.ReadToEndAsync();
-                                Console.WriteLine($"Successfully downloaded {s3Object.Key} ({ediPayload.Length} characters).");
-
-                                // Hand off the downloaded payload directly to your EdiFabric parsing pipeline
-                                try
-                                {
-                                    ProcessFiles(ediPayload);
-                                    Console.WriteLine($"Successfully processed EDI data for {s3Object.Key}.");
-                                }
-                                catch (Exception parserEx)
-                                {
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.Error.WriteLine($"[Parser Error] Failed parsing {s3Object.Key}: {parserEx.Message}");
-                                    Console.ResetColor();
-                                    // Optional: use 'continue;' to skip bad files and process the next one instead of crashing
-                                }
-                            }
-
-                            // Handle pagination token hooks if the bucket contains more than 1,000 files
-                            listRequest.ContinuationToken = listResponse.NextContinuationToken;
-
-                        } while (listResponse.IsTruncated ?? true); // Continue loop if more pages of files exist
-
-                        // OPTIONAL: We can also delete files after they're processed if desired, but for now we just log completion (they get overriden each time process runs)
-
-
-                        Console.WriteLine("\n[Pipeline Complete] All S3 EDI claim payloads processed successfully.");
+                        //read file from S3 bucket and process it
+                        await ProcessS3BucketFiles();
                     }
                     catch (Exception ex)
                     {
@@ -142,6 +82,21 @@ namespace EDI837Ingestion.BusinessLayer
                         }
                     }
                 }
+                //Process files from a folder instead of S3
+                //todo: add loop for multiple files in a folder, for now just one file
+                else
+                {
+                    Console.Error.WriteLine($"Processing file: {_filePath}");
+                    if (File.Exists(_filePath))
+                    {
+                        using (var ediStream = File.OpenRead(_filePath))
+                        {
+                            ediPayload = await File.ReadAllTextAsync(_filePath);
+                        }
+                        ProcessFiles(ediPayload);
+                    }
+                }
+
             }
             catch (AmazonS3Exception ex)
             {
@@ -160,6 +115,73 @@ namespace EDI837Ingestion.BusinessLayer
                     return;
                 }
             }
+        }
+
+        private async Task ProcessS3BucketFiles()
+        {
+            string bucketName = "edi-claims-storage";
+            string prefix = "claims/";
+
+            Console.WriteLine($"Querying S3 bucket '{bucketName}' for files under prefix '{prefix}'...");
+
+            // Fetch the metadata index of all objects inside the "claims/" folder
+            var listRequest = new ListObjectsV2Request
+            {
+                BucketName = bucketName,
+                Prefix = prefix
+            };
+
+            ListObjectsV2Response listResponse;
+
+            do
+            {
+                listResponse = await _s3Client.ListObjectsV2Async(listRequest);
+
+                // Loop through every object discovered in the S3 registry index
+                foreach (S3Object s3Object in listResponse.S3Objects)
+                {
+                    // Skip the folder placeholder key itself if it exists
+                    if (s3Object.Key.EndsWith("/")) continue;
+
+                    Console.WriteLine($"\n--- Processing S3 Object: {s3Object.Key} ---");
+
+                    // Create a specific Get request dynamically for this iteration's key
+                    var getRequest = new GetObjectRequest
+                    {
+                        BucketName = bucketName,
+                        Key = s3Object.Key
+                    };
+
+                    using var response = await _s3Client.GetObjectAsync(getRequest);
+                    using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
+
+                    var ediPayload = await reader.ReadToEndAsync();
+                    Console.WriteLine($"Successfully downloaded {s3Object.Key} ({ediPayload.Length} characters).");
+
+                    // Hand off the downloaded payload directly to your EdiFabric parsing pipeline
+                    try
+                    {
+                        ProcessFiles(ediPayload);
+                        Console.WriteLine($"Successfully processed EDI data for {s3Object.Key}.");
+                    }
+                    catch (Exception parserEx)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Error.WriteLine($"[Parser Error] Failed parsing {s3Object.Key}: {parserEx.Message}");
+                        Console.ResetColor();
+                        // Optional: use 'continue;' to skip bad files and process the next one instead of crashing
+                    }
+                }
+
+                // Handle pagination token hooks if the bucket contains more than 1,000 files
+                listRequest.ContinuationToken = listResponse.NextContinuationToken;
+
+            } while (listResponse.IsTruncated ?? true); // Continue loop if more pages of files exist
+
+            // OPTIONAL: We can also delete files after they're processed if desired, but for now we just log completion (they get overriden each time process runs)
+
+
+            Console.WriteLine("\n[Pipeline Complete] All S3 EDI claim payloads processed successfully.");
         }
 
         private async Task S3BucketSetup()
