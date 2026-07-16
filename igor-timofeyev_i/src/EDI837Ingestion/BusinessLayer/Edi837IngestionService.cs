@@ -1,4 +1,6 @@
-﻿using EDI837Ingestion.EF;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using EDI837Ingestion.EF;
 using EDI837Ingestion.EF.Entities;
 using EdiFabric.Core.Model.Edi;
 using EdiFabric.Core.Model.Edi.ErrorContexts;
@@ -13,55 +15,144 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Formats.Asn1.AsnWriter;
 using TS837P = EdiFabric.Templates.Hipaa5010.TS837P;
 
 namespace EDI837Ingestion.BusinessLayer
 {
     public class Edi837IngestionService : IEdi837IngestionService
     {
-        private readonly string _filePath;
+        private readonly IAmazonS3 _s3Client;
         private readonly AppDbContext _dbContext;
+        private readonly string _filePath;
+        private readonly IConfiguration _config;
 
-        public Edi837IngestionService(AppDbContext dbContext, IConfiguration config)
+        public Edi837IngestionService(IAmazonS3 s3Client, AppDbContext dbContext, IConfiguration config)
         {
             //env variable, or some other default fallback path
             _filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
-            //_filePath = config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
             _dbContext = dbContext;
+            _s3Client = s3Client;
+            _config = config;
         }
 
-        public async Task IngestEdi837()
+        public async Task IngestEdi837(bool useLocalMoto)
         {
             string ediPayload = string.Empty;
 
-            // 1. Detect if the script is being piped via Python's Standard Input
-            if (Console.IsInputRedirected)
+            try
             {
-                using (var reader = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8))
+                Console.WriteLine("Downloading EDI file from S3...");
+
+                // --- AUTOMATED MOTO S3 SEEDING STEP ---
+                if (useLocalMoto)
                 {
-                    ediPayload = await reader.ReadToEndAsync();
+                    try
+                    {
+                        ediPayload = await S3BucketSetup();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.Error.WriteLine($"[Mock Warning] Failed to seed Moto S3 container. Ensure Docker container is running! Details: {ex.Message}");
+                        Console.ResetColor();
+
+                        // Fallback: If running locally without S3 simulation, look for a local file argument
+                        Console.Error.WriteLine($"S3 Storage Operation Failed: {ex.Message}, trying to find a local file");
+                        if (File.Exists(_filePath))
+                        {
+                            using (var ediStream = File.OpenRead(_filePath))
+                            {
+                                ediPayload = await File.ReadAllTextAsync(_filePath);
+                            }
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
+
+                            return;
+                        }
+                    }
                 }
             }
-            // 2. Fallback: If running locally without Python simulation, look for a local file argument
-            else if (File.Exists(_filePath))
+            catch (AmazonS3Exception ex)
             {
-                using (var ediStream = File.OpenRead(_filePath))
+                Console.Error.WriteLine($"S3 Storage Operation Failed: {ex.Message}, trying to find a local file");
+                if (File.Exists(_filePath))
                 {
-                    ediPayload = await File.ReadAllTextAsync(_filePath);
+                    using (var ediStream = File.OpenRead(_filePath))
+                    {
+                        ediPayload = await File.ReadAllTextAsync(_filePath);
+                    }
                 }
-            }
-            else
-            {
-                Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
+                else
+                {
+                    Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
+
+                    return;
+                }
             }
 
+            // Pass your streamlined payload string directly to your EdiFabric loops
+            ProcessFiles(ediPayload);
+        }
+
+        private async Task<string> S3BucketSetup()
+        {
+            Console.WriteLine("[Mock Setup] Initializing local Moto S3 Bucket...");
+            await _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = "edi-claims-storage" });
+
+            // Sample raw EDI 837 payload text to seed your local Moto environment
+            string ediPayload = string.Empty;
+            string sampleEdi = string.Empty;
+            string filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? _config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
+            if (File.Exists(filePath))
+            {
+                using (var ediStream = File.OpenRead(filePath))
+                {
+                    sampleEdi = await File.ReadAllTextAsync(filePath);
+                }
+            }
+            byte[] ediBytes = Encoding.UTF8.GetBytes(sampleEdi);
+
+            using var memoryStream = new MemoryStream(ediBytes);
+            await _s3Client.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = "edi-claims-storage",
+                Key = "claims/EDI837-sample.edi",
+                InputStream = memoryStream
+            });
+            Console.WriteLine("[Mock Setup] Sample EDI 837 data successfully pushed to local Moto storage.");
+
+            var getRequest = new GetObjectRequest
+            {
+                BucketName = "edi-claims-storage",
+                Key = "claims/EDI837-sample.edi"
+            };
+
+            // This hits Moto locally in DEBUG/MOCK mode, or real AWS in PRODUCTION mode
+            using var response = await _s3Client.GetObjectAsync(getRequest);
+            if (response != null)
+            {
+                using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
+
+                ediPayload = await reader.ReadToEndAsync();
+                Console.WriteLine("Successfully retrieved EDI payload from S3.");
+            }
+
+            return ediPayload;
+        }
+
+        private void ProcessFiles(string ediPayload)
+        {
+            Console.WriteLine($"Processing EDI content length: {ediPayload.Length} characters.");
 
             try
             {
                 using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(ediPayload)))
-                //using (var ediStream = File.OpenRead(_filePath))
                 {
                     using (var ediReader = new X12Reader(stream, "EdiFabric.Templates.Hipaa"))
                     {
@@ -78,7 +169,7 @@ namespace EDI837Ingestion.BusinessLayer
                         string gsControlNum = string.Empty;
                         string gsVersionCode = string.Empty;
 
-                    
+
                         // Configure the SNIP validation settings explicitly
                         var snipSettings = new ValidationSettings
                         {
@@ -98,30 +189,30 @@ namespace EDI837Ingestion.BusinessLayer
 
                             if (!transaction.HasErrors)
                             {
-                                    var isaHeader = ediItems.OfType<ISA>().FirstOrDefault();
-                                    var gsHeader = ediItems.OfType<GS>().FirstOrDefault();
+                                var isaHeader = ediItems.OfType<ISA>().FirstOrDefault();
+                                var gsHeader = ediItems.OfType<GS>().FirstOrDefault();
 
-                                    // 1. EdiFabric exposes control segments directly via the Item property
-                                    if (isaHeader is not null)
-                                    {
-                                        sender = isaHeader.InterchangeSenderID_6;
-                                        receiver = isaHeader.InterchangeReceiverID_8;
-                                        controlNum = isaHeader.InterchangeControlNumber_13;
-                                    }
+                                // 1. EdiFabric exposes control segments directly via the Item property
+                                if (isaHeader is not null)
+                                {
+                                    sender = isaHeader.InterchangeSenderID_6;
+                                    receiver = isaHeader.InterchangeReceiverID_8;
+                                    controlNum = isaHeader.InterchangeControlNumber_13;
+                                }
 
-                                    // 2. NEW: Capture GS Functional Group Header Values
-                                    if (gsHeader is not null)
-                                    {
-                                        gsControlNum = gsHeader.GroupControlNumber_6;
-                                        gsVersionCode = gsHeader.VersionAndRelease_8;
-                                    }
+                                // 2. NEW: Capture GS Functional Group Header Values
+                                if (gsHeader is not null)
+                                {
+                                    gsControlNum = gsHeader.GroupControlNumber_6;
+                                    gsVersionCode = gsHeader.VersionAndRelease_8;
+                                }
 
-                                    InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
+                                InterchangeControl entityRecord = MapEdiToEntities(transaction, sender, receiver, controlNum, gsControlNum, gsVersionCode);
 
-                                    _dbContext.InterchangeControls.Add(entityRecord);
-                                    _dbContext.SaveChanges();
+                                _dbContext.InterchangeControls.Add(entityRecord);
+                                _dbContext.SaveChanges();
 
-                                    Console.WriteLine("Success: Ingestion complete.");
+                                Console.WriteLine("Success: Ingestion complete.");
                             }
                             // Check if structural or validation errors occurred during parsing
                             else
@@ -140,8 +231,7 @@ namespace EDI837Ingestion.BusinessLayer
                 Console.WriteLine($"An error occurred while ingesting EDI 837: {ex.Message}");
             }
         }
-
-        public InterchangeControl MapEdiToEntities(TS837P transaction, string sender, string receiver, string controlNum, string gsControlNum, string gsVersionCode)
+        private InterchangeControl MapEdiToEntities(TS837P transaction, string sender, string receiver, string controlNum, string gsControlNum, string gsVersionCode)
         {
             // 1. Map Interchange Control (ISA/IEA Layer)
             var interchange = new InterchangeControl

@@ -1,8 +1,10 @@
 // csharp
+using Amazon.S3;
 using EDI837Ingestion.BusinessLayer;
 using EDI837Ingestion.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Moq;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -49,8 +51,9 @@ namespace TestProject
                     .AddInMemoryCollection(configDict)
                     .Build();
 
+                var mockS3Client = new Mock<IAmazonS3>();
                 var dbContext = CreateInMemoryAppDbContext();
-                var service = new Edi837IngestionService(dbContext, config);
+                var service = new Edi837IngestionService(mockS3Client.Object, dbContext, config);
 
                 // Act - Verify file can be read
                 using (var fileStream = File.OpenRead(tempFile))
@@ -85,10 +88,11 @@ namespace TestProject
                 .AddInMemoryCollection(configDict)
                 .Build();
 
+            var mockS3Client = new Mock<IAmazonS3>();
             var dbContext = CreateInMemoryAppDbContext();
 
             // Act
-            var service = new Edi837IngestionService(dbContext, config);
+            var service = new Edi837IngestionService(mockS3Client.Object, dbContext, config);
 
             // Assert - Service is created
             Assert.NotNull(service);
