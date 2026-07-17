@@ -82,11 +82,35 @@ This is a PoC; some pieces are intentionally not built yet:
 
 - Persisting the **fuller ISA envelope** (qualifiers, dates, usage indicator) — the parser captures them;
   the ledger entity stores only a subset.
-- **SNIP validation** (WEDI validation levels) and anywhere to store validation results — see the design
-  notes; it's additive and would also require relaxing the "≥1 transaction set" invariant on
-  `IngestedInterchange.From` so that rejected/parse-failed files can be recorded.
+- **Persisting validation results.** SNIP validation itself is now enforced at ingestion (see
+  [SNIP validation](#snip-validation) below), but there is still nowhere to *store* validation outcomes,
+  and recording a rejected/parse-failed file would require relaxing the "≥1 transaction set" invariant on
+  `IngestedInterchange.From`.
 
 ---
+
+## SNIP validation
+
+Each parsed transaction set is validated against a configurable **WEDI SNIP** level before it is
+persisted, using EdiFabric's own template validation. The level is set with `EdiFabric:ValidationLevel`
+(bound to `EdiFabricOptions.ValidationLevel`) and maps one-to-one onto EdiFabric's `ValidationLevel`:
+
+| Config value | SNIP type | Checks |
+| --- | --- | --- |
+| `None` | — | validation disabled |
+| `Snip1Syntax` | 1 | EDI syntax integrity |
+| `Snip2LimitsAndCodes` | 2 | HIPAA IG element limits + code sets |
+| `Snip3Balancing` | 3 | balancing (amount arithmetic) |
+| `Snip4InterSegment` | 4 | inter-segment situational rules |
+
+Each level is cumulative. The default in `appsettings.json` is `Snip2LimitsAndCodes` (a common
+clearinghouse baseline). SNIP types 5–7 need external reference data or payer companion guides and are
+out of scope.
+
+A file that fails validation at the configured level is a **deterministic (poison) failure** — a retry
+would fail identically — so it is routed straight to the **dead-letter queue** and **not persisted**,
+alongside the existing unparseable/empty-interchange poison cases. Validation runs after the content-hash
+dedup check, so a resend of an already-ingested (already-valid) file is not re-validated.
 
 ## Getting started
 
@@ -186,8 +210,8 @@ Common workflows:
 | Combined unit + integration coverage | `./build.sh CoverageAll` (needs Docker) | both suites collected + merged into one `coverage/report` |
 | View the coverage report in a browser | `./build.sh ServeCoverage` | serves `coverage/report` at http://localhost:5050 (rooted so index.html resolves) |
 
-The build definition is `nuke/Build.cs`; `Test` and `IntegrationTest` are split because the former
-hits the EdiFabric license quirk and the latter needs a running Docker engine for Testcontainers.
+The build definition is `nuke/Build.cs`; `Test` and `IntegrationTest` are split because the latter needs
+a running Docker engine for Testcontainers.
 
 **Prerequisites per target.** The build project itself needs only the .NET SDK. Beyond that: the
 Docker targets need a running Docker engine; `Seed` needs the AWS CLI on your PATH; and the coverage
@@ -237,8 +261,9 @@ as an **environment variable** (`EdiFabric__SerialKey`), typically sourced from 
 store (e.g. GitHub Actions secrets, AWS Secrets Manager).
 
 > **Note:** because `SerialKey.Set(...)` validates the key over the network, the CI runner needs
-> **outbound network access** to EdiFabric's licensing service in addition to the secret — otherwise the
-> parser tests fail with "The serial key is invalid!" even when the key is correct.
+> **outbound network access** to EdiFabric's licensing service in addition to the secret. See
+> [EdiFabric license under a test host](#edifabric-license-under-a-test-host) for why the licensed tests
+> self-warm the token cache so they pass on the first run.
 
 ## Testing
 
@@ -247,3 +272,23 @@ dotnet test
 ```
 
 Integration tests under `integration-tests/` use Testcontainers and require a running Docker engine.
+
+### EdiFabric license under a test host
+
+Any test that parses or validates an 837 (the `[Collection("EdiFabric")]` parser/SNIP/persistence tests
+and the integration tests) needs the EdiFabric serial key, resolved from user-secrets (dev) or
+`EdiFabric__SerialKey` (CI). The runner also needs outbound network access to EdiFabric's licensing
+(Auth) API.
+
+EdiFabric persists/validates its license token through .NET **`IsolatedStorage`**. A test host — Rider's
+runner or `dotnet test`'s VSTest host — can *read* that token cache but cannot reliably perform the
+first-time *write* on a **cold cache**; the write surfaces (misleadingly) as *"the serial key is
+invalid"*, so the first run on a fresh machine used to fail and only pass on a rerun. A normal console
+process writes the cache fine.
+
+The license fixture (`EdiFabricLicenseFixture` → `LicenseWarmer.EnsureLicensed`, in
+`tools/EdiFabricLicenseWarmer`) handles this transparently: it applies the license in-process when the
+cache is warm (the common case), and on a cold cache it warms the cache in a short-lived child console
+process first, then reads it. So `dotnet test` and Rider are reliable from the first run — a cold first
+run just takes a few extra seconds while the warmer runs. The token stays valid for ~30 days, after
+which the next cold run re-warms automatically.

@@ -71,7 +71,7 @@ class Build : NukeBuild
             .EnableNoRestore()));
 
     Target Test => _ => _
-        .Description("Run the unit tests. NOTE: EdiFabric parser tests can fail under 'dotnet test' due to a license-key quirk - see the edifabric-license-testing notes.")
+        .Description("Run the unit tests. The EdiFabric-licensed tests self-warm the license token cache (see the README's 'EdiFabric license under a test host'), so they pass on a cold first run.")
         .DependsOn(Compile)
         .Executes(() => DotNetTest(s => s
             .SetProjectFile(TestsProject)

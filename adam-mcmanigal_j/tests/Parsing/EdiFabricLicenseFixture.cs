@@ -1,5 +1,4 @@
-using Edi837Ingestion.Configuration;
-using Microsoft.Extensions.Configuration;
+using Edi837Ingestion.LicenseWarmer;
 
 namespace test.Parsing;
 
@@ -9,22 +8,13 @@ namespace test.Parsing;
 /// environment variable (CI) and fails fast if absent — parsing cannot run unlicensed.
 /// </summary>
 /// <remarks>
-/// Configuration is built explicitly against this assembly rather than via
-/// <see cref="AppConfiguration.Build"/>, because under <c>dotnet test</c> the entry
-/// assembly is the test host (which carries no UserSecretsId), so the tests' user-secrets
-/// would otherwise not be found.
+/// Applying the license reads EdiFabric's isolated-storage token cache, which a test host (Rider's
+/// runner or VSTest) can read but cannot reliably write the first time. <see cref="LicenseWarmer"/>
+/// handles that: it applies in-process when the cache is warm and otherwise warms it in a short-lived
+/// child console process first, so a cold cache no longer fails the first run. It resolves the key from
+/// the shared user-secrets (dev) or the <c>EdiFabric__SerialKey</c> environment variable (CI).
 /// </remarks>
 public sealed class EdiFabricLicenseFixture
 {
-    public EdiFabricLicenseFixture()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddUserSecrets(typeof(EdiFabricLicenseFixture).Assembly, optional: true)
-            .AddEnvironmentVariables()
-            .Build();
-
-        // Reuses the app's validation (throws a clear InvalidOperationException if missing)
-        // and the same license-application path the app uses at startup.
-        EdiFabricLicense.Apply(configuration.GetEdiFabricOptions());
-    }
+    public EdiFabricLicenseFixture() => LicenseWarmer.EnsureLicensed();
 }

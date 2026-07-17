@@ -1,30 +1,19 @@
-using Edi837Ingestion.Configuration;
-using Microsoft.Extensions.Configuration;
+using Edi837Ingestion.LicenseWarmer;
 
 namespace integration.Fixtures;
 
 /// <summary>
 /// Applies the EdiFabric license once before any ingestion test parses an 837. The key is read from
 /// the shared user-secrets (dev) or the <c>EdiFabric__SerialKey</c> environment variable (CI) and
-/// fails fast if absent — parsing cannot run unlicensed. Mirrors the unit-test project's fixture; the
-/// integration project carries the same <c>UserSecretsId</c>, so it resolves the same stored key.
+/// fails fast if absent — parsing cannot run unlicensed.
 /// </summary>
 /// <remarks>
-/// Configuration is built explicitly against this assembly rather than via
-/// <see cref="AppConfiguration.Build"/>, because under <c>dotnet test</c> the entry assembly is the
-/// test host (which carries no UserSecretsId), so the shared user-secrets would otherwise not be found.
-/// EdiFabric's <c>SerialKey.Set</c> is global and validates over the network, so it is applied exactly
+/// Delegates to <see cref="LicenseWarmer"/>, which applies the license in-process when EdiFabric's
+/// isolated-storage token cache is warm and otherwise warms it in a short-lived child console process
+/// first — a test host can read that cache but cannot reliably write it the first time. Applied exactly
 /// once through this single collection fixture rather than per test class.
 /// </remarks>
 public sealed class EdiFabricLicenseFixture
 {
-    public EdiFabricLicenseFixture()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddUserSecrets(typeof(EdiFabricLicenseFixture).Assembly, optional: true)
-            .AddEnvironmentVariables()
-            .Build();
-
-        EdiFabricLicense.Apply(configuration.GetEdiFabricOptions());
-    }
+    public EdiFabricLicenseFixture() => LicenseWarmer.EnsureLicensed();
 }
