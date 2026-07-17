@@ -5,10 +5,11 @@
       "commandLineArgs": "--verbose --mode local",
       "environmentVariables": {
         "Default_Connection": "Server=Igor-Surface\\SQLEXPRESS;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;",
-        "Edi837_PathWithFilename": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi",
+        "Edi837_Path": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples",
         "AWS__UseLocalMoto": "true",
         "AWS__MotoServiceUrl": "http://localhost:5000",
-        "UseLocalFileDirectory": "false"
+        "UseLocalFileDirectory": "false",
+        "FileSearchPattern": "EDI837*"
       }
     }
   }

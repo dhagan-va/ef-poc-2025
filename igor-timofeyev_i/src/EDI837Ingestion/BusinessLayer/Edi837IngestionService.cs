@@ -33,7 +33,7 @@ namespace EDI837Ingestion.BusinessLayer
         public Edi837IngestionService(IAmazonS3 s3Client, AppDbContext dbContext, IConfiguration config)
         {
             //env variable, or some other default fallback path
-            _filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
+            _filePath = Environment.GetEnvironmentVariable("Edi837_Path") ?? config["FilePaths:Edi837Path"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples";
             _dbContext = dbContext;
             _s3Client = s3Client;
             _config = config;
@@ -41,17 +41,16 @@ namespace EDI837Ingestion.BusinessLayer
 
         public async Task IngestEdi837(bool useLocalMoto)
         {
-            string ediPayload = string.Empty;
-
             try
             {
-                Console.WriteLine("Downloading EDI files from S3...");
-
-                // --- AUTOMATED MOTO S3 SEEDING STEP ---
                 bool.TryParse(Environment.GetEnvironmentVariable("UseLocalFileDirectory"), out bool parsed);
                 bool useLocalFileDirectory = parsed;
+
+                //Process files from S3
                 if (!useLocalFileDirectory)
                 {
+                    Console.WriteLine("Downloading EDI files from S3...");
+
                     try
                     {
                         //set up S3 bucket and seed it with sample EDI files for local testing
@@ -67,52 +66,57 @@ namespace EDI837Ingestion.BusinessLayer
 
                         // Fallback: If running locally without S3 simulation, look for a local file argument
                         Console.Error.WriteLine($"S3 Storage Operation Failed: {ex.Message}, trying to find a local file");
-                        if (File.Exists(_filePath))
-                        {
-                            using (var ediStream = File.OpenRead(_filePath))
-                            {
-                                ediPayload = await File.ReadAllTextAsync(_filePath);
-                            }
-                        }
-                        else
-                        {
-                            Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
 
-                            return;
-                        }
+                        await ProcessFileSystemFiles();
+                        
                     }
                 }
                 //Process files from a folder instead of S3
-                //todo: add loop for multiple files in a folder, for now just one file
                 else
                 {
-                    Console.Error.WriteLine($"Processing file: {_filePath}");
-                    if (File.Exists(_filePath))
+                    try
                     {
-                        using (var ediStream = File.OpenRead(_filePath))
-                        {
-                            ediPayload = await File.ReadAllTextAsync(_filePath);
-                        }
-                        ProcessFiles(ediPayload);
+                        await ProcessFileSystemFiles();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"File Processing Operation Failed: {ex.Message}");
                     }
                 }
-
             }
-            catch (AmazonS3Exception ex)
+            catch (Exception ex)
             {
-                Console.Error.WriteLine($"S3 Storage Operation Failed: {ex.Message}, trying to find a local file");
-                if (File.Exists(_filePath))
-                {
-                    using (var ediStream = File.OpenRead(_filePath))
-                    {
-                        ediPayload = await File.ReadAllTextAsync(_filePath);
-                    }
-                }
-                else
-                {
-                    Console.Error.WriteLine("Error: No EDI input detected via stream piping or local file arguments.");
+                Console.Error.WriteLine($"Ingestion Failed: {ex.Message}");
 
+                await ProcessFileSystemFiles();
+            }
+        }
+
+        private async Task ProcessFileSystemFiles()
+        {
+            Console.Error.WriteLine($"Processing file: {_filePath}");
+            if (Directory.Exists(_filePath))
+            {
+                string ediPayload = string.Empty;
+                string searchPattern = Environment.GetEnvironmentVariable("FileSearchPattern") ?? "EDI837*";
+
+                //find files to process
+                string[] discoveredFiles = Directory.GetFiles(_filePath, searchPattern);
+
+                if (discoveredFiles.Length == 0)
+                {
+                    Console.Error.WriteLine($"Error: No files found matching '{searchPattern}' inside {_filePath}");
                     return;
+                }
+
+                Console.WriteLine($"Discovered {discoveredFiles.Length} file(s) for ingestion.");
+
+                //loop thru files and process
+                foreach (string file in discoveredFiles)
+                {
+                    ediPayload = await File.ReadAllTextAsync(file);
+                    IngestFiles(ediPayload);
+                    Console.WriteLine($"Successfully completed EdiFabric parsing for {file}.");
                 }
             }
         }
@@ -161,7 +165,7 @@ namespace EDI837Ingestion.BusinessLayer
                     // Hand off the downloaded payload directly to your EdiFabric parsing pipeline
                     try
                     {
-                        ProcessFiles(ediPayload);
+                        IngestFiles(ediPayload);
                         Console.WriteLine($"Successfully processed EDI data for {s3Object.Key}.");
                     }
                     catch (Exception parserEx)
@@ -191,13 +195,12 @@ namespace EDI837Ingestion.BusinessLayer
 
             // Sample raw EDI 837 payload text to seed your local Moto environment
             string sampleEdi = string.Empty;
-            string filePath = Environment.GetEnvironmentVariable("Edi837_PathWithFilename") ?? _config["FilePaths:Edi837PathWithFilename"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples\\EDI837-sample.edi";
-            if (File.Exists(filePath))
+            string filePath = Environment.GetEnvironmentVariable("Edi837_Path") ?? _config["FilePaths:Edi837Path"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples";
+            string sampleFile = Path.Combine(filePath, "EDI837-sample.edi");
+
+            if (!string.IsNullOrEmpty(sampleFile) && File.Exists(sampleFile))
             {
-                using (var ediStream = File.OpenRead(filePath))
-                {
-                    sampleEdi = await File.ReadAllTextAsync(filePath);
-                }
+                sampleEdi = await File.ReadAllTextAsync(sampleFile);
             }
             byte[] ediBytes = Encoding.UTF8.GetBytes(sampleEdi);
 
@@ -223,7 +226,7 @@ namespace EDI837Ingestion.BusinessLayer
             Console.WriteLine("[Mock Setup] Sample 2 EDI 837 data successfully pushed to local Moto storage.");
         }
 
-        private void ProcessFiles(string ediPayload)
+        private void IngestFiles(string ediPayload)
         {
             Console.WriteLine($"Processing EDI content length: {ediPayload.Length} characters.");
 
