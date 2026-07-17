@@ -1,5 +1,0 @@
-boto3
-aioboto3
-moto[server]
-pytest
-pytest-asyncio

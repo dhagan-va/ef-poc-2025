@@ -8,7 +8,7 @@
         "Edi837_Path": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples",
         "AWS__UseLocalMoto": "true",
         "AWS__MotoServiceUrl": "http://localhost:5000",
-        "UseLocalFileDirectory": "false",
+        "UseLocalFileDirectory": "true",
         "FileSearchPattern": "EDI837*"
       }
     }
