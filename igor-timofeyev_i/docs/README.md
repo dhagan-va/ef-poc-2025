@@ -25,17 +25,20 @@ Provide connection string and EDI file path in appsettings.json or environment v
 
 Example appsettings.json:
 ```json
-{
-  "ConnectionStrings": {
-	"DefaultConnection": "Server=<your SQLEXPRESS instance>;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;"
+"ConnectionStrings": {
+    "DefaultConnection": "Server=Igor-Surface\\SQLEXPRESS;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "FilePaths": {
-	"Edi837PathWithFilename": "<your edi 837 filepath>"
+    "Edi837_Path": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples"
   }
-}
 ```
 
-Environment variable names (if used): `ConnectionStrings__DefaultConnection` and `FilePaths__Edi837PathWithFilename`.
+Environment variable names (if used): `"Default_Connection,
+        "Edi837_Path",
+        "AWS__UseLocalMoto",
+        "AWS__MotoServiceUrl",
+        "UseLocalFileDirectory",
+        "FileSearchPattern"`.
 
 
 ## Build & Run (local)
@@ -99,6 +102,23 @@ SELECT * FROM dbo.InterchangeControls ORDER BY 1 DESC;
 - Persist raw EDI bytes and parsed JSON for replay.
 - Implement idempotency using interchange/group/transaction control numbers.
 - Keep database changes via migrations; test migrations in a dev DB first.
+
+# AWS S3 & Local Mocking Architecture
+The system supports dual-mode ingestion strategies via Amazon S3 file streams. When running locally, it leverages Moto to emulate a production AWS infrastructure completely in-memory without connecting to live cloud datacenters.
+
+## Local Mocking Setup (Zero-Python Moto Server)
+Spin up the detached local mock engine container matching the application ports via PowerShell:
+docker run --name moto-local -d -p 5000:5000 motoserver/moto
+
+Useful Container Cleanup Commands:
+# Stop and delete the container (completely wipes mock data caches)
+docker stop moto-local; docker rm moto-local
+
+## Ingestion Flow & Cloud Logic
+- Automated Seeding: On startup, if useLocalMoto is evaluated, Program.cs intercepts the connection, creates the target edi-claims-storage bucket, and pushes mock EDI transaction files into Moto.
+- Paginated Retrieval Loop: The service makes an initial metadata list call using ListObjectsV2Async. It utilizes a standardized do-while loop monitoring the IsTruncated token flag to gracefully handle pagination thresholds above 1,000 files.
+- Sequential Processing: Files matching the prefix pattern are downloaded using isolated stream buffers, passed into EdiFabric loops one by one, and tracking pointers are stored.
+
 
 ## Contributing
 - Create a branch for your feature/fix.

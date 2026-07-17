@@ -121,7 +121,7 @@ namespace EDI837Ingestion.BusinessLayer
             }
         }
 
-        private async Task ProcessS3BucketFiles()
+        public async Task ProcessS3BucketFiles()
         {
             string bucketName = "edi-claims-storage";
             string prefix = "claims/";
