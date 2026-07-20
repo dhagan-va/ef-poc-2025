@@ -92,18 +92,19 @@ This is a PoC; some pieces are intentionally not built yet:
 ## SNIP validation
 
 Each parsed transaction set is validated against a configurable **WEDI SNIP** level before it is
-persisted, using EdiFabric's own template validation. The level is set with `EdiFabric:ValidationLevel`
-(bound to `EdiFabricOptions.ValidationLevel`) and maps one-to-one onto EdiFabric's `ValidationLevel`:
+persisted, using EdiFabric's own template validation. The level is set with `EdiFabric:ValidationLevel`,
+which binds directly to EdiFabric's `ValidationLevel` enum (so the config values are EdiFabric's own
+member names). Omitting the key (or `null`) disables validation.
 
 | Config value | SNIP type | Checks |
 | --- | --- | --- |
-| `None` | — | validation disabled |
-| `Snip1Syntax` | 1 | EDI syntax integrity |
-| `Snip2LimitsAndCodes` | 2 | HIPAA IG element limits + code sets |
-| `Snip3Balancing` | 3 | balancing (amount arithmetic) |
-| `Snip4InterSegment` | 4 | inter-segment situational rules |
+| *(omitted / null)* | — | validation disabled |
+| `SyntaxOnly_SNIP1` | 1 | EDI syntax integrity |
+| `LimitsAndCodes_SNIP2` | 2 | HIPAA IG element limits + code sets |
+| `Balancing_SNIP3` | 3 | balancing (amount arithmetic) |
+| `InterSegment_SNIP4` | 4 | inter-segment situational rules |
 
-Each level is cumulative. The default in `appsettings.json` is `Snip2LimitsAndCodes` (a common
+Each level is cumulative. The default in `appsettings.json` is `LimitsAndCodes_SNIP2` (a common
 clearinghouse baseline). SNIP types 5–7 need external reference data or payer companion guides and are
 out of scope.
 

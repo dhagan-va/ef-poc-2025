@@ -24,6 +24,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\src\src.csproj" />
+      <ProjectReference Include="..\tools\EdiFabricLicenseWarmer\EdiFabricLicenseWarmer.csproj" />
     </ItemGroup>
 
     <!-- Integration tests share the app's base appsettings.json (linked from the repo root) and layer

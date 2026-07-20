@@ -1,3 +1,5 @@
+using EdiFabric.Core.Model.Edi;
+
 namespace Edi837Ingestion.Configuration;
 
 /// <summary>
@@ -13,4 +15,12 @@ public sealed class EdiFabricOptions
 
     /// <summary>The EdiFabric serial / license key.</summary>
     public string SerialKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The WEDI SNIP validation level enforced on each parsed 837 transaction set at ingestion, bound
+    /// by member name from <c>EdiFabric:ValidationLevel</c> (e.g. <c>LimitsAndCodes_SNIP2</c>). EdiFabric
+    /// covers SNIP levels 1–4. <see langword="null"/> (the key absent, or explicitly null) disables
+    /// validation. A file that fails validation at this level is dead-lettered rather than persisted.
+    /// </summary>
+    public ValidationLevel? ValidationLevel { get; set; }
 }

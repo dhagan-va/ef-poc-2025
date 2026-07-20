@@ -5,6 +5,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using Edi837Ingestion.Parsing;
 using Edi837Ingestion.Persistence;
+using Edi837Ingestion.Validation;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,10 +22,11 @@ namespace Edi837Ingestion.Ingestion;
 /// Failures are split by whether a retry could ever succeed. A transient failure (an S3 hiccup, a
 /// database blip) leaves the message on the queue, so SQS redelivers it and, past
 /// <c>maxReceiveCount</c>, redrives it to the dead-letter queue. A deterministic failure — an
-/// unparseable message body or a file that is not a valid 837 interchange — is <em>poison</em>: no
-/// number of retries would change the outcome, so it is copied straight to the dead-letter queue and
-/// acked off the work queue immediately, rather than reflowed <c>maxReceiveCount</c> times first.
-/// Either way one bad file cannot block the queue.
+/// unparseable message body, a file that is not a valid 837 interchange, or one that fails the
+/// configured SNIP validation level — is <em>poison</em>: no number of retries would change the
+/// outcome, so it is copied straight to the dead-letter queue and acked off the work queue
+/// immediately, rather than reflowed <c>maxReceiveCount</c> times first. Either way one bad file
+/// cannot block the queue.
 /// </para>
 /// </summary>
 /// <remarks>
@@ -43,15 +45,14 @@ public sealed class IngestionService(
     IAmazonSQS sqs,
     IAmazonS3 s3,
     Edi837Parser parser,
+    Edi837Validator validator,
     IDbContextFactory<Edi837DbContext> contextFactory,
-    string queueUrl,
-    string deadLetterQueueUrl,
-    ILogger<IngestionService> logger,
-    int receiveWaitTimeSeconds = 20)
+    IngestionOptions options,
+    ILogger<IngestionService> logger)
 {
-    // SQS caps a single receive at 10 messages. receiveWaitTimeSeconds long-polls so an idle queue does
-    // not busy-spin (the 20s max in production); the Moto integration env sets it to 0 so an empty
-    // receive returns immediately rather than long-polling.
+    // SQS caps a single receive at 10 messages. options.ReceiveWaitTimeSeconds long-polls so an idle
+    // queue does not busy-spin (the 20s max in production); the Moto integration env sets it to 0 so an
+    // empty receive returns immediately rather than long-polling.
     private const int MaxMessagesPerReceive = 10;
 
     // SQL Server error numbers for a unique-index / unique-constraint violation.
@@ -69,9 +70,9 @@ public sealed class IngestionService(
         var response = await sqs.ReceiveMessageAsync(
             new ReceiveMessageRequest
             {
-                QueueUrl = queueUrl,
+                QueueUrl = options.QueueUrl,
                 MaxNumberOfMessages = MaxMessagesPerReceive,
-                WaitTimeSeconds = receiveWaitTimeSeconds,
+                WaitTimeSeconds = options.ReceiveWaitTimeSeconds,
             },
             cancellationToken);
 
@@ -96,7 +97,7 @@ public sealed class IngestionService(
                 duplicates += outcome.Duplicates;
 
                 // Ack only once every record in the message has been handled without error.
-                await sqs.DeleteMessageAsync(queueUrl, message.ReceiptHandle, cancellationToken);
+                await sqs.DeleteMessageAsync(options.QueueUrl, message.ReceiptHandle, cancellationToken);
             }
             catch (PoisonMessageException poison)
             {
@@ -214,6 +215,15 @@ public sealed class IngestionService(
             return IngestOutcome.Duplicate;
         }
 
+        // Enforce the configured SNIP validation level before persisting. A file that fails validation
+        // is structurally deficient and would fail identically on every retry, so it is poison: it is
+        // dead-lettered rather than reflowed or written as a bad row. Runs after the dedupe check so a
+        // resend of an already-ingested (and therefore already-valid) file is not re-validated.
+        var validation = validator.Validate(parsed);
+        if (!validation.IsValid)
+            throw new PoisonMessageException(
+                $"Object s3://{bucket}/{key} failed SNIP validation ({validator.Level}): {validation.Summary}");
+
         IngestedInterchange interchange;
         try
         {
@@ -284,9 +294,9 @@ public sealed class IngestionService(
             message.MessageId, reason.Message);
 
         await sqs.SendMessageAsync(
-            new SendMessageRequest { QueueUrl = deadLetterQueueUrl, MessageBody = message.Body },
+            new SendMessageRequest { QueueUrl = options.DeadLetterQueueUrl, MessageBody = message.Body },
             cancellationToken);
-        await sqs.DeleteMessageAsync(queueUrl, message.ReceiptHandle, cancellationToken);
+        await sqs.DeleteMessageAsync(options.QueueUrl, message.ReceiptHandle, cancellationToken);
     }
 
     private enum IngestOutcome
@@ -296,10 +306,12 @@ public sealed class IngestionService(
     }
 
     /// <summary>
-    /// Marks a deterministic ("poison") ingestion failure — an unparseable message body or a file that
-    /// is not a valid 837 interchange — that no retry could resolve, so the message is dead-lettered
-    /// immediately rather than reflowed. Transient failures are represented by their original exception.
+    /// Marks a deterministic ("poison") ingestion failure — an unparseable message body, a file that is
+    /// not a valid 837 interchange, or one that fails SNIP validation — that no retry could resolve, so
+    /// the message is dead-lettered immediately rather than reflowed. Transient failures are represented
+    /// by their original exception. <paramref name="innerException"/> is optional: a parse/read failure
+    /// carries the underlying exception, a validation failure has none.
     /// </summary>
-    private sealed class PoisonMessageException(string message, Exception innerException)
+    private sealed class PoisonMessageException(string message, Exception? innerException = null)
         : Exception(message, innerException);
 }

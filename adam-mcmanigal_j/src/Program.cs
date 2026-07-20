@@ -6,10 +6,10 @@ using Edi837Ingestion.Configuration;
 using Edi837Ingestion.Ingestion;
 using Edi837Ingestion.Parsing;
 using Edi837Ingestion.Persistence;
+using Edi837Ingestion.Validation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 var configuration = AppConfiguration.Build();
 var aws = configuration.GetAwsOptions();
@@ -33,20 +33,24 @@ builder.Services.AddSingleton(s3);
 builder.Services.AddSingleton(sqs);
 builder.Services.AddSingleton<Edi837Parser>();
 
+// The SNIP validator is configured once from the EdiFabric options; a file that fails validation at
+// this level is dead-lettered by the ingestion service rather than persisted.
+builder.Services.AddSingleton(new Edi837Validator(ediFabric.ValidationLevel));
+
 // A context factory, not a scoped context: IngestionService opens one short-lived context per SQS
 // message, which is what lets it (and the IngestionWorker that drives it) be a singleton.
 builder.Services.AddDbContextFactory<Edi837DbContext>(options =>
     options.UseSqlServer(sqlServer.ConnectionString));
 
-builder.Services.AddSingleton(provider => new IngestionService(
-    provider.GetRequiredService<IAmazonSQS>(),
-    provider.GetRequiredService<IAmazonS3>(),
-    provider.GetRequiredService<Edi837Parser>(),
-    provider.GetRequiredService<IDbContextFactory<Edi837DbContext>>(),
-    queueUrl,
-    deadLetterQueueUrl,
-    provider.GetRequiredService<ILogger<IngestionService>>(),
-    aws.Sqs.ReceiveWaitTimeSeconds));
+// The resolved queue URLs and poll wait travel together as one options object, so IngestionService
+// takes only its genuine dependencies and needs no construction factory.
+builder.Services.AddSingleton(new IngestionOptions
+{
+    QueueUrl = queueUrl,
+    DeadLetterQueueUrl = deadLetterQueueUrl,
+    ReceiveWaitTimeSeconds = aws.Sqs.ReceiveWaitTimeSeconds,
+});
+builder.Services.AddSingleton<IngestionService>();
 
 builder.Services.AddHostedService<IngestionWorker>();
 

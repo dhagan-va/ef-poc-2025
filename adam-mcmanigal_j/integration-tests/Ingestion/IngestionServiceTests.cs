@@ -2,6 +2,8 @@ using Amazon.S3.Model;
 using Amazon.SQS.Model;
 using Edi837Ingestion.Ingestion;
 using Edi837Ingestion.Parsing;
+using Edi837Ingestion.Validation;
+using EdiFabric.Core.Model.Edi;
 using integration.Fixtures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -113,9 +115,47 @@ public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql
         Assert.NotEmpty(deadLettered.Messages ?? []);
     }
 
+    [Fact]
+    public async Task IngestNextBatchAsync_DeadLettersFileThatFailsSnipValidation()
+    {
+        await ClearQueueAsync(moto.QueueUrl);
+        await ClearQueueAsync(moto.DeadLetterQueueUrl);
+
+        // InstitutionalClaim.txt parses cleanly but is missing mandatory elements and carries invalid
+        // codes, so it fails SNIP 2 (limits and codes). Validating at that level makes it a deterministic
+        // (poison) failure that must be dead-lettered, not persisted.
+        var content = await File.ReadAllTextAsync(
+            Path.Combine(AppContext.BaseDirectory, "samples", "InstitutionalClaim.txt"));
+        var key = $"incoming/{Guid.NewGuid():N}.edi";
+        await PutObjectAsync(key, content);
+
+        var result = await ProcessUntilAsync(
+            r => r.DeadLettered >= 1, ValidationLevel.LimitsAndCodes_SNIP2);
+
+        Assert.Equal(1, result.DeadLettered);
+        Assert.Equal(0, result.Ingested);
+        Assert.Equal(0, result.Duplicates);
+        Assert.Equal(0, result.Failed);
+
+        // The validation failure wrote no ledger row.
+        await using var verify = sql.CreateContext();
+        Assert.False(await verify.Interchanges.AnyAsync(i => i.PayloadS3Key == key));
+
+        // The message was parked on the dead-letter queue rather than reflowed onto the work queue.
+        var deadLettered = await moto.Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = moto.DeadLetterQueueUrl,
+            MaxNumberOfMessages = 10,
+            WaitTimeSeconds = 0,
+        });
+        Assert.NotEmpty(deadLettered.Messages ?? []);
+    }
+
     // Drives batches, accumulating outcomes, until the predicate holds — tolerating Moto's async
     // delivery, its ignored long-poll, and the one-off s3:TestEvent — then returns the running totals.
-    private async Task<BatchResult> ProcessUntilAsync(Func<BatchResult, bool> satisfied)
+    // A validation level can be supplied so a test can exercise the SNIP-failure → dead-letter path.
+    private async Task<BatchResult> ProcessUntilAsync(
+        Func<BatchResult, bool> satisfied, ValidationLevel? validationLevel = null)
     {
         var received = 0;
         var ingested = 0;
@@ -127,7 +167,7 @@ public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql
         // generous budget (~15s) of fast, short-poll receives.
         for (var attempt = 0; attempt < 150; attempt++)
         {
-            var batch = await CreateService().IngestNextBatchAsync();
+            var batch = await CreateService(validationLevel).IngestNextBatchAsync();
             received += batch.Received;
             ingested += batch.Ingested;
             duplicates += batch.Duplicates;
@@ -145,10 +185,18 @@ public sealed class IngestionServiceTests(MotoFixture moto, SqlServerFixture sql
     }
 
     // The service creates a context per message from the fixture (which is an IDbContextFactory),
-    // mirroring the app's runtime wiring.
-    private IngestionService CreateService() =>
-        new(moto.Sqs, moto.S3, new Edi837Parser(), sql, moto.QueueUrl, moto.DeadLetterQueueUrl,
-            NullLogger<IngestionService>.Instance, moto.Options.Sqs.ReceiveWaitTimeSeconds);
+    // mirroring the app's runtime wiring. SNIP validation defaults to disabled (null) so most tests
+    // cover the ingest/dedupe/dead-letter paths independently of the validator; a level can be passed
+    // to exercise the validation → dead-letter path.
+    private IngestionService CreateService(ValidationLevel? validationLevel = null) =>
+        new(moto.Sqs, moto.S3, new Edi837Parser(), new Edi837Validator(validationLevel), sql,
+            new IngestionOptions
+            {
+                QueueUrl = moto.QueueUrl,
+                DeadLetterQueueUrl = moto.DeadLetterQueueUrl,
+                ReceiveWaitTimeSeconds = moto.Options.Sqs.ReceiveWaitTimeSeconds,
+            },
+            NullLogger<IngestionService>.Instance);
 
     private Task PutObjectAsync(string key, string content) =>
         moto.S3.PutObjectAsync(new PutObjectRequest
