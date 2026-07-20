@@ -1,0 +1,87 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # Single-sourced from .env (SqlServer__Password) so db, migrate/app containers, the host app,
+      # and the tests all share one password; falls back to the dev default when no .env is present.
+      MSSQL_SA_PASSWORD: "${SqlServer__Password:-YourStrong@Passw0rd}"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    security_opt:
+      - seccomp:unconfined
+    healthcheck:
+      # sqlcmd lives in mssql-tools18 and encrypts by default, so -C trusts the self-signed cert.
+      # -b makes a failed query exit non-zero so an unready server reports unhealthy. The password is
+      # read from the container's own env (escaped $$ so compose passes it through to the shell).
+      test:
+        - "CMD-SHELL"
+        - '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" -b'
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+  moto:
+    image: motoserver/moto
+    ports:
+      - "5001:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/moto-api/"]
+      interval: 2s
+      retries: 10
+
+  moto-init:
+    image: alpine:latest
+    depends_on:
+      moto:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_PAGER: ""
+    volumes:
+      - ./infra/init.sh:/init.sh
+    command: ["/bin/sh", "-c", "apk add --no-cache aws-cli && /bin/sh /init.sh"]
+
+  # Init-container: applies EF migrations once the db is healthy, then exits. Unprofiled, so a plain
+  # `docker compose up` leaves the db migrated and ready for a host `dotnet run`. After adding a
+  # migration, re-run with `docker compose run --rm --build migrate` (--build picks it up; idempotent).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DOTNET_ENVIRONMENT: Docker
+      SqlServer__Password: "${SqlServer__Password:-YourStrong@Passw0rd}"
+    restart: "no"
+
+  # The ingestion worker itself. Behind the `app` profile so plain `docker compose up` runs infra only
+  # (for host `dotnet run`); `docker compose --profile app up` runs the full stack in containers.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    profiles: ["app"]
+    depends_on:
+      db:
+        condition: service_healthy
+      moto:
+        condition: service_healthy
+      moto-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DOTNET_ENVIRONMENT: Docker
+      SqlServer__Password: "${SqlServer__Password:-YourStrong@Passw0rd}"
+      # The one real secret; must be set (in .env). Left empty the app fails fast with guidance.
+      EdiFabric__SerialKey: "${EdiFabric__SerialKey}"
+    restart: "no"

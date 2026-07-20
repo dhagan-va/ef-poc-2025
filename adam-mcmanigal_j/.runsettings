@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coverage tuning for the XPlat (coverlet) collector. Applied by the Nuke Coverage/CoverageAll
+     targets. Keeps EF-generated migrations and the host bootstrap out of the coverage math so the
+     report reflects code we actually author and test. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+
+          <!-- Only measure the app assembly. -->
+          <Include>[src]*</Include>
+
+          <!-- EF-scaffolded migrations: regenerated, never hand-tested. -->
+          <ExcludeByFile>**/Migrations/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>**/*.Designer.cs</ExcludeByFile>
+          <Exclude>[src]Edi837Ingestion.Migrations.*</Exclude>
+
+          <!-- Host/DI composition root: exercised only end-to-end by integration tests.
+               Top-level statements compile into a global-namespace `Program`, so exclude by type
+               (ExcludeByFile does not reliably match the synthesized class). -->
+          <ExcludeByFile>**/Program.cs</ExcludeByFile>
+          <Exclude>[src]Program*</Exclude>
+
+          <!-- Anything compiler- or tool-generated. -->
+          <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+          <ExcludeByAttribute>CompilerGeneratedAttribute</ExcludeByAttribute>
+          <ExcludeByAttribute>ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

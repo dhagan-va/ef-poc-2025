@@ -1,0 +1,23 @@
+# Keep the build context small and deterministic: never ship build outputs, IDE state, secrets,
+# or the test/sample trees into the image build.
+**/bin/
+**/obj/
+**/.vs/
+.idea/
+.config/
+.git/
+.gitignore
+.env
+.env.*
+*.user
+.DS_Store
+
+# Not needed to build or run the worker.
+integration-tests/
+tests/
+samples/
+docs/
+README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
