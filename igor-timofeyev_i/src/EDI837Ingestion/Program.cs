@@ -3,6 +3,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using EDI837Ingestion.BusinessLayer;
+using EDI837Ingestion.BusinessLayer.FilesProviders;
 using EDI837Ingestion.EF;
 using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Templates.X12004010;
@@ -35,6 +36,17 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddDbContext<AppDbContext>(options => options.UseSqlServer(conn));
         services.AddScoped<IEdi837IngestionService, Edi837IngestionService>();
 
+        // Determine whether to use local file system or S3 for EDI source provider
+        bool.TryParse(Environment.GetEnvironmentVariable("UseLocalFileDirectory"), out bool useLocalFile);
+        if (useLocalFile)
+        {
+            services.AddScoped<IEdiSourceProvider, FileSystemEdiSourceProvider>();
+        }
+        else
+        {
+            services.AddScoped<IEdiSourceProvider, S3EdiSourceProvider>();
+        }
+
         if (useLocalMoto)
         {
             services.AddSingleton<IAmazonS3>(sp =>
@@ -62,5 +74,5 @@ var host = Host.CreateDefaultBuilder(args)
 
         // --- EXECUTE PIPELINE ---
         var edi837Service = scope.ServiceProvider.GetRequiredService<IEdi837IngestionService>();
-        await edi837Service.IngestEdi837(useLocalMoto);
+        await edi837Service.IngestEdi837();
     }

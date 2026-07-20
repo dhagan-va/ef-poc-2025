@@ -8,6 +8,6 @@ namespace EDI837Ingestion.BusinessLayer
 {
     public interface IEdi837IngestionService
     {
-        Task IngestEdi837(bool useLocalMoto);
+        Task IngestEdi837();
     }
 }
