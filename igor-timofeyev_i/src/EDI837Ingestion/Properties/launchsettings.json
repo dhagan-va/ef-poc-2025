@@ -9,7 +9,8 @@
         "AWS__UseLocalMoto": "true",
         "AWS__MotoServiceUrl": "http://localhost:5000",
         "UseLocalFileDirectory": "true",
-        "FileSearchPattern": "EDI837*"
+        "FileSearchPattern": "EDI837*",
+        "EdiFabric_SerialKey": "c417cb9dd9d54297a55c032a74c87996"
       }
     }
   }

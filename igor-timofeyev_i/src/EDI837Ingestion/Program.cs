@@ -58,7 +58,7 @@ var host = Host.CreateDefaultBuilder(args)
 
     using (var scope = host.Services.CreateScope())
     {
-        EdiFabric.SerialKey.Set("c417cb9dd9d54297a55c032a74c87996");
+        EdiFabric.SerialKey.Set(Environment.GetEnvironmentVariable("EdiFabric_SerialKey"));
 
         // --- EXECUTE PIPELINE ---
         var edi837Service = scope.ServiceProvider.GetRequiredService<IEdi837IngestionService>();
