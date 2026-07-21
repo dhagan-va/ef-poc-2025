@@ -1,11 +1,7 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace EDI837Ingestion.BusinessLayer.FilesProviders
 {
@@ -20,16 +16,17 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
             _config = config;
         }
 
-        public async Task<IEnumerable<string>> GetEdiPayloadsAsync()
+        public async IAsyncEnumerable<Stream> GetEdiStreamsAsync()
         {
             Console.WriteLine("Downloading EDI files from S3...");
 
             //set up S3 bucket and seed it with sample EDI files for local testing
             await S3BucketSetup();
             //extract files from S3 bucket
-            var ediPayloads = await ExtractS3BucketFiles();
-           
-            return ediPayloads;
+            await foreach (Stream ediStream in ExtractS3BucketFiles())
+            {
+                yield return ediStream;
+            }
         }
 
         private async Task S3BucketSetup()
@@ -70,9 +67,9 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
             Console.WriteLine("[Mock Setup] Sample 2 EDI 837 data successfully pushed to local Moto storage.");
         }
 
-        public async Task<IEnumerable<string>> ExtractS3BucketFiles()
+        public async IAsyncEnumerable<Stream> ExtractS3BucketFiles()
         {
-            var payloads = new List<string>();
+            var payloads = new List<Stream>();
             string bucketName = "edi-claims-storage";
             string prefix = "claims/";
 
@@ -96,18 +93,19 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
                     if (s3Object.Key.EndsWith("/")) continue;
 
                     var getRequest = new GetObjectRequest { BucketName = listRequest.BucketName, Key = s3Object.Key };
-                    using var response = await _s3Client.GetObjectAsync(getRequest);
-                    using var reader = new StreamReader(response.ResponseStream, Encoding.UTF8);
 
-                    payloads.Add(await reader.ReadToEndAsync());
+                    // Keep stream open until the calling ingestion loop finishes parsing it (no using statement)
+                    var response = await _s3Client.GetObjectAsync(getRequest);
+
+                    Console.WriteLine($"Successfully opened stream handle for S3 object {s3Object.Key}.");
+
+                    yield return response.ResponseStream;
                 }
 
                 listRequest.ContinuationToken = listResponse.NextContinuationToken;
             } while (listResponse.IsTruncated ?? true);
 
             Console.WriteLine("\n[Pipeline Complete] All S3 EDI claim payloads processed successfully.");
-
-            return payloads;
         }
     }
 }

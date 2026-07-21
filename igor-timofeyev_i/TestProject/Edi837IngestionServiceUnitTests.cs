@@ -4,6 +4,7 @@ using EDI837Ingestion.BusinessLayer.FilesProviders;
 using EDI837Ingestion.EF;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using System.Text;
 
 namespace TestProject
 {
@@ -17,6 +18,16 @@ namespace TestProject
             return new AppDbContext(options);
         }
 
+        // Helper method to convert an in-memory collection of streams into an IAsyncEnumerable
+        private static async IAsyncEnumerable<Stream> CreateMockAsyncEnumerableStreams(List<Stream> streams)
+        {
+            foreach (var stream in streams)
+            {
+                yield return stream;
+                await Task.CompletedTask; // Satisfies async state requirements
+            }
+        }
+
         [Fact]
         public async Task Edi837IngestionService_Provider_SuccessPath_ProcessesPayloads()
         {
@@ -24,8 +35,14 @@ namespace TestProject
             var dbContext = CreateInMemoryAppDbContext();
             var mockSourceProvider = new Mock<IEdiSourceProvider>();
 
-            var mockPayloads = new List<string> { "ST*837~SE*2~" };
-            mockSourceProvider.Setup(x => x.GetEdiPayloadsAsync()).ReturnsAsync(mockPayloads);
+            // Build a valid, single-line in-memory dummy EDI segment stream
+            var mockPayloads = Encoding.UTF8.GetBytes("ST*837~SE*2~");
+            var mockStreamList = new List<Stream> { new MemoryStream(mockPayloads) };
+
+            // Setup Moq to return the stream lazily via our helper
+            mockSourceProvider
+                .Setup(x => x.GetEdiStreamsAsync())
+                .Returns(CreateMockAsyncEnumerableStreams(mockStreamList));
 
             var service = new Edi837IngestionService(dbContext, mockSourceProvider.Object);
 
@@ -33,7 +50,7 @@ namespace TestProject
             await service.IngestEdi837();
 
             // Assert
-            mockSourceProvider.Verify(x => x.GetEdiPayloadsAsync(), Times.Once);
+            mockSourceProvider.Verify(x => x.GetEdiStreamsAsync(), Times.Once);
         }
 
 
@@ -44,10 +61,10 @@ namespace TestProject
             var dbContext = CreateInMemoryAppDbContext();
             var mockSourceProvider = new Mock<IEdiSourceProvider>();
 
-            // Simulate a hard OS filesystem error when reading files
+            // Simulate a hard file system directory missing error bubbling up natively
             mockSourceProvider
-                .Setup(x => x.GetEdiPayloadsAsync())
-                .ThrowsAsync(new DirectoryNotFoundException("Target folder 'samples' does not exist."));
+                .Setup(x => x.GetEdiStreamsAsync())
+                .Throws(new DirectoryNotFoundException("Target folder 'samples' does not exist."));
 
             var service = new Edi837IngestionService(dbContext, mockSourceProvider.Object);
 
@@ -55,10 +72,9 @@ namespace TestProject
             var exception = await Record.ExceptionAsync(() => service.IngestEdi837());
 
             // Assert
-            // The service caller catches the error inside its own high-level try/catch block, 
-            // so the application doesn't completely crash out at runtime.
+            // The service intercept catch block handles the blown engine safely without breaking execution threads
             Assert.Null(exception);
-            mockSourceProvider.Verify(x => x.GetEdiPayloadsAsync(), Times.Once);
+            mockSourceProvider.Verify(x => x.GetEdiStreamsAsync(), Times.Once);
         }
 
         [Fact]
@@ -68,10 +84,10 @@ namespace TestProject
             var dbContext = CreateInMemoryAppDbContext();
             var mockSourceProvider = new Mock<IEdiSourceProvider>();
 
-            // Simulate an AWS infrastructure crash (e.g., Docker container is offline)
+            // Simulate a network connection drop context exception from AWS SDK layers
             mockSourceProvider
-                .Setup(x => x.GetEdiPayloadsAsync())
-                .ThrowsAsync(new AmazonS3Exception("Connection refused by endpoint http://localhost:5000"));
+                .Setup(x => x.GetEdiStreamsAsync())
+                .Throws(new AmazonS3Exception("Connection refused by endpoint http://localhost:5000"));
 
             var service = new Edi837IngestionService(dbContext, mockSourceProvider.Object);
 
@@ -79,10 +95,8 @@ namespace TestProject
             var exception = await Record.ExceptionAsync(() => service.IngestEdi837());
 
             // Assert
-            // Verifies that the service caller successfully intercepts the unswallowed provider error 
-            // and gracefully completes its high-level logging sequence.
             Assert.Null(exception);
-            mockSourceProvider.Verify(x => x.GetEdiPayloadsAsync(), Times.Once);
+            mockSourceProvider.Verify(x => x.GetEdiStreamsAsync(), Times.Once);
         }
     }
 }

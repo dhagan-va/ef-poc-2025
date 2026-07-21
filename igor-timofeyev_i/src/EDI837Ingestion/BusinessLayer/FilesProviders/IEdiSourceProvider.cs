@@ -9,8 +9,8 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
     public interface IEdiSourceProvider
     {
         /// <summary>
-        /// Retrieves the raw EDI text payloads from the underlying storage infrastructure.
+        /// Retrieves the raw EDI streams from the underlying storage infrastructure.
         /// </summary>
-        Task<IEnumerable<string>> GetEdiPayloadsAsync();
+        IAsyncEnumerable<Stream> GetEdiStreamsAsync();
     }
 }

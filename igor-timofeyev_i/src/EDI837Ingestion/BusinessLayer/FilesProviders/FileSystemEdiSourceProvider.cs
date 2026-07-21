@@ -12,7 +12,7 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
             _filePath = Environment.GetEnvironmentVariable("Edi837_Path") ?? config["FilePaths:Edi837Path"] ?? "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples";
         }
     
-        public async Task<IEnumerable<string>> GetEdiPayloadsAsync()
+        public async IAsyncEnumerable<Stream> GetEdiStreamsAsync()
         {
             Console.WriteLine($"Getting file(s): {_filePath}");
 
@@ -30,7 +30,7 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
                 {
                     Console.Error.WriteLine($"Error: No files found matching '{searchPattern}' inside {_filePath}");
 
-                    return payloads;
+                    yield break;
                 }
 
                 Console.WriteLine($"Discovered {discoveredFiles.Length} file(s) for ingestion.");
@@ -38,10 +38,12 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
                 //loop thru files and process
                 foreach (string file in discoveredFiles)
                 {
-                    ediPayload = await File.ReadAllTextAsync(file);
-                    payloads.Add(ediPayload);
+                    // Keep stream open until the calling ingestion loop finishes parsing it (no using statement)
+                    Stream fileStream = File.OpenRead(file);
 
-                    Console.WriteLine($"Successfully completed EdiFabric parsing for {file}.");
+                    Console.WriteLine($"Successfully opened stream handle for file {file}.");
+
+                    yield return fileStream;
                 }
             }
             else
@@ -49,8 +51,6 @@ namespace EDI837Ingestion.BusinessLayer.FilesProviders
                 // Explicitly throw an exception if the folder path string configuration is bad
                 throw new DirectoryNotFoundException($"Target ingestion directory does not exist: {_filePath}");
             }
-
-            return payloads;
         }          
     }
 }
