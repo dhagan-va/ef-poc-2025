@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "EDI837Ingestion_Local": {
+      "commandName": "Project",
+      "commandLineArgs": "--verbose --mode local",
+      "environmentVariables": {
+        "Default_Connection": "Server=Igor-Surface\\SQLEXPRESS;Database=PayerEDI;Trusted_Connection=True;TrustServerCertificate=True;",
+        "Edi837_Path": "C:\\Projects\\VA\\EDI 837\\igor-timofeyev_i\\samples",
+        "AWS__UseLocalMoto": "true",
+        "AWS__MotoServiceUrl": "http://localhost:5000",
+        "UseLocalFileDirectory": "true",
+        "FileSearchPattern": "EDI837*",
+        "EdiFabric_SerialKey": "c417cb9dd9d54297a55c032a74c87996"
+      }
+    }
+  }
+}

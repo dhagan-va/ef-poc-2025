@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/EDI837Ingestion/EDI837Ingestion.csproj" />
+  <Project Path="TestProject/TestProject.csproj" Id="8842454d-2f15-41d0-8bfd-0511e7032b5e" />
+</Solution>
