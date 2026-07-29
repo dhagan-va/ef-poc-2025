@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <OutputDirectory>../../TestResults</OutputDirectory>
+          <OutputName>coverage.cobertura.xml</OutputName>
+
+
+          <ExcludeByFile>
+              **/Migrations/*.cs;
+              **/Migrations/**/*.cs;
+              **/obj/**/Migrations/*.cs;
+              **/obj/**/Migrations/**/*.cs;
+              **/bin/**/Migrations/*.cs;
+              **/bin/**/Migrations/**/*.cs;
+          </ExcludeByFile>
+
+          <ExcludeByAttribute>
+            GeneratedCodeAttribute;
+            CompilerGeneratedAttribute;
+          </ExcludeByAttribute>
+
+          <SkipAutoProps>true</SkipAutoProps>
+          <IncludeEmptyAssemblies>false</IncludeEmptyAssemblies>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
