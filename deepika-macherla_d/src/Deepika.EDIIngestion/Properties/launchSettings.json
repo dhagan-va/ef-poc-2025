@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Deepika.EDIIngestion": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ConnectionStrings__DefaultConnection": "Server=localhost;Database=DeepikaEdiDb;Trusted_Connection=True;"
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+THIS IS A MALFORMED EDI FILE
+
+This file is intentionally invalid and should cause the parser to fail or return null so the ingestion service records an ErrorLog and continues processing the next file.
+
+INVALID~DATA*NO*SEGMENTS~
