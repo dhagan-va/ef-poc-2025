@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="H2.EdiIngestor.Tests/H2.EdiIngestor.Tests.csproj" />
+  <Project Path="H2.EdiIngestor/H2.EdiIngestor.csproj" />
+</Solution>
