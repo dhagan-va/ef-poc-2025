@@ -4,6 +4,7 @@ using System.Linq;
 using Deepika.EDIIngestion.Data;
 using Deepika.EDIIngestion.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Deepika.EDIIngestion.Services
 {
@@ -12,14 +13,112 @@ namespace Deepika.EDIIngestion.Services
         private readonly AppDbContext _db;
         private readonly IEdiFabricParser _parser;
         private readonly IEdiFabricValidatorService _validator;
+        private readonly IEdiStorageService _storage;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly Microsoft.Extensions.Logging.ILogger<EdiIngestionService> _logger;
 
-        public EdiIngestionService(AppDbContext db, IEdiFabricParser parser, IEdiFabricValidatorService validator, Microsoft.Extensions.Logging.ILogger<EdiIngestionService> logger)
+        public EdiIngestionService(AppDbContext db, IEdiFabricParser parser, IEdiFabricValidatorService validator, IEdiStorageService storage, IServiceScopeFactory scopeFactory, Microsoft.Extensions.Logging.ILogger<EdiIngestionService> logger)
         {
             _db = db;
             _parser = parser;
             _validator = validator;
+            _storage = storage;
+            _scopeFactory = scopeFactory;
             _logger = logger;
+        }
+
+        public async System.Threading.Tasks.Task ProcessS3BucketAsync(string bucket, int degreeOfParallelism = 4)
+        {
+            _logger.LogInformation("Processing S3 bucket: {Bucket}", bucket);
+
+            var keys = (await _storage.ListObjectsAsync(bucket)).ToList();
+            _logger.LogInformation("Found {Count} objects in bucket {Bucket}", keys.Count, bucket);
+
+            if (!keys.Any())
+            {
+                _logger.LogInformation("No objects to process in bucket {Bucket}", bucket);
+                return;
+            }
+
+            var semaphore = new System.Threading.SemaphoreSlim(degreeOfParallelism);
+            var tasks = new List<System.Threading.Tasks.Task>();
+
+            var index = 0;
+            foreach (var key in keys)
+            {
+                var currentIndex = index++;
+                await semaphore.WaitAsync();
+                tasks.Add(System.Threading.Tasks.Task.Run(async () =>
+                {
+                    _logger.LogInformation("[#{Index}] Starting processing S3 object: {Key}", currentIndex, key);
+                    try
+                    {
+                        var data = await _storage.ReadObjectAsync(bucket, key);
+                        _logger.LogDebug("[#{Index}] Read {Bytes} bytes for {Key}", currentIndex, data?.Length ?? 0, key);
+
+                        var tempPath = Path.GetTempFileName();
+                        await System.IO.File.WriteAllBytesAsync(tempPath, data);
+                        _logger.LogDebug("[#{Index}] Wrote temp file {TempPath} for {Key}", currentIndex, tempPath, key);
+
+                        // Validate then parse similar to local file flow
+                        if (_validator != null)
+                        {
+                            if (!_validator.ValidateFile(tempPath, out var vErrors))
+                            {
+                            var errMsg = string.Join("; ", (IEnumerable<string>?)vErrors ?? Enumerable.Empty<string>());
+                                RecordError(key, new Exception(errMsg), "EdiFabricValidation", System.IO.File.ReadAllText(tempPath));
+                                _logger.LogWarning("[#{Index}] Validation failed for S3 object {Key}: {Errors}", currentIndex, key, errMsg);
+                                return;
+                            }
+                            _logger.LogDebug("[#{Index}] Validation passed for {Key}", currentIndex, key);
+                        }
+
+                        var interchanges = _parser.ParseFile(tempPath);
+                        if (interchanges != null && interchanges.Any())
+                        {
+                            foreach (var interchange in interchanges)
+                            {
+                                _logger.LogDebug("[#{Index}] Parser returned interchange for {Key} (ISA: {Isa})", currentIndex, key, interchange.IsaControlNumber);
+                                using var scope = _scopeFactory.CreateScope();
+                                var scopedDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                                try
+                                {
+                                    if (string.IsNullOrWhiteSpace(interchange.SenderId) || string.IsNullOrWhiteSpace(interchange.ReceiverId))
+                                    {
+                                        throw new InvalidOperationException($"Missing SenderId or ReceiverId in S3 object {key}.");
+                                    }
+
+                                    scopedDb.Interchanges.Add(interchange);
+                                    scopedDb.SaveChanges();
+                                    _logger.LogInformation("[#{Index}] Saved interchange from S3 object {Key} (ISA: {Isa})", currentIndex, key, interchange.IsaControlNumber);
+                                }
+                                catch (Exception dbEx)
+                                {
+                                    RecordError(key, dbEx, "DatabaseSaveException");
+                                    _logger.LogError(dbEx, "[#{Index}] Database save failed for {Key}", currentIndex, key);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            RecordError(key, null, "ParserReturnedNull", System.IO.File.ReadAllText(tempPath));
+                            _logger.LogWarning("[#{Index}] Parser returned null or no transactions for {Key}", currentIndex, key);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        RecordError(key, ex, "S3ProcessingException");
+                        _logger.LogError(ex, "[#{Index}] Exception processing S3 object {Key}", currentIndex, key);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                        _logger.LogInformation("[#{Index}] Finished processing S3 object: {Key}", currentIndex, key);
+                    }
+                }));
+            }
+
+            await System.Threading.Tasks.Task.WhenAll(tasks);
         }
 
         /// <summary>
@@ -53,29 +152,32 @@ namespace Deepika.EDIIngestion.Services
                         }
                     }
 
-                    var interchange = _parser.ParseFile(file);
-                    if (interchange != null)
+                    var interchanges = _parser.ParseFile(file);
+                    if (interchanges != null && interchanges.Any())
                     {
-                        try
+                        foreach (var interchange in interchanges)
                         {
-                            // Simple validation: require SenderId and ReceiverId
-                            if (string.IsNullOrWhiteSpace(interchange.SenderId) || string.IsNullOrWhiteSpace(interchange.ReceiverId))
+                            try
                             {
-                                throw new InvalidOperationException($"Missing SenderId or ReceiverId in file {Path.GetFileName(file)}.");
-                            }
+                                // Simple validation: require SenderId and ReceiverId
+                                if (string.IsNullOrWhiteSpace(interchange.SenderId) || string.IsNullOrWhiteSpace(interchange.ReceiverId))
+                                {
+                                    throw new InvalidOperationException($"Missing SenderId or ReceiverId in file {Path.GetFileName(file)}.");
+                                }
 
-                            _db.Interchanges.Add(interchange);
-                            _db.SaveChanges();
-                            _logger.LogInformation("Saved interchange from {File} (ISA: {Isa})", Path.GetFileName(file), interchange.IsaControlNumber);
-                        }
-                        catch (Exception dbEx)
-                        {
-                            RecordError(file, dbEx, "DatabaseSaveException");
+                                _db.Interchanges.Add(interchange);
+                                _db.SaveChanges();
+                                _logger.LogInformation("Saved interchange from {File} (ISA: {Isa})", Path.GetFileName(file), interchange.IsaControlNumber);
+                            }
+                            catch (Exception dbEx)
+                            {
+                                RecordError(file, dbEx, "DatabaseSaveException");
+                            }
                         }
                     }
                     else
                     {
-                        // Parser returned null - treat as parse failure
+                        // Parser returned null or no transactions - treat as parse failure
                         RecordError(file, null, "ParserReturnedNull", File.ReadAllText(file));
                     }
                 }

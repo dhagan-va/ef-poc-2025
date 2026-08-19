@@ -22,13 +22,9 @@ namespace Deepika.EDIIngestion.Tests
             // Arrange: use the real parser directly (no validator required for this simple check)
             var parser = new EdiFabricParser();
 
-            // Act: use parser to get an interchange and count CLM segments
-            var interchange = parser.ParseFile(path);
-            var clmCount = 0;
-            if (interchange?.Claims != null)
-            {
-                clmCount = interchange.Claims.Count;
-            }
+            // Act: use parser to get interchanges and count CLM segments across all transactions
+            var interchanges = parser.ParseFile(path);
+            var clmCount = interchanges?.Sum(i => i.Claims?.Count ?? 0) ?? 0;
 
             // Assert
             Assert.AreEqual(5, clmCount, "Expected 5 CLM segments in sample_837_1.edi");

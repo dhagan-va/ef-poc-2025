@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using EdiFabric.Core.Model.Edi;
+using EdiFabric.Core.Model.Edi.X12;
 using EdiFabric.Framework.Readers;
 using EdiFabric.Templates.Hipaa5010;
 
@@ -12,13 +14,49 @@ namespace Deepika.EDIIngestion.Services
     public class EdiFabricValidatorService : IEdiFabricValidatorService
     {
         public bool IsLicensed { get; private set; }
+        private readonly HashSet<int> _requiredSnipLevels = new();
+
+        public IEnumerable<int> RequiredSnipLevels => _requiredSnipLevels;
 
         public EdiFabricValidatorService()
         {
             // Assume license is set at startup (Program.Main) for demo simplicity.
             var license = Environment.GetEnvironmentVariable("TRIAL_EDIFABRIC_LICENSE")
                           ?? Environment.GetEnvironmentVariable("EDIFABRIC_LICENSE");
-            IsLicensed = !string.IsNullOrWhiteSpace(license);
+
+            // Try to validate the provided EdiFabric serial key to ensure it's not expired/invalid.
+            if (!string.IsNullOrWhiteSpace(license))
+            {
+                try
+                {
+                    // Attempt to set the serial key; EdiFabric will throw if the token is invalid/expired.
+                    EdiFabric.SerialKey.Set(license);
+                    IsLicensed = true;
+                }
+                catch (Exception)
+                {
+                    // Invalid or expired token: mark as not licensed so we skip runtime validation.
+                    IsLicensed = false;
+                }
+            }
+            else
+            {
+                IsLicensed = false;
+            }
+
+            // Parse requested SNIP levels from environment variable EDIFABRIC_SNIP_LEVELS (e.g. "1,2")
+            var snipEnv = Environment.GetEnvironmentVariable("EDIFABRIC_SNIP_LEVELS");
+            if (!string.IsNullOrWhiteSpace(snipEnv))
+            {
+                var parts = snipEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var p in parts)
+                {
+                    if (int.TryParse(p, out var lvl))
+                    {
+                        _requiredSnipLevels.Add(lvl);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -32,8 +70,13 @@ namespace Deepika.EDIIngestion.Services
 
             if (!IsLicensed)
             {
-                errors.Add("EdiFabric license not present; skipping EdiFabric validation.");
+                errors.Add("EdiFabric license not present or invalid/expired; skipping EdiFabric validation.");
                 return false;
+            }
+
+            if (_requiredSnipLevels.Any())
+            {
+                errors.Add("Requested SNIP levels: " + string.Join(',', _requiredSnipLevels));
             }
 
             if (!File.Exists(path))
@@ -51,17 +94,55 @@ namespace Deepika.EDIIngestion.Services
                 var transactions = ediItems.OfType<TS837P>();
 
                 var hasErrors = false;
+
+                // Determine ValidationSettings based on requested SNIP levels (cumulative).
+                ValidationSettings validationSettings = null;
+                if (_requiredSnipLevels.Any())
+                {
+                    var maxLevel = _requiredSnipLevels.Max();
+                    var lvl = maxLevel switch
+                    {
+                        1 => ValidationLevel.SyntaxOnly_SNIP1,
+                        2 => ValidationLevel.LimitsAndCodes_SNIP2,
+                        3 => ValidationLevel.Balancing_SNIP3,
+                        _ => ValidationLevel.InterSegment_SNIP4,
+                    };
+                    validationSettings = new ValidationSettings { ValidationLevel = lvl };
+                    errors.Add("Applying SNIP validation level: " + lvl);
+                }
+
                 foreach (var tx in transactions)
                 {
-                    if (tx.HasErrors)
+                    if (validationSettings != null)
                     {
-                        hasErrors = true;
-                        var errs = tx.ErrorContext.Flatten();
-                        foreach (var e in errs)
+                        var isValid = tx.IsValid(out var errorContext, validationSettings);
+                        if (!isValid)
                         {
-                            errors.Add(e);
+                            hasErrors = true;
+                            if (errorContext != null)
+                            {
+                                foreach (var e in errorContext.Flatten()) errors.Add(e);
+                            }
                         }
                     }
+                    else
+                    {
+                        // Fallback: use existing HasErrors behavior if no SNIP levels requested
+                        if (tx.HasErrors)
+                        {
+                            hasErrors = true;
+                            var errs = tx.ErrorContext.Flatten();
+                            foreach (var e in errs)
+                            {
+                                errors.Add(e);
+                            }
+                        }
+                    }
+                }
+
+                if (hasErrors && _requiredSnipLevels.Any())
+                {
+                    errors.Add($"Validation failed for requested SNIP levels: {string.Join(',', _requiredSnipLevels)}");
                 }
 
                 return !hasErrors;

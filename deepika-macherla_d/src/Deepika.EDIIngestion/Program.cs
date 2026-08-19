@@ -11,7 +11,7 @@ namespace Deepika.EDIIngestion
     #if !TEST_PROJECT
     internal class Program
     {
-        static void Main(string[] args)
+        static async System.Threading.Tasks.Task Main(string[] args)
         {
             var config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -58,6 +58,8 @@ namespace Deepika.EDIIngestion
             services.AddSingleton<IEdiFabricValidatorService, EdiFabricValidatorService>();
             services.AddTransient<IEdiFabricParser, EdiFabricParser>();
             services.AddTransient<IEdiIngestionService, EdiIngestionService>();
+            // Register S3 storage; it will respect AWS_S3_ENDPOINT for moto/local tests
+            services.AddSingleton<IEdiStorageService>(sp => new S3EdiStorageService(Environment.GetEnvironmentVariable("AWS_S3_ENDPOINT")));
             var provider = services.BuildServiceProvider(); // noop: update context
 
             Log.Information("Using connection: {Connection}", conn);
@@ -68,7 +70,18 @@ namespace Deepika.EDIIngestion
                 db.Database.EnsureCreated();
 
                 var ingestion = scope.ServiceProvider.GetRequiredService<IEdiIngestionService>();
-                ingestion.ProcessFolder("samples");
+
+                // If S3_BUCKET is set, process objects from the configured S3 bucket (async). Otherwise process local samples folder.
+                var s3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET");
+                if (!string.IsNullOrWhiteSpace(s3Bucket))
+                {
+                    // Use async/await instead of blocking GetAwaiter().GetResult()
+                    await ingestion.ProcessS3BucketAsync(s3Bucket);
+                }
+                else
+                {
+                    ingestion.ProcessFolder("samples");
+                }
             }
         }
     }
