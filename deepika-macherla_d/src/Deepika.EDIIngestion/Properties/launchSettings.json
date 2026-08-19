@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Deepika.EDIIngestion": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ConnectionStrings__DefaultConnection": "Server=localhost;Database=DeepikaEdiDb;Trusted_Connection=True;",
+        "AWS_S3_ENDPOINT": "http://127.0.0.1:5000",
+        "S3_BUCKET": "test-edi-bucket",
+        "AWS_ACCESS_KEY_ID": "test",
+        "AWS_SECRET_ACCESS_KEY": "test",
+        "TRIAL_EDIFABRIC_LICENSE": "c417cb9dd9d54297a55c032a74c87996",
+        "EDIFABRIC_SNIP_LEVELS": "1,2"
+      }
+    }
+  }
+}

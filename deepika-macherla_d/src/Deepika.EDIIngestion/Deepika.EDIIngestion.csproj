@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+	<!-- Application output type: Exe so Program.Main is compiled and runnable -->
+	<OutputType>Exe</OutputType>
+	<TargetFramework>net8.0</TargetFramework>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<Nullable>enable</Nullable>
+	<!-- Not a test project; tests can be moved to a separate project if desired -->
+  </PropertyGroup>
+  <ItemGroup>
+	<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+	  <PrivateAssets>all</PrivateAssets>
+	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	</PackageReference>
+	<PackageReference Include="EdiFabric" Version="10.7.6" />
+	<PackageReference Include="EdiFabric.Templates.Hipaa" Version="2.7.6" />
+	<PackageReference Include="Serilog" Version="2.12.0" />
+	<PackageReference Include="Serilog.Extensions.Logging" Version="3.1.0" />
+	<PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+	<PackageReference Include="AWSSDK.S3" Version="3.7.1.52" />
+	<!-- Test framework packages were removed from the main project to avoid duplicate test host entry points. Move tests to a separate test project if needed. -->
+  </ItemGroup>
+
+  <!-- Ensure appsettings.json and samples are copied to the output so ConfigurationBuilder and file reader find them at runtime -->
+  <ItemGroup>
+	<Content Include="appsettings.json">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</Content>
+	<Content Include="..\..\samples\**\*">
+	  <Link>samples\%(RecursiveDir)%(Filename)%(Extension)</Link>
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</Content>
+  </ItemGroup>
+  <!-- Exclude test sources from the main project so they compile only in the dedicated test project -->
+  <ItemGroup>
+	<Compile Remove="Tests\**\*.cs" />
+  </ItemGroup>
+</Project>
