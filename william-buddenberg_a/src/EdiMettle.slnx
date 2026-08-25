@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../tests/AbsoluteUnitTests.csproj" />
+  <Project Path="EdiMettle.csproj" />
+</Solution>
