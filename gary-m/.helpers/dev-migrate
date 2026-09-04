@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+source "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/_payeredi_common.sh"
+
+require_command dotnet
+
+export EDI_PROCESSOR_CONNECTIONSTRINGS__MIGRATION="$migration_connection_string"
+dotnet tool restore
+dotnet ef database update \
+    --project src/PayerEDI.Data \
+    --startup-project src/PayerEDI.Processor.Console

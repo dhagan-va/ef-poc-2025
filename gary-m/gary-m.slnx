@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PayerEDI.Data/PayerEDI.Data.csproj" />
+    <Project Path="src/PayerEDI.Processor.Console/PayerEDI.Processor.Console.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PayerEDI.Tests/PayerEDI.Tests.csproj" />
+  </Folder>
+</Solution>

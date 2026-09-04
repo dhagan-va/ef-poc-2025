@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+source "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/_payeredi_common.sh"
+
+require_command dotnet
+
+if [[ -z "${EDI_PROCESSOR_KEY__EDIFABRIC:-}" ]]; then
+    read -r -s -p "Enter EDI_PROCESSOR_KEY__EDIFABRIC: " EDI_PROCESSOR_KEY__EDIFABRIC
+    printf '\n'
+    export EDI_PROCESSOR_KEY__EDIFABRIC
+fi
+
+dotnet run --project src/PayerEDI.Processor.Console --launch-profile dental

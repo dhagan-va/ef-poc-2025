@@ -1,0 +1,88 @@
+﻿{
+  "profiles": {
+    "dental": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "../../samples/EDI/837d-sample-3.edi",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    },
+    "professional": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "../../samples/EDI/837p-sample.edi",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    },
+    "professionalunexpected": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "../../samples/EDI/837p-unexpected-segment.edi",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    },
+    "professionalall": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "../../samples/EDI/837P-all-fields.edi --save",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    },
+    "professionalalls3": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "s3:///edi/837P-all-fields.edi",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    },
+    "x12275": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "../../samples/EDI/sample_275_pdf_attachment.edi --save",
+      "workingDirectory": "./",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "AWS_ENDPOINT_URL": "http://localhost:3000",
+        "AWS_ACCESS_KEY_ID": "fake-access-key-id",
+        "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
+        "AWS_DEFAULT_REGION": "us-east-2",
+        "EDI_PROCESSOR_CONNECTIONSTRINGS__DEFAULT": "Server=localhost,1433;Database=PayerEdi;User Id=payeredi_app;Password=payeredi_app_password;TrustServerCertificate=True"
+      }
+    }
+  }
+}

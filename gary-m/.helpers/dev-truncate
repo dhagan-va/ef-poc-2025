@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+source "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/_payeredi_common.sh"
+
+require_container_runtime
+
+wait_for_database
+
+truncate_sql=$(cat <<'SQL'
+USE [PayerEdi];
+SET NOCOUNT ON;
+
+DECLARE @sql NVARCHAR(MAX) = N'';
+
+SELECT @sql += N'ALTER TABLE ' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name) + N' NOCHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.is_ms_shipped = 0;
+
+SELECT @sql += N'DELETE FROM ' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name) + N';' + CHAR(10)
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.is_ms_shipped = 0 AND t.name <> '__EFMigrationsHistory';
+
+SELECT @sql += N'IF OBJECTPROPERTY(OBJECT_ID(''' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name) + N'''), ''TableHasIdentity'') = 1 DBCC CHECKIDENT (''' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name) + N''', RESEED, 0);' + CHAR(10)
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.is_ms_shipped = 0 AND t.name <> '__EFMigrationsHistory';
+
+SELECT @sql += N'ALTER TABLE ' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name) + N' WITH CHECK CHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.is_ms_shipped = 0;
+
+IF LEN(@sql) > 0
+BEGIN
+    EXEC sp_executesql @sql;
+END;
+SQL
+)
+
+compose exec -T vadb /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost \
+    -C \
+    -U sa \
+    -P "${MSSQL_SA_PASSWORD:-password_123}" \
+    -d PayerEdi \
+    -b \
+    -Q "$truncate_sql"
+
+printf 'All tables in PayerEdi database truncated.\n'

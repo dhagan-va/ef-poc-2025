@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+source "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/_payeredi_common.sh"
+
+require_container_runtime
+require_command aws
+
+edi_dir="$repo_root/samples/EDI"
+moto_endpoint="${MOTO_ENDPOINT_URL:-http://localhost:3000}"
+bucket_name="${EDI_BUCKET_NAME:-edi}"
+
+if [[ ! -d "$edi_dir" ]]; then
+    printf 'EDI sample directory not found: %s\n' "$edi_dir" >&2
+    exit 1
+fi
+
+export AWS_ENDPOINT_URL="$moto_endpoint"
+export AWS_ACCESS_KEY_ID="fake-access-key-id"
+export AWS_SECRET_ACCESS_KEY="fake-secret-access-key"
+export AWS_DEFAULT_REGION="us-east-1"
+
+printf 'Checking for Moto at %s...\n' "$AWS_ENDPOINT_URL"
+for attempt in {1..30}; do
+    if aws s3api list-buckets >/dev/null 2>&1; then
+        break
+    fi
+
+    if [[ "$attempt" -eq 30 ]]; then
+        compose logs motoserver >&2 || true
+        printf 'Timed out waiting for Moto to become available.\n' >&2
+        exit 1
+    fi
+
+    sleep 1
+done
+
+if ! aws s3api head-bucket --bucket "$bucket_name" >/dev/null 2>&1; then
+    aws s3api create-bucket --bucket "$bucket_name" >/dev/null
+fi
+
+aws s3 cp "$edi_dir" "s3://$bucket_name/" \
+    --recursive \
+    --exclude '*' \
+    --include '*.edi'
+
+printf 'Loaded EDI samples into s3://%s at %s.\n' "$bucket_name" "$AWS_ENDPOINT_URL"

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+source "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/_payeredi_common.sh"
+
+require_container_runtime
+
+reset_requested=false
+case "${1:-}" in
+    --reset)
+        reset_requested=true
+        ;;
+    '')
+        printf 'Reset the database volume too? [y/N] '
+        read -r confirmation || confirmation=
+        if [[ "$confirmation" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+            reset_requested=true
+        fi
+        ;;
+    *)
+        printf 'Usage: %s [--reset]\n' "${0##*/}" >&2
+        exit 2
+        ;;
+esac
+
+if [[ "$reset_requested" == true ]]; then
+    compose down --remove-orphans --volumes
+    printf 'PayerEDI development stack and database volume removed.\n'
+else
+    compose down --remove-orphans
+    printf 'PayerEDI development stack stopped; the vadb volume was preserved.\n'
+fi

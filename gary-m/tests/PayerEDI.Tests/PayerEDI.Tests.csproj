@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PayerEDI.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.5" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None
+      Include="../../samples/EDI/837d-sample-3.edi"
+      Link="samples/EDI/837d-sample-3.edi"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+    <None
+      Include="../../samples/EDI/837P-all-fields.edi"
+      Link="samples/EDI/837P-all-fields.edi"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+    <None
+      Include="../../samples/EDI/sample_275_with_attachment.edi"
+      Link="samples/EDI/sample_275_with_attachment.edi"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+    <None
+      Include="../../samples/EDI/sample_275_pdf_attachment.edi"
+      Link="samples/EDI/sample_275_pdf_attachment.edi"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/PayerEDI.Data/PayerEDI.Data.csproj" />
+  </ItemGroup>
+</Project>
