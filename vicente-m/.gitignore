@@ -1,0 +1,6 @@
+.local/
+
+# The repo root ignores appsettings.* as a guard against committed secrets.
+# Our appsettings files contain no secrets (those live in User Secrets / env vars), so track them.
+!appsettings.json
+!appsettings.Development.json
