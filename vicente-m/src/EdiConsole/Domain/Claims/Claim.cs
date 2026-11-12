@@ -4,16 +4,16 @@ namespace EdiConsole.Domain.Claims;
 
 /// <summary>
 /// One claim: loop 2300 (one CLM segment).
-/// Aggregate root: its diagnoses and service lines belong to it.
+/// Belongs to an <see cref="Tracking.IngestedFile"/> and owns its diagnoses and service lines.
 /// </summary>
 public class Claim
 {
     public long Id { get; set; }
 
     /// <summary>
-    /// Foreign key to the file this claim came from. Deliberately no navigation property:
-    /// with chunked saves and ChangeTracker.Clear(), a navigation to a detached file would
-    /// make EF Core insert the file row again.
+    /// Foreign key to the file this claim came from. EF Core fills it when the file is saved
+    /// with its <see cref="Tracking.IngestedFile.Claims"/>. There's no navigation back to the file:
+    /// the relationship is one-way (file → claims), which is all we need.
     /// </summary>
     public long IngestedFileId { get; set; }
 
