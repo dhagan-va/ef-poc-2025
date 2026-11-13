@@ -30,17 +30,30 @@ public sealed class ClaimMapper : IClaimMapper
 
         foreach (var loop2000A in transaction.Loop2000A)            // billing provider (required)
         {
+            var billingProvider = MapBillingProvider(loop2000A);    // once per 2000A, shared by its claims
+
             foreach (var loop2000B in loop2000A.Loop2000B)          // subscriber (required)
             {
+                var subscriber = MapSubscriber(loop2000B);          // once per 2000B, shared by its claims
+                var subscriberContext = new ClaimContext(
+                    transactionSetControlNumber,
+                    billingProvider,
+                    subscriber,
+                    MapPayer(loop2000B),
+                    MapPatient(null, subscriber));                  // the subscriber is the patient
+
                 // The subscriber is the patient: claims sit directly under 2000B (situational).
                 foreach (var loop2300 in loop2000B.Loop2300 ?? [])
-                    claims.Add(MapClaim(transactionSetControlNumber, loop2000A, loop2000B, null, loop2300));
+                    claims.Add(MapClaim(subscriberContext, loop2300));
 
                 // A dependent is the patient: claims sit under 2000C (situational).
                 foreach (var loop2000C in loop2000B.Loop2000C ?? [])
                 {
+                    // Same parties, different patient: a copy of the context with one value replaced.
+                    var dependentContext = subscriberContext with { Patient = MapPatient(loop2000C, subscriber) };
+
                     foreach (var loop2300 in loop2000C.Loop2300)    // required inside 2000C
-                        claims.Add(MapClaim(transactionSetControlNumber, loop2000A, loop2000B, loop2000C, loop2300));
+                        claims.Add(MapClaim(dependentContext, loop2300));
                 }
             }
         }
@@ -48,19 +61,25 @@ public sealed class ClaimMapper : IClaimMapper
         return claims;
     }
 
-    private static Claim MapClaim(
-        string transactionSetControlNumber,
-        Loop_2000A_837P loop2000A,
-        Loop_2000B_837P loop2000B,
-        Loop_2000C_837P? loop2000C,
-        Loop_2300_837P loop2300)
+    /// <summary>
+    /// What every claim under one subscriber, or one dependent, shares. Each party is mapped once,
+    /// at the loop where it lives, and the same immutable instance is reused by all those claims.
+    /// </summary>
+    private sealed record ClaimContext(
+        string TransactionSetControlNumber,                         // ST02
+        BillingProvider BillingProvider,                            // 2010AA
+        Subscriber Subscriber,                                      // 2000B + 2010BA
+        Payer Payer,                                                // 2010BB
+        Patient Patient);                                           // 2000C + 2010CA, or the subscriber
+
+    // 2300: CLM + HI + the 2400 service lines
+    private static Claim MapClaim(ClaimContext context, Loop_2300_837P loop2300)
     {
         var clm = loop2300.CLM_ClaimInformation;
-        var subscriber = MapSubscriber(loop2000B);
 
         var claim = new Claim
         {
-            TransactionSetControlNumber = transactionSetControlNumber,
+            TransactionSetControlNumber = context.TransactionSetControlNumber,
             PatientControlNumber = clm.PatientControlNumber_01
                 ?? throw new InvalidDataException("2300 CLM01 (patient control number) is missing."),
             TotalCharge = decimal.Parse(clm.TotalClaimChargeAmount_02, CultureInfo.InvariantCulture),
@@ -68,10 +87,10 @@ public sealed class ClaimMapper : IClaimMapper
                 ?? throw new InvalidDataException("2300 CLM05-1 (place of service) is missing."),
             FrequencyCode = clm.HealthCareServiceLocationInformation_05.ClaimFrequencyTypeCode_03
                 ?? throw new InvalidDataException("2300 CLM05-3 (claim frequency) is missing."),
-            BillingProvider = MapBillingProvider(loop2000A),
-            Subscriber = subscriber,
-            Patient = MapPatient(loop2000C, subscriber),
-            Payer = MapPayer(loop2000B),
+            BillingProvider = context.BillingProvider,
+            Subscriber = context.Subscriber,
+            Patient = context.Patient,
+            Payer = context.Payer,
         };
 
         claim.Diagnoses.AddRange(MapDiagnoses(loop2300));
