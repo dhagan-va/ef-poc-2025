@@ -1,4 +1,3 @@
-using System.Globalization;
 using EdiConsole.Domain.Claims;
 using EdiConsole.Domain.Parties;
 using EdiFabric.Templates.Hipaa5010;
@@ -15,17 +14,17 @@ namespace EdiConsole.Mapping;
 /// </para>
 /// <para>
 /// Required loops and segments are read directly: if one is missing, the code fails right there.
-/// A missing required value throws <see cref="InvalidDataException"/> naming its X12 location,
-/// because a null string would otherwise slip into a required property and only fail when saved.
-/// Numbers and dates are parsed with the invariant culture: X12 always uses "." as the decimal mark.
+/// Values are converted with <see cref="X12Values"/>: a missing required value throws
+/// <see cref="InvalidDataException"/> naming its X12 location (a null string would otherwise slip into a
+/// required property and only fail when saved), and numbers and dates follow X12's rules on any culture.
 /// </para>
 /// </remarks>
 public sealed class ClaimMapper : IClaimMapper
 {
     public IReadOnlyList<Claim> Map(TS837P transaction)
     {
-        var transactionSetControlNumber = transaction.ST.TransactionSetControlNumber_02
-            ?? throw new InvalidDataException("ST02 (transaction set control number) is missing.");
+        var transactionSetControlNumber = X12Values.Required(
+            transaction.ST.TransactionSetControlNumber_02, "ST02 (transaction set control number)");
         var claims = new List<Claim>();
 
         foreach (var loop2000A in transaction.Loop2000A)            // billing provider (required)
@@ -80,13 +79,12 @@ public sealed class ClaimMapper : IClaimMapper
         var claim = new Claim
         {
             TransactionSetControlNumber = context.TransactionSetControlNumber,
-            PatientControlNumber = clm.PatientControlNumber_01
-                ?? throw new InvalidDataException("2300 CLM01 (patient control number) is missing."),
-            TotalCharge = decimal.Parse(clm.TotalClaimChargeAmount_02, CultureInfo.InvariantCulture),
-            PlaceOfServiceCode = clm.HealthCareServiceLocationInformation_05.FacilityTypeCode_01
-                ?? throw new InvalidDataException("2300 CLM05-1 (place of service) is missing."),
-            FrequencyCode = clm.HealthCareServiceLocationInformation_05.ClaimFrequencyTypeCode_03
-                ?? throw new InvalidDataException("2300 CLM05-3 (claim frequency) is missing."),
+            PatientControlNumber = X12Values.Required(clm.PatientControlNumber_01, "2300 CLM01 (patient control number)"),
+            TotalCharge = X12Values.Number<decimal>(clm.TotalClaimChargeAmount_02, "2300 CLM02 (total charge)"),
+            PlaceOfServiceCode = X12Values.Required(
+                clm.HealthCareServiceLocationInformation_05.FacilityTypeCode_01, "2300 CLM05-1 (place of service)"),
+            FrequencyCode = X12Values.Required(
+                clm.HealthCareServiceLocationInformation_05.ClaimFrequencyTypeCode_03, "2300 CLM05-3 (claim frequency)"),
             BillingProvider = context.BillingProvider,
             Subscriber = context.Subscriber,
             Patient = context.Patient,
@@ -110,17 +108,17 @@ public sealed class ClaimMapper : IClaimMapper
 
         return new BillingProvider
         {
-            Npi = nm1.ResponseContactIdentifier_09
-                ?? throw new InvalidDataException("2010AA NM109 (billing provider NPI) is missing."),
+            Npi = X12Values.Required(nm1.ResponseContactIdentifier_09, "2010AA NM109 (billing provider NPI)"),
             Name = new PartyName
             {
-                LastOrOrganizationName = nm1.ResponseContactLastorOrganizationName_03
-                    ?? throw new InvalidDataException("2010AA NM103 (billing provider name) is missing."),
+                LastOrOrganizationName = X12Values.Required(
+                    nm1.ResponseContactLastorOrganizationName_03, "2010AA NM103 (billing provider name)"),
                 FirstName = nm1.ResponseContactFirstName_04,
                 MiddleName = nm1.ResponseContactMiddleName_05,
             },
-            TaxId = loop2010AA.AllREF.REF_BillingProviderTaxIdentification.MemberGrouporPolicyNumber_02
-                ?? throw new InvalidDataException("2010AA REF02 (billing provider tax ID) is missing."),
+            TaxId = X12Values.Required(
+                loop2010AA.AllREF.REF_BillingProviderTaxIdentification.MemberGrouporPolicyNumber_02,
+                "2010AA REF02 (billing provider tax ID)"),
             Address = new Address
             {
                 Line1 = n3.ResponseContactAddressLine_01,
@@ -141,25 +139,21 @@ public sealed class ClaimMapper : IClaimMapper
         var n3 = loop2010BA.N3_SubscriberAddress;                   // situational: sent when the subscriber is the patient
         var n4 = loop2010BA.N4_SubscriberCity_State_ZIPCode;
         var dmg = loop2010BA.DMG_SubscriberDemographicInformation;  // situational, same rule
-        var birthDate = dmg?.DependentBirthDate_02;  // misleading naming, but verified right for subscriber birthday
 
         return new Subscriber
         {
-            MemberId = nm1.ResponseContactIdentifier_09
-                ?? throw new InvalidDataException("2010BA NM109 (member ID) is missing."),
+            MemberId = X12Values.Required(nm1.ResponseContactIdentifier_09, "2010BA NM109 (member ID)"),
             Name = new PartyName
             {
-                LastOrOrganizationName = nm1.ResponseContactLastorOrganizationName_03
-                    ?? throw new InvalidDataException("2010BA NM103 (subscriber name) is missing."),
+                LastOrOrganizationName = X12Values.Required(
+                    nm1.ResponseContactLastorOrganizationName_03, "2010BA NM103 (subscriber name)"),
                 FirstName = nm1.ResponseContactFirstName_04,
                 MiddleName = nm1.ResponseContactMiddleName_05,
             },
-            DateOfBirth = birthDate is null
-                ? null
-                : DateOnly.ParseExact(birthDate, "yyyyMMdd", CultureInfo.InvariantCulture),
-            Gender = dmg?.DependentGenderCode_03,                                           // misleading naming, but verified right for subscriber gender
-            PayerResponsibility = sbr.PayerResponsibilitySequenceNumberCode_01
-                ?? throw new InvalidDataException("2000B SBR01 (payer responsibility) is missing."),
+            DateOfBirth = X12Values.OptionalDate(dmg?.DependentBirthDate_02),  // misleading naming, but verified right for subscriber birthday
+            Gender = dmg?.DependentGenderCode_03,                              // misleading naming, but verified right for subscriber gender
+            PayerResponsibility = X12Values.Required(
+                sbr.PayerResponsibilitySequenceNumberCode_01, "2000B SBR01 (payer responsibility)"),
             GroupNumber = sbr.InsuredGrouporPolicyNumber_03,
             ClaimFilingIndicator = sbr.ClaimFilingIndicatorCode_09,
             Address = new Address
@@ -180,10 +174,8 @@ public sealed class ClaimMapper : IClaimMapper
 
         return new Payer
         {
-            PayerId = nm1.ResponseContactIdentifier_09
-                ?? throw new InvalidDataException("2010BB NM109 (payer ID) is missing."),
-            Name = nm1.ResponseContactLastorOrganizationName_03
-                ?? throw new InvalidDataException("2010BB NM103 (payer name) is missing."),
+            PayerId = X12Values.Required(nm1.ResponseContactIdentifier_09, "2010BB NM109 (payer ID)"),
+            Name = X12Values.Required(nm1.ResponseContactLastorOrganizationName_03, "2010BB NM103 (payer name)"),
         };
     }
 
@@ -203,23 +195,20 @@ public sealed class ClaimMapper : IClaimMapper
 
         var nm1 = loop2000C.Loop2010CA.NM1_PatientName;
         var dmg = loop2000C.Loop2010CA.DMG_PatientDemographicInformation;
-        var birthDate = dmg.DependentBirthDate_02; // misleading naming
 
         return new Patient
         {
-            RelationshipToSubscriber = loop2000C.PAT_PatientInformation.IndividualRelationshipCode_01
-                ?? throw new InvalidDataException("2000C PAT01 (relationship to subscriber) is missing."),
+            RelationshipToSubscriber = X12Values.Required(
+                loop2000C.PAT_PatientInformation.IndividualRelationshipCode_01, "2000C PAT01 (relationship to subscriber)"),
             Name = new PartyName
             {
-                LastOrOrganizationName = nm1.ResponseContactLastorOrganizationName_03
-                    ?? throw new InvalidDataException("2010CA NM103 (patient name) is missing."),
+                LastOrOrganizationName = X12Values.Required(
+                    nm1.ResponseContactLastorOrganizationName_03, "2010CA NM103 (patient name)"),
                 FirstName = nm1.ResponseContactFirstName_04,
                 MiddleName = nm1.ResponseContactMiddleName_05,
             },
-            DateOfBirth = birthDate is null
-                ? null
-                : DateOnly.ParseExact(birthDate, "yyyyMMdd", CultureInfo.InvariantCulture),
-            Gender = dmg.DependentGenderCode_03, // misleading naming
+            DateOfBirth = X12Values.OptionalDate(dmg.DependentBirthDate_02),   // misleading naming
+            Gender = dmg.DependentGenderCode_03,                               // misleading naming
         };
     }
 
@@ -245,10 +234,8 @@ public sealed class ClaimMapper : IClaimMapper
             diagnoses.Add(new ClaimDiagnosis
             {
                 Sequence = (byte)(i + 1),                           // the HI position, which SV107 pointers refer to
-                Qualifier = position.CodeListQualifierCode_01
-                    ?? throw new InvalidDataException($"2300 HI{i + 1:00}-1 (diagnosis qualifier) is missing."),
-                Code = position.IndustryCode_02
-                    ?? throw new InvalidDataException($"2300 HI{i + 1:00}-2 (diagnosis code) is missing."),
+                Qualifier = X12Values.Required(position.CodeListQualifierCode_01, $"2300 HI{i + 1:00}-1 (diagnosis qualifier)"),
+                Code = X12Values.Required(position.IndustryCode_02, $"2300 HI{i + 1:00}-2 (diagnosis code)"),
             });
         }
 
@@ -262,37 +249,27 @@ public sealed class ClaimMapper : IClaimMapper
         var procedure = sv1.CompositeMedicalProcedureIdentifier_01;
         var pointers = sv1.CompositeDiagnosisCodePointer_07;
         var serviceDate = loop2400.AllDTP.DTP_Date_ServiceDate;
-        var isRange = serviceDate.DateTimePeriodFormatQualifier_02 == "RD8";
-        var dates = serviceDate.DateTimePeriod_03.Split('-');      // D8: "20151124"; RD8: "20151124-20151125"
+        var (serviceDateFrom, serviceDateTo) = X12Values.Period(
+            serviceDate.DateTimePeriodFormatQualifier_02, serviceDate.DateTimePeriod_03, "2400 DTP*472 (service date)");
 
         return new ServiceLine
         {
-            LineNumber = int.Parse(loop2400.LX_ServiceLineNumber.AssignedNumber_01, CultureInfo.InvariantCulture),
-            ProcedureCode = procedure.ProcedureCode_02
-                ?? throw new InvalidDataException("2400 SV101-2 (procedure code) is missing."),
+            LineNumber = X12Values.Number<int>(loop2400.LX_ServiceLineNumber.AssignedNumber_01, "2400 LX01 (line number)"),
+            ProcedureCode = X12Values.Required(procedure.ProcedureCode_02, "2400 SV101-2 (procedure code)"),
             Modifier1 = procedure.ProcedureModifier_03,
             Modifier2 = procedure.ProcedureModifier_04,
             Modifier3 = procedure.ProcedureModifier_05,
             Modifier4 = procedure.ProcedureModifier_06,
-            Charge = decimal.Parse(sv1.LineItemChargeAmount_02, CultureInfo.InvariantCulture),
-            UnitBasis = sv1.UnitorBasisforMeasurementCode_03
-                ?? throw new InvalidDataException("2400 SV103 (unit basis) is missing."),
-            Units = decimal.Parse(sv1.ServiceUnitCount_04, CultureInfo.InvariantCulture),
+            Charge = X12Values.Number<decimal>(sv1.LineItemChargeAmount_02, "2400 SV102 (line charge)"),
+            UnitBasis = X12Values.Required(sv1.UnitorBasisforMeasurementCode_03, "2400 SV103 (unit basis)"),
+            Units = X12Values.Number<decimal>(sv1.ServiceUnitCount_04, "2400 SV104 (units)"),
             PlaceOfServiceCode = sv1.PlaceofServiceCode_05,
-            DiagnosisPointer1 = byte.Parse(pointers.DiagnosisCodePointer_01, CultureInfo.InvariantCulture),
-            DiagnosisPointer2 = pointers.DiagnosisCodePointer_02 is null
-                ? null
-                : byte.Parse(pointers.DiagnosisCodePointer_02, CultureInfo.InvariantCulture),
-            DiagnosisPointer3 = pointers.DiagnosisCodePointer_03 is null
-                ? null
-                : byte.Parse(pointers.DiagnosisCodePointer_03, CultureInfo.InvariantCulture),
-            DiagnosisPointer4 = pointers.DiagnosisCodePointer_04 is null
-                ? null
-                : byte.Parse(pointers.DiagnosisCodePointer_04, CultureInfo.InvariantCulture),
-            ServiceDateFrom = DateOnly.ParseExact(dates[0], "yyyyMMdd", CultureInfo.InvariantCulture),
-            ServiceDateTo = isRange
-                ? DateOnly.ParseExact(dates[1], "yyyyMMdd", CultureInfo.InvariantCulture)
-                : null,
+            DiagnosisPointer1 = X12Values.Number<byte>(pointers.DiagnosisCodePointer_01, "2400 SV107-1 (diagnosis pointer)"),
+            DiagnosisPointer2 = X12Values.OptionalNumber<byte>(pointers.DiagnosisCodePointer_02),
+            DiagnosisPointer3 = X12Values.OptionalNumber<byte>(pointers.DiagnosisCodePointer_03),
+            DiagnosisPointer4 = X12Values.OptionalNumber<byte>(pointers.DiagnosisCodePointer_04),
+            ServiceDateFrom = serviceDateFrom,
+            ServiceDateTo = serviceDateTo,
         };
     }
 }
